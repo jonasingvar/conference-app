@@ -162,16 +162,10 @@ CREATE TABLE IF NOT EXISTS session_speakers (
   PRIMARY KEY (session_id, speaker_id)
 );
 
-CREATE TABLE IF NOT EXISTS favorites (
-  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-  created_at TEXT NOT NULL,
-  PRIMARY KEY (user_id, session_id)
-);
-
--- A real seat, unlike the favorites table which is just a bookmark. Reserving one
--- moves sessions.seats_taken; when a session is full, new reservations are
--- waitlisted instead and promoted in order as seats are released.
+-- An attendee's plan. Adding a session takes one of a finite number of seats
+-- and moves sessions.seats_taken for everybody; when a session is full the
+-- reservation is waitlisted instead, and promoted in order as seats free up.
+-- There is deliberately no separate 'bookmark' concept — see CLAUDE.md.
 CREATE TABLE IF NOT EXISTS reservations (
   user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
@@ -246,7 +240,6 @@ CREATE INDEX IF NOT EXISTS idx_sessions_track     ON sessions(track_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_room      ON sessions(room_id);
 CREATE INDEX IF NOT EXISTS idx_ss_speaker         ON session_speakers(speaker_id);
 CREATE INDEX IF NOT EXISTS idx_st_tag             ON session_tags(tag_id);
-CREATE INDEX IF NOT EXISTS idx_favorites_user     ON favorites(user_id);
 CREATE INDEX IF NOT EXISTS idx_reservations_user  ON reservations(user_id);
 CREATE INDEX IF NOT EXISTS idx_reservations_sess  ON reservations(session_id, status, created_at);
 CREATE INDEX IF NOT EXISTS idx_rooms_venue        ON rooms(venue_id);
@@ -261,7 +254,6 @@ export function dropAll() {
   db.exec(`
     DROP TABLE IF EXISTS ratings;
     DROP TABLE IF EXISTS reservations;
-    DROP TABLE IF EXISTS favorites;
     DROP TABLE IF EXISTS speaker_follows;
     DROP TABLE IF EXISTS session_tags;
     DROP TABLE IF EXISTS session_speakers;

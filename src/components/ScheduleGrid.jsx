@@ -14,7 +14,7 @@ import { Icon } from './Icon.jsx';
  * rendered as full-width bars at their own time.
  */
 export function ScheduleGrid({ sessions }) {
-  const { isFavorite, toggleFavorite, clock } = useConference();
+  const { reservationFor, toggleSeat, clock } = useConference();
 
   const gridSessions = sessions.filter((s) => !s.isKeynote && s.format !== 'Social');
   const bannerSessions = sessions.filter((s) => s.isKeynote || s.format === 'Social');
@@ -84,7 +84,7 @@ export function ScheduleGrid({ sessions }) {
               <div key={startsAt}>
                 {banners.map((s) => {
                   const a = accent(s.track.color);
-                  const fav = isFavorite(s.id);
+                  const seat = reservationFor(s.id);
                   return (
                     <div key={s.id} className="grid border-b border-hairline"
                       style={{ gridTemplateColumns: `5rem 1fr` }} role="row">
@@ -101,12 +101,13 @@ export function ScheduleGrid({ sessions }) {
                         <span className="ml-auto shrink-0 text-[11px] text-faint">{s.room.name}</span>
                         <button
                           type="button"
-                          aria-label={fav ? 'Remove from my plan' : 'Save to my plan'}
-                          aria-pressed={fav}
-                          onClick={(e) => { e.preventDefault(); toggleFavorite(s.id); }}
-                          className={cx('relative z-10 shrink-0 rounded p-1', fav ? 'text-amber-300' : 'text-faint hover:text-amber-300')}
+                          aria-label={seat ? 'Remove from my agenda' : 'Add to my agenda'}
+                          aria-pressed={Boolean(seat)}
+                          onClick={(e) => { e.preventDefault(); toggleSeat(s.id); }}
+                          className={cx('relative z-10 shrink-0 rounded p-1',
+                            seat ? 'text-emerald-300' : 'text-faint hover:text-emerald-300')}
                         >
-                          <Icon name="star" filled={fav} className="size-4" />
+                          <Icon name={seat === 'waitlisted' ? 'clock' : seat ? 'check' : 'ticket'} className="size-4" />
                         </button>
                       </Link>
                     </div>
@@ -133,7 +134,7 @@ export function ScheduleGrid({ sessions }) {
                         );
                       }
                       const a = accent(s.track.color);
-                      const fav = isFavorite(s.id);
+                      const seat = reservationFor(s.id);
                       const live = sameDay && nowMins >= toMinutes(s.startsAt) && nowMins < toMinutes(s.endsAt);
                       const done = sameDay && nowMins >= toMinutes(s.endsAt);
 
@@ -145,7 +146,7 @@ export function ScheduleGrid({ sessions }) {
                               'group relative flex h-full min-h-[5rem] flex-col rounded-lg border p-2.5 transition-all',
                               'hover:-translate-y-0.5 hover:border-white/25 hover:bg-overlay',
                               live ? 'border-rose-400/50 bg-rose-500/[0.07]'
-                                : fav ? 'border-amber-400/45 bg-amber-400/[0.06]'
+                                : seat ? 'border-emerald-400/45 bg-emerald-400/[0.06]'
                                 : 'border-hairline bg-raised',
                               done && 'opacity-60',
                             )}
@@ -157,13 +158,13 @@ export function ScheduleGrid({ sessions }) {
                               </h4>
                               <button
                                 type="button"
-                                aria-label={fav ? `Remove ${s.title} from my plan` : `Save ${s.title} to my plan`}
-                                aria-pressed={fav}
-                                onClick={(e) => { e.preventDefault(); toggleFavorite(s.id); }}
+                                aria-label={seat ? `Remove ${s.title} from my agenda` : `Add ${s.title} to my agenda`}
+                                aria-pressed={Boolean(seat)}
+                                onClick={(e) => { e.preventDefault(); toggleSeat(s.id); }}
                                 className={cx('relative z-10 -mr-1 -mt-1 shrink-0 rounded p-1 transition-colors',
-                                  fav ? 'text-amber-300' : 'text-faint opacity-0 hover:text-amber-300 group-hover:opacity-100 focus:opacity-100')}
+                                  seat ? 'text-emerald-300' : 'text-faint opacity-0 hover:text-emerald-300 group-hover:opacity-100 focus:opacity-100')}
                               >
-                                <Icon name="star" filled={fav} className="size-3.5" />
+                                <Icon name={seat === 'waitlisted' ? 'clock' : seat ? 'check' : 'ticket'} className="size-3.5" />
                               </button>
                             </div>
                             <div className="mt-auto flex items-center gap-1.5 pt-2">

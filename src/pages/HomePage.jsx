@@ -49,7 +49,7 @@ function Hero({ conference, stats }) {
               Browse the schedule
               <Icon name="arrowRight" className="size-4" />
             </Button>
-            <Button to="/my-plan" size="lg">Build my plan</Button>
+            <Button to="/my-agenda" size="lg">My agenda</Button>
           </div>
 
           {/* a hard modular grid — every figure in its own cell */}
@@ -298,9 +298,9 @@ function YourPlan() {
     <section data-testid="your-plan">
       <SectionHeader
         eyebrow={`Hey ${currentUser.name.split(' ')[0]}`}
-        title="Your plan so far"
-        description={data ? `${plural(data.totalSessions, 'session')} saved across ${plural(data.days.length, 'day')}.` : null}
-        action={<Button to="/my-plan" size="sm">Open my plan <Icon name="chevronRight" className="size-3.5" /></Button>}
+        title="Your agenda"
+        description={data ? `${plural(data.totalSessions, 'session')} booked across ${plural(data.days.length, 'day')}.` : null}
+        action={<Button to="/my-agenda" size="sm">Open agenda <Icon name="chevronRight" className="size-3.5" /></Button>}
       />
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {loading

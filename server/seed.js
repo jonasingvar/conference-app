@@ -518,14 +518,26 @@ USERS.forEach((u, i) => {
 const users = db.prepare('SELECT * FROM users').all();
 
 /**
- * Favourites — a realistic day, not a full timetable.
+ * Attendee plans — a realistic day, not a full timetable.
  *
- * Nobody attends seven sessions a day. You go to the keynote, pick two or
- * three talks, and spend the rest of the day in the hallway track, the expo,
- * lunch, or asleep. So each attendee books a handful of slots per day they
- * actually show up for, leaving most of the grid deliberately empty.
+ * There is one action in this app: adding a session to your plan takes a seat.
+ * Nobody attends seven sessions a day, so each attendee books the keynote
+ * (sometimes) plus two to four talks on the days they show up, leaving most of
+ * the grid deliberately empty.
  */
-const fStmt = prep('INSERT OR IGNORE INTO favorites (user_id,session_id,created_at) VALUES (?,?,?)');
+const resStmt = prep('INSERT OR IGNORE INTO reservations (user_id,session_id,status,created_at) VALUES (?,?,?,?)');
+const bumpSeat = prep('UPDATE sessions SET seats_taken = MIN(capacity, seats_taken + 1) WHERE id = ?');
+const seatsOn = prep('SELECT capacity, seats_taken FROM sessions WHERE id = ?');
+
+/** Take a seat if there is one, otherwise join the waitlist — same rules as the API. */
+const bookSeat = (userId, sessionId, at) => {
+  const s = seatsOn.get(sessionId);
+  if (!s) return;
+  const full = s.seats_taken >= s.capacity;
+  resStmt.run(userId, sessionId, full ? 'waitlisted' : 'confirmed', at);
+  if (!full) bumpSeat.run(sessionId);
+};
+
 const savedAt = () =>
   `${addDays(DAYS[0], -int(1, 11))}T${String(int(8, 22)).padStart(2, '0')}:${String(int(10, 59)).padStart(2, '0')}:00Z`;
 
@@ -538,8 +550,6 @@ DAYS.forEach((day) => {
 const sessionsInSlot = db.prepare('SELECT id FROM sessions WHERE day = ? AND starts_at = ? AND is_keynote = 0');
 const keynoteOn = db.prepare('SELECT id FROM sessions WHERE day = ? AND is_keynote = 1');
 
-// days attended · talks booked per day (excluding the keynote) · chance of
-// double-booking one slot · chance of bothering with that morning's keynote
 // days attended · talks booked per day (excluding the keynote) · chance of
 // double-booking one slot · chance of bothering with that morning's keynote
 const PLAN_SHAPE = [
@@ -555,8 +565,7 @@ const PLAN_SHAPE = [
  * Plant Jonas's cross-town traps FIRST: an Aurora session immediately followed
  * by a Foundry session. They do not overlap in time, so simple clash detection
  * says they are fine — but the shuttle takes 27 minutes. Booking them before
- * the organic picks below means those slots are already taken, so the trap does
- * not accidentally turn into an ordinary double-booking.
+ * the organic picks below means those slots are already taken.
  */
 const auroraIds = rooms.filter((r) => r.venue_id === AURORA.id).map((r) => r.id);
 const foundryIds = rooms.filter((r) => r.venue_id === FOUNDRY.id).map((r) => r.id);
@@ -566,28 +575,27 @@ const pairFor = (day, s1, s2) => [
 ];
 [[DAYS[0], '10:15', '11:30'], [DAYS[3], '09:00', '10:15']].forEach(([d, s1, s2]) => {
   pairFor(d, s1, s2).forEach((row, n) => {
-    if (row) fStmt.run(users[0].id, row.id, `${addDays(DAYS[0], -3)}T11:0${n}:00Z`);
+    if (row) bookSeat(users[0].id, row.id, `${addDays(DAYS[0], -3)}T11:0${n}:00Z`);
   });
 });
 
 /** Slots this attendee has already committed to on a given day. */
 const takenSlots = db.prepare(`
-  SELECT DISTINCT s.starts_at FROM favorites f
-  JOIN sessions s ON s.id = f.session_id
-  WHERE f.user_id = ? AND s.day = ?`);
+  SELECT DISTINCT s.starts_at FROM reservations r
+  JOIN sessions s ON s.id = r.session_id
+  WHERE r.user_id = ? AND s.day = ?`);
 
 users.forEach((u, i) => {
   const shape = PLAN_SHAPE[i] ?? { days: 3, perDay: [2, 3], clash: 0.1, keynote: 0.7 };
   DAYS.slice(0, shape.days).forEach((day) => {
     if (chance(shape.keynote)) {
       const k = keynoteOn.get(day);
-      if (k) fStmt.run(u.id, k.id, savedAt());
+      if (k) bookSeat(u.id, k.id, savedAt());
     }
 
     const busy = new Set(takenSlots.all(u.id, day).map((r) => r.starts_at));
     const free = slotsByDay[day].filter((slot) => !busy.has(slot));
-    // perDay counts talks, so the keynote must not eat into the budget —
-    // only already-booked *talk* slots (a planted trap) count against it.
+    // perDay counts talks, so the keynote must not eat into the budget.
     const bookedTalks = slotsByDay[day].filter((slot) => busy.has(slot)).length;
     const wanted = Math.max(0, int(shape.perDay[0], shape.perDay[1]) - bookedTalks);
 
@@ -596,38 +604,21 @@ users.forEach((u, i) => {
       if (!candidates.length) return;
       // occasionally book two things at once — that is what clash detection is for
       const take = chance(shape.clash) ? 2 : 1;
-      pickN(candidates, take).forEach((c) => fStmt.run(u.id, c.id, savedAt()));
+      pickN(candidates, take).forEach((c) => bookSeat(u.id, c.id, savedAt()));
     });
   });
 });
 
-/*
- * Seat reservations. Attendees reserve a seat for a subset of what they saved —
- * starring is intent, reserving is commitment. One well-rated workshop is
- * deliberately filled to capacity so the waitlist path is visible without
- * having to engineer it by hand.
- */
-const resStmt = prep('INSERT OR IGNORE INTO reservations (user_id,session_id,status,created_at) VALUES (?,?,?,?)');
-users.forEach((u) => {
-  const saved = db.prepare('SELECT session_id FROM favorites WHERE user_id = ?').all(u.id);
-  pickN(saved, Math.round(saved.length * 0.55)).forEach((f) => {
-    const sess = db.prepare('SELECT capacity, seats_taken FROM sessions WHERE id = ?').get(f.session_id);
-    if (sess.seats_taken >= sess.capacity) return;
-    resStmt.run(u.id, f.session_id, 'confirmed', savedAt());
-    db.prepare('UPDATE sessions SET seats_taken = seats_taken + 1 WHERE id = ?').run(f.session_id);
-  });
-});
-
-// One sold-out workshop, so "join the waitlist" is reachable from the UI.
+// One session deliberately at capacity with a known holder, so the waitlist and
+// the promotion-on-release path are both reachable from the UI.
 const soldOut = db.prepare(`
-  SELECT id, capacity FROM sessions
-  WHERE format = 'Workshop' AND day = ? ORDER BY avg_rating DESC LIMIT 1`).get(DAYS[1]);
+  SELECT id, capacity, title FROM sessions
+  WHERE is_keynote = 0 AND format != 'Social' AND capacity < 400
+  ORDER BY (format = 'Workshop') DESC, avg_rating DESC LIMIT 1`).get();
 if (soldOut) {
   db.prepare('UPDATE sessions SET seats_taken = capacity WHERE id = ?').run(soldOut.id);
-  // Jonas holds one of those seats, so releasing it has someone to promote —
-  // this is the fixture the waitlist-promotion test depends on.
   resStmt.run(users[0].id, soldOut.id, 'confirmed', savedAt());
-  console.log(`  · session ${soldOut.id} seeded at capacity (${soldOut.capacity}) for the waitlist path`);
+  console.log(`  · "${soldOut.title}" seeded full (${soldOut.capacity} seats) so the waitlist is reachable`);
 }
 
 /* speaker follows */
@@ -640,7 +631,7 @@ const ratStmt = prep('INSERT OR IGNORE INTO ratings (user_id,session_id,stars,co
 // You can only rate a session you went to, so ratings are drawn from the
 // attendee's own plan rather than from the programme at large.
 users.forEach((u) => {
-  const attended = db.prepare('SELECT session_id, day FROM favorites f JOIN sessions s ON s.id = f.session_id WHERE f.user_id = ?').all(u.id);
+  const attended = db.prepare('SELECT session_id, day FROM reservations r JOIN sessions s ON s.id = r.session_id WHERE r.user_id = ?').all(u.id);
   pickN(attended, Math.ceil(attended.length * 0.55)).forEach((a) =>
     ratStmt.run(u.id, a.session_id, pick([2, 3, 4, 4, 5, 5, 5]),
       chance(0.7) ? pick(COMMENTS) : null, `${a.day}T19:${String(int(10, 59))}:00Z`));
@@ -741,4 +732,4 @@ console.log(`✓ ${c('venues')} venues · ${c('rooms')} rooms · ${c('tracks')} 
 console.log(`✓ ${db.prepare('SELECT COUNT(*) n FROM speakers WHERE image_url IS NOT NULL').get().n}/${c('speakers')} speakers have portraits`);
 console.log(`✓ ${c('sessions')} sessions · ${c('speakers')} speakers · ${c('session_speakers')} speaking slots · ${c('session_tags')} tag links`);
 console.log(`✓ ${c('vendors')} vendors · ${c('sponsors')} sponsors · ${c('announcements')} announcements`);
-console.log(`✓ ${db.prepare('SELECT COUNT(*) n FROM users WHERE speaker_id IS NOT NULL').get().n} of ${c('users')} are also speaking · ${c('favorites')} favorites · ${c('speaker_follows')} follows · ${c('ratings')} ratings`);
+console.log(`✓ ${db.prepare('SELECT COUNT(*) n FROM users WHERE speaker_id IS NOT NULL').get().n} of ${c('users')} are also speaking · ${c('reservations')} seats booked · ${c('speaker_follows')} follows · ${c('ratings')} ratings`);

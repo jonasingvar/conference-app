@@ -10,7 +10,7 @@ const NAV = [
   { to: '/', label: 'Home', icon: 'sparkle', end: true },
   { to: '/schedule', label: 'Schedule', icon: 'calendar' },
   { to: '/speakers', label: 'Speakers', icon: 'users' },
-  { to: '/my-plan', label: 'My Plan', icon: 'bookmark' },
+  { to: '/my-agenda', label: 'My Agenda', icon: 'ticket' },
   { to: '/venues', label: 'Venues', icon: 'building' },
   { to: '/food', label: 'Food', icon: 'food' },
   { to: '/expo', label: 'Expo', icon: 'grid' },
@@ -31,7 +31,7 @@ function Logo() {
 }
 
 export function Layout() {
-  const { ready, favoriteIds } = useConference();
+  const { ready, reservations } = useConference();
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
 
@@ -69,9 +69,9 @@ export function Layout() {
                 {({ isActive }) => (
                   <>
                     {item.label}
-                    {item.to === '/my-plan' && favoriteIds.size > 0 && (
-                      <span className="ml-1.5 rounded-full bg-violet-500/20 px-1.5 py-px text-[10px] font-bold text-violet-300">
-                        {favoriteIds.size}
+                    {item.to === '/my-agenda' && reservations.size > 0 && (
+                      <span className="ml-1.5 rounded-full bg-emerald-500/20 px-1.5 py-px text-[10px] font-bold text-emerald-300">
+                        {reservations.size}
                       </span>
                     )}
                     {isActive && (
@@ -112,8 +112,8 @@ export function Layout() {
                   >
                     <Icon name={item.icon} className="size-4" />
                     {item.label}
-                    {item.to === '/my-plan' && favoriteIds.size > 0 && (
-                      <span className="ml-auto text-[11px] font-bold text-violet-300">{favoriteIds.size}</span>
+                    {item.to === '/my-agenda' && reservations.size > 0 && (
+                      <span className="ml-auto text-[11px] font-bold text-emerald-300">{reservations.size}</span>
                     )}
                   </NavLink>
                 </li>
@@ -151,7 +151,7 @@ export function Layout() {
                 links: [
                   ['Schedule', '/schedule'],
                   ['Speakers', '/speakers'],
-                  ['My plan', '/my-plan'],
+                  ['My agenda', '/my-agenda'],
                 ],
               },
               {

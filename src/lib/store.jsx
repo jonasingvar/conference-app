@@ -22,7 +22,6 @@ export function ConferenceProvider({ children }) {
     const stored = Number(localStorage.getItem(STORAGE_KEY));
     return Number.isFinite(stored) && stored > 0 ? stored : 1;
   });
-  const [favoriteIds, setFavoriteIds] = useState(() => new Set());
   const [followingIds, setFollowingIds] = useState(() => new Set());
   // sessionId -> 'confirmed' | 'waitlisted'
   const [reservations, setReservations] = useState(() => new Map());
@@ -39,37 +38,14 @@ export function ConferenceProvider({ children }) {
     localStorage.setItem(STORAGE_KEY, String(currentUserId));
     api.getUser(currentUserId)
       .then((u) => {
-        setFavoriteIds(new Set(u.favoriteIds));
         setFollowingIds(new Set(u.followedSpeakers.map((s) => s.id)));
         setReservations(new Map((u.reservations ?? []).map((r) => [r.sessionId, r.status])));
       })
       .catch(() => {
-        setFavoriteIds(new Set());
         setFollowingIds(new Set());
         setReservations(new Map());
       });
   }, [currentUserId]);
-
-  const setFavorite = useCallback(async (sessionId, wanted) => {
-    setFavoriteIds((prev) => {
-      const next = new Set(prev);
-      if (wanted) next.add(sessionId);
-      else next.delete(sessionId);
-      return next;
-    });
-    const call = wanted ? api.addFavorite : api.removeFavorite;
-    await call(currentUserId, sessionId);
-  }, [currentUserId]);
-
-  const toggleFavorite = useCallback(async (sessionId) => {
-    const wasFavorite = favoriteIds.has(sessionId);
-    await setFavorite(sessionId, !wasFavorite);
-    toast({
-      message: wasFavorite ? 'Removed from your plan' : 'Saved to your plan',
-      icon: wasFavorite ? 'close' : 'check',
-      action: { label: 'Undo', onClick: () => setFavorite(sessionId, wasFavorite) },
-    });
-  }, [favoriteIds, setFavorite, toast]);
 
   const toggleFollow = useCallback(async (speakerId) => {
     const following = followingIds.has(speakerId);
@@ -101,6 +77,10 @@ export function ConferenceProvider({ children }) {
     });
   }, []);
 
+  /**
+   * The single action in this app: add a session to your agenda, which takes a
+   * seat (or a waitlist place). There is no separate bookmark — see CLAUDE.md.
+   */
   const reserveSeat = useCallback(async (sessionId) => {
     const state = await api.reserveSeat(currentUserId, sessionId);
     applySeatState(state);
@@ -117,11 +97,18 @@ export function ConferenceProvider({ children }) {
     const state = await api.releaseSeat(currentUserId, sessionId);
     applySeatState(state);
     toast({
-      message: state.promoted ? 'Seat released — passed to someone on the waitlist' : 'Seat released',
+      message: state.promoted ? 'Removed — your seat went to someone on the waitlist' : 'Removed from your agenda',
       icon: 'check',
+      action: { label: 'Undo', onClick: () => reserveSeat(sessionId) },
     });
     return state;
-  }, [currentUserId, applySeatState, toast]);
+  }, [currentUserId, applySeatState, toast, reserveSeat]);
+
+  /** Toggle a session on or off the agenda. */
+  const toggleSeat = useCallback(
+    (sessionId) => (reservations.has(sessionId) ? releaseSeat(sessionId) : reserveSeat(sessionId)),
+    [reservations, reserveSeat, releaseSeat],
+  );
 
   /** Adopt seat state that arrived with a page payload (e.g. session detail). */
   const adoptSeatState = useCallback((state) => {
@@ -142,9 +129,6 @@ export function ConferenceProvider({ children }) {
       currentUser: users.find((u) => u.id === currentUserId) ?? users[0] ?? null,
       currentUserId,
       setCurrentUserId,
-      favoriteIds,
-      isFavorite: (id) => favoriteIds.has(id),
-      toggleFavorite,
       followingIds,
       isFollowing: (id) => followingIds.has(id),
       toggleFollow,
@@ -154,14 +138,16 @@ export function ConferenceProvider({ children }) {
       seatsFor: (id) => seatCounts.get(id) ?? null,
       reserveSeat,
       releaseSeat,
+      toggleSeat,
+      onAgenda: (id) => reservations.has(id),
       applySeatState,
       adoptSeatState,
       trackBySlug: Object.fromEntries((data?.tracks ?? []).map((t) => [t.slug, t])),
       venueById: Object.fromEntries((data?.venues ?? []).map((v) => [v.id, v])),
       roomById: Object.fromEntries((data?.rooms ?? []).map((r) => [r.id, r])),
     };
-  }, [data, error, clock, currentUserId, favoriteIds, toggleFavorite, followingIds, toggleFollow,
-      reservations, seatCounts, reserveSeat, releaseSeat, applySeatState, adoptSeatState]);
+  }, [data, error, clock, currentUserId, followingIds, toggleFollow,
+      reservations, seatCounts, reserveSeat, releaseSeat, toggleSeat, applySeatState, adoptSeatState]);
 
   return <ConferenceContext.Provider value={value}>{children}</ConferenceContext.Provider>;
 }

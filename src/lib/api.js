@@ -40,8 +40,6 @@ export const getUsers = () => api('/users');
 export const getUser = (id) => api(`/users/${id}`);
 export const getSchedule = (userId) => api(`/users/${userId}/schedule`);
 
-export const addFavorite = (userId, sessionId) => api(`/users/${userId}/favorites/${sessionId}`, { method: 'PUT' });
-export const removeFavorite = (userId, sessionId) => api(`/users/${userId}/favorites/${sessionId}`, { method: 'DELETE' });
 export const reserveSeat = (userId, sessionId) => api(`/users/${userId}/reservations/${sessionId}`, { method: 'PUT' });
 export const releaseSeat = (userId, sessionId) => api(`/users/${userId}/reservations/${sessionId}`, { method: 'DELETE' });
 

@@ -111,29 +111,41 @@ export function Button({ variant = 'ghost', size = 'md', className, as, to, href
   );
 }
 
-/* ------------------------------ FavoriteButton --------------------------- */
-export function FavoriteButton({ active, onClick, size = 'md', label = 'Save to my plan', className }) {
+/* -------------------------------- SeatButton ------------------------------ */
+/**
+ * The one action: add this session to my agenda, which takes a seat.
+ * `status` is null | 'confirmed' | 'waitlisted'.
+ */
+export function SeatButton({ status, onClick, size = 'md', className, title }) {
   const dims = size === 'sm' ? 'size-8' : 'size-10';
+  const on = Boolean(status);
+  const waiting = status === 'waitlisted';
+  const label = on
+    ? (waiting ? 'Leave the waitlist' : 'Remove from my agenda')
+    : (title ?? 'Add to my agenda');
+
   return (
     <button
       type="button"
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClick(); }}
-      aria-pressed={active}
-      aria-label={active ? 'Remove from my plan' : label}
-      title={active ? 'Remove from my plan' : label}
+      aria-pressed={on}
+      aria-label={label}
+      title={label}
       className={cx(
         // `relative z-10` keeps the button above the card's stretched link overlay,
         // which otherwise covers the whole card and swallows the click.
         'relative z-10 grid shrink-0 place-items-center rounded-lg border transition-all duration-150 active:scale-90',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400',
         dims,
-        active
+        waiting
           ? 'border-amber-400/50 bg-amber-400/15 text-amber-300'
-          : 'border-hairline bg-overlay/60 text-faint hover:text-amber-300 hover:border-amber-400/40',
+          : on
+            ? 'border-emerald-400/50 bg-emerald-400/15 text-emerald-300'
+            : 'border-hairline bg-overlay/60 text-faint hover:border-emerald-400/40 hover:text-emerald-300',
         className,
       )}
     >
-      <Icon name="star" filled={active} className={size === 'sm' ? 'size-4' : 'size-[18px]'} />
+      <Icon name={waiting ? 'clock' : on ? 'check' : 'ticket'} className={size === 'sm' ? 'size-4' : 'size-[18px]'} />
     </button>
   );
 }

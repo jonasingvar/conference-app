@@ -17,7 +17,7 @@ metaRouter.get('/bootstrap', (req, res) => {
   const tags = db.prepare('SELECT * FROM tags ORDER BY kind, name').all();
   const rooms = db.prepare('SELECT * FROM rooms ORDER BY venue_id, level_order, name').all().map(toRoom);
   const users = db.prepare('SELECT * FROM users ORDER BY id').all().map((u) => toUser(u, {
-    favoriteCount: db.prepare('SELECT COUNT(*) n FROM favorites WHERE user_id = ?').get(u.id).n,
+    reservedCount: db.prepare("SELECT COUNT(*) n FROM reservations WHERE user_id = ? AND status = 'confirmed'").get(u.id).n,
     speakingCount: u.speaker_id
       ? db.prepare('SELECT COUNT(*) n FROM session_speakers WHERE speaker_id = ?').get(u.speaker_id).n
       : 0,

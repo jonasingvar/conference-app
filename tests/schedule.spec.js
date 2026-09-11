@@ -76,13 +76,13 @@ test.describe('Schedule grid', () => {
     await expect(page.locator('article').first()).toBeVisible();
   });
 
-  test('starring from a grid cell updates the saved count', async ({ page }) => {
+  test('adding from a grid cell updates the agenda count', async ({ page }) => {
     await visit(page, '/schedule?view=grid', { as: ATTENDEES.marcus });
     const count = page.getByTestId('starred-count');
     const before = Number(await count.innerText());
 
     await page.getByTestId('schedule-grid')
-      .getByRole('button', { name: /Save .* to my plan/ }).first().click();
+      .getByRole('button', { name: /Add .* to my agenda/ }).first().click();
     await expect(count).not.toHaveText(String(before));
   });
 });

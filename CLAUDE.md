@@ -106,20 +106,26 @@ Never write `` `bg-${color}-500` ``.
 **Add `data-testid` to anything a test needs to find** — result counts, panels,
 list containers. Do not put testids on decorative elements.
 
-## Two different commitments
+## There is exactly one action
 
-Starring and reserving are **not** the same thing, and the UI must keep saying so:
+Adding a session to your agenda **takes a seat**. There is no separate bookmark,
+and there should not be one.
 
-- **Star** (`favorites`) is a bookmark. Free, unlimited, holds nothing.
-- **Reserve** (`reservations`) takes one of a finite number of seats. It moves
-  `sessions.seats_taken` for *everybody*, and when the room is full you are
-  waitlisted instead. Releasing a confirmed seat promotes whoever has waited
-  longest. All of it is transactional — see `server/lib/seats.js`.
+We originally copied AWS re:Invent and Google I/O, which split favouriting from
+reserving. Both had to publish FAQ entries explaining the difference, and it
+confused people here too. Most of the industry — Sched, EventMobi, and KubeCon
+on top of Sched — uses a single action with capacity rules attached, so that is
+what this app does.
 
-**My Plan is the union**: anything you starred *or* hold a seat for, with each
-row flagged. The store is the source of truth for your own reservation state —
-never fall back to the payload a page was fetched with, or "released" becomes
-unreachable until a refresh.
+- `reservations` is the only table. Adding moves `sessions.seats_taken` for
+  *everybody*; a full room waitlists you instead; removing a confirmed seat
+  promotes whoever has waited longest. All transactional — `server/lib/seats.js`.
+- The page is **My Agenda** (`/my-agenda`), which is what Whova, Cvent, EventMobi
+  and AWS all call it. `/my-plan` redirects.
+- `useConference()` exposes `toggleSeat`, `reservationFor` and `onAgenda`. The
+  store is the source of truth for your own reservation state — never fall back
+  to the payload a page was fetched with, or "removed" stays unreachable until a
+  refresh.
 
 ## The conference clock
 

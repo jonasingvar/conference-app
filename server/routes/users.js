@@ -16,7 +16,7 @@ export const usersRouter = Router();
 usersRouter.get('/', (req, res) => {
   const rows = db.prepare('SELECT * FROM users ORDER BY id').all();
   res.json(rows.map((u) => toUser(u, {
-    favoriteCount: db.prepare('SELECT COUNT(*) n FROM favorites WHERE user_id = ?').get(u.id).n,
+    reservedCount: db.prepare("SELECT COUNT(*) n FROM reservations WHERE user_id = ? AND status = 'confirmed'").get(u.id).n,
     followCount: db.prepare('SELECT COUNT(*) n FROM speaker_follows WHERE user_id = ?').get(u.id).n,
     speakingCount: u.speaker_id
       ? db.prepare('SELECT COUNT(*) n FROM session_speakers WHERE speaker_id = ?').get(u.speaker_id).n
@@ -40,7 +40,6 @@ usersRouter.get('/:id', (req, res) => {
     followedSpeakers,
     speaker,
     speakingSessions: speakingSessions(row.speaker_id),
-    favoriteIds: db.prepare('SELECT session_id FROM favorites WHERE user_id = ?').all(row.id).map((f) => f.session_id),
     reservations: db.prepare('SELECT session_id, status FROM reservations WHERE user_id = ?').all(row.id)
       .map((r) => ({ sessionId: r.session_id, status: r.status })),
   }));
@@ -48,34 +47,21 @@ usersRouter.get('/:id', (req, res) => {
 
 /**
  * GET /api/users/:id/schedule
- *
- * An attendee's plan is everything they have starred OR hold a seat for — the
- * two are different commitments and a session can be either, both, or neither.
- * Each session comes back flagged so the UI can say which.
+ * Every session this attendee holds a seat or a waitlist place for.
  */
 usersRouter.get('/:id/schedule', (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
   if (!user) return res.status(404).json({ error: 'Attendee not found' });
 
   const rows = db.prepare(`${SESSION_SELECT}
-    WHERE s.id IN (
-      SELECT session_id FROM favorites    WHERE user_id = @uid
-      UNION
-      SELECT session_id FROM reservations WHERE user_id = @uid
-    )
-    ORDER BY s.day, s.starts_at`).all({ uid: user.id });
+    JOIN reservations r ON r.session_id = s.id AND r.user_id = ?
+    ORDER BY s.day, s.starts_at`).all(user.id);
 
-  const starred = new Set(
-    db.prepare('SELECT session_id FROM favorites WHERE user_id = ?').all(user.id).map((r) => r.session_id));
   const seats = new Map(
     db.prepare('SELECT session_id, status FROM reservations WHERE user_id = ?').all(user.id)
       .map((r) => [r.session_id, r.status]));
 
-  const sessions = hydrateSessions(rows).map((s) => ({
-    ...s,
-    saved: starred.has(s.id),
-    reservation: seats.get(s.id) ?? null,
-  }));
+  const sessions = hydrateSessions(rows).map((s) => ({ ...s, reservation: seats.get(s.id) ?? null }));
 
   const byDay = new Map();
   for (const s of sessions) {
@@ -111,18 +97,6 @@ usersRouter.get('/:id/schedule', (req, res) => {
     totalReserved: sessions.filter((s) => s.reservation === 'confirmed').length,
     totalWaitlisted: sessions.filter((s) => s.reservation === 'waitlisted').length,
   });
-});
-
-usersRouter.put('/:id/favorites/:sessionId', (req, res) => {
-  db.prepare('INSERT OR IGNORE INTO favorites (user_id, session_id, created_at) VALUES (?, ?, ?)')
-    .run(req.params.id, req.params.sessionId, new Date().toISOString());
-  res.json({ favorited: true, sessionId: Number(req.params.sessionId) });
-});
-
-usersRouter.delete('/:id/favorites/:sessionId', (req, res) => {
-  db.prepare('DELETE FROM favorites WHERE user_id = ? AND session_id = ?')
-    .run(req.params.id, req.params.sessionId);
-  res.json({ favorited: false, sessionId: Number(req.params.sessionId) });
 });
 
 /**

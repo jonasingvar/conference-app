@@ -11,7 +11,7 @@ const ROUTES = [
   { path: '/', name: 'Home', heading: /The model is the easy part/i },
   { path: '/schedule', name: 'Schedule', heading: /The schedule/i },
   { path: '/speakers', name: 'Speakers', heading: /^Speakers$/i },
-  { path: '/my-plan', name: 'My Plan', heading: /plan$/i },
+  { path: '/my-agenda', name: 'My Agenda', heading: /agenda$/i },
   { path: '/venues', name: 'Venues', heading: /Venues & stages/i },
   { path: '/food', name: 'Food', heading: /Food & drink/i },
   { path: '/expo', name: 'Expo', heading: /Partners & sponsors/i },

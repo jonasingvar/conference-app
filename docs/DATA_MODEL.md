@@ -19,9 +19,9 @@ this document explains the shape and the parts that carry meaning.
 | `session_speakers` | ~515 | Many-to-many, with a `role` (Speaker / Moderator / Host) |
 | `session_tags` | ~2600 | Many-to-many |
 | `users` | 6 | Attendees. No passwords — there is no auth |
-| `favorites` | ~60 | An attendee's saved plan — a realistic handful per day |
+| `reservations` | ~63 | An attendee's agenda. Holds a real seat; waitlisted when full |
 | `speaker_follows` | ~85 | |
-| `ratings` | ~36 | Drawn from sessions the attendee actually booked |
+| `ratings` | ~38 | Drawn from sessions the attendee actually booked |
 | `vendors` | 24 | Food and drink, positioned on the venue maps |
 | `sponsors` | 28 | Five tiers, booth numbers, perks |
 | `announcements` | 10 | Two are pinned and surface on the home page |

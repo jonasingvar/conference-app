@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { accent } from '../lib/accents.js';
 import { timeRange } from '../lib/format.js';
 import { useConference } from '../lib/store.jsx';
-import { Avatar, Chip, FavoriteButton, Rating, cx } from './ui.jsx';
+import { Avatar, Chip, SeatButton, Rating, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
 import { GeneratedCover } from './GeneratedCover.jsx';
 import { LiveBadge } from './LiveNow.jsx';
@@ -18,9 +18,9 @@ import { progressOf, toMinutes } from '../lib/clock.js';
  * these without every card melting into the next.
  */
 export function SessionCard({ session, variant = 'grid', showDay = false }) {
-  const { isFavorite, toggleFavorite, clock, reservationFor } = useConference();
+  const { toggleSeat, clock, reservationFor } = useConference();
   const reservation = reservationFor(session.id);
-  const favorite = isFavorite(session.id);
+  const onAgenda = Boolean(reservation);
 
   // Live state, relative to the conference clock.
   const onToday = clock?.day === session.day;
@@ -37,7 +37,7 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
       <div className={cx(
         'group relative flex scroll-mt-28 items-stretch gap-0 overflow-hidden rounded-xl border bg-raised transition-colors',
         'hover:border-white/20 hover:bg-overlay',
-        isLive ? 'border-rose-400/45' : favorite ? 'border-amber-400/30' : 'border-hairline',
+        isLive ? 'border-rose-400/45' : onAgenda ? 'border-emerald-400/30' : 'border-hairline',
         isDone && 'opacity-55',
       )}>
         <span className={cx('w-1 shrink-0 bg-gradient-to-b', a.grad)} aria-hidden="true" />
@@ -68,11 +68,6 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
                   <Icon name="car" className="size-3" /> {session.venue.shortName}
                 </span>
               )}
-              {reservation === 'confirmed' && (
-                <span className="inline-flex items-center gap-1 font-semibold text-emerald-300">
-                  <Icon name="ticket" className="size-3" /> Seat reserved
-                </span>
-              )}
               {reservation === 'waitlisted' && (
                 <span className="inline-flex items-center gap-1 font-semibold text-amber-300">
                   <Icon name="clock" className="size-3" /> Waitlisted
@@ -80,7 +75,7 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
               )}
             </div>
           </div>
-          <FavoriteButton size="sm" active={favorite} onClick={() => toggleFavorite(session.id)} />
+          <SeatButton size="sm" status={reservation} onClick={() => toggleSeat(session.id)} />
         </div>
       </div>
     );
@@ -96,7 +91,7 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
       className={cx(
         'group relative flex scroll-mt-28 flex-col overflow-hidden rounded-xl border bg-raised transition-colors duration-150',
         'hover:border-white/20 hover:bg-overlay/70',
-        isLive ? 'border-rose-400/50' : favorite ? 'border-amber-400/40' : 'border-hairline',
+        isLive ? 'border-rose-400/50' : onAgenda ? 'border-emerald-400/35' : 'border-hairline',
         feature && 'sm:col-span-2',
         isDone && 'opacity-60',
       )}
@@ -137,7 +132,7 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {isLive && <LiveBadge />}
-          <FavoriteButton active={favorite} onClick={() => toggleFavorite(session.id)} />
+          <SeatButton status={reservation} onClick={() => toggleSeat(session.id)} />
         </div>
       </div>
 

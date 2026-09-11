@@ -7,7 +7,7 @@ import { routesBetween } from '../lib/travel.js';
 import { SessionCard } from '../components/SessionCard.jsx';
 import { GeneratedCover } from '../components/GeneratedCover.jsx';
 import { SeatPanel } from '../components/SeatPanel.jsx';
-import { Avatar, Button, Chip, EmptyState, ErrorState, FavoriteButton, Rating, Skeleton, TrackPill, cx } from '../components/ui.jsx';
+import { Avatar, Button, Chip, EmptyState, ErrorState, Rating, Skeleton, TrackPill, cx } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
 import { useDocumentTitle } from '../lib/useDocumentTitle.js';
 
@@ -43,8 +43,7 @@ function TravelNotice({ session }) {
 
 export function SessionPage() {
   const { id } = useParams();
-  const { isFavorite, toggleFavorite } = useConference();
-  const { currentUserId } = useConference();
+  const { currentUserId, reservationFor, toggleSeat } = useConference();
   const { data: session, loading, error, reload } = useFetch(() => api.getSession(id, currentUserId), [id, currentUserId]);
   useDocumentTitle(session?.title);
 
@@ -61,7 +60,7 @@ export function SessionPage() {
   if (!session) return <EmptyState title="Session not found" />;
 
   const a = accent(session.track.color);
-  const favorite = isFavorite(session.id);
+  const reservation = reservationFor(session.id);
   const topicTags = session.tags.filter((t) => t.kind === 'topic');
   const otherTags = session.tags.filter((t) => t.kind !== 'topic');
 
@@ -107,12 +106,14 @@ export function SessionPage() {
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <Button
-              variant={favorite ? 'ghost' : 'primary'}
-              onClick={() => toggleFavorite(session.id)}
+              variant={reservation ? 'ghost' : 'primary'}
+              onClick={() => toggleSeat(session.id)}
               data-testid="save-session"
             >
-              <Icon name="star" filled={favorite} className="size-4" />
-              {favorite ? 'Saved to my plan' : 'Save to my plan'}
+              <Icon name={reservation === 'waitlisted' ? 'clock' : reservation ? 'check' : 'ticket'} className="size-4" />
+              {reservation === 'waitlisted' ? 'On the waitlist'
+                : reservation ? 'On my agenda'
+                : 'Add to my agenda'}
             </Button>
             {session.slidesUrl && (
               <Button href={session.slidesUrl} target="_blank" rel="noreferrer">

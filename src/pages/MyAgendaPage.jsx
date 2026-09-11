@@ -155,9 +155,9 @@ function DayPlan({ day }) {
   );
 }
 
-export function MyPlanPage() {
-  const { currentUser, isFavorite, reservationFor } = useConference();
-  useDocumentTitle(currentUser ? `${currentUser.name.split(' ')[0]}’s plan` : 'My plan');
+export function MyAgendaPage() {
+  const { currentUser, reservationFor } = useConference();
+  useDocumentTitle(currentUser ? `${currentUser.name.split(' ')[0]}’s agenda` : 'My agenda');
   const { data, loading, error, reload } = useFetch(() => api.getSchedule(currentUser.id), [currentUser.id]);
 
   /*
@@ -168,7 +168,7 @@ export function MyPlanPage() {
    */
   const days = useMemo(() => (data?.days ?? [])
     .map((d) => {
-      const sessions = d.sessions.filter((s) => isFavorite(s.id) || reservationFor(s.id));
+      const sessions = d.sessions.filter((s) => reservationFor(s.id));
       const keptIds = new Set(sessions.map((s) => s.id));
       return {
         ...d,
@@ -178,7 +178,7 @@ export function MyPlanPage() {
         venuesVisited: [...new Set(sessions.map((s) => s.venue.shortName))],
       };
     })
-    .filter((d) => d.sessions.length > 0), [data, isFavorite, reservationFor]);
+    .filter((d) => d.sessions.length > 0), [data, reservationFor]);
 
   const totalSessions = days.reduce((n, d) => n + d.sessions.length, 0);
   const totalReserved = days.reduce((n, d) => n + d.sessions.filter((s) => reservationFor(s.id) === 'confirmed').length, 0);
@@ -190,12 +190,11 @@ export function MyPlanPage() {
     <div className="space-y-10">
       <SectionHeader
         eyebrow={currentUser.ticketTier === 'Speaker' ? 'Speaker view' : 'Attendee view'}
-        title={`${currentUser.name.split(' ')[0]}’s plan`}
+        title={`${currentUser.name.split(' ')[0]}’s agenda`}
         description={
           <>
-            Everything you have <strong className="font-semibold text-ink">starred</strong> or hold a{' '}
-            <strong className="font-semibold text-ink">seat</strong> for. Starring is a bookmark;
-            reserving takes an actual chair out of the room.
+            The sessions you hold a seat for. Adding one takes a real chair out of the room,
+            so if you change your mind, remove it and someone else can go.
             {totalWaitlisted > 0 && ` You are on ${plural(totalWaitlisted, 'waitlist')}.`}
           </>
         }
@@ -211,17 +210,17 @@ export function MyPlanPage() {
       {data && (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Stat value={totalReserved} label="Seats reserved" accent="emerald" />
-            <Stat value={totalSessions} label="On your plan" />
+            <Stat value={totalReserved} label="Seats booked" accent="emerald" />
+            <Stat value={days.length} label="Days here" accent="cyan" />
             <Stat value={totalConflicts} label="Time clashes" accent={totalConflicts ? 'rose' : 'emerald'} />
             <Stat value={crossVenueDays} label="Cross-town days" accent="amber" />
           </div>
 
           {days.length === 0 ? (
             <EmptyState
-              icon="bookmark"
-              title="Nothing saved yet"
-              description="Star sessions from the schedule and they collect here, grouped by day."
+              icon="ticket"
+              title="No sessions yet"
+              description="Add sessions from the schedule and they collect here, grouped by day."
               action={<Button to="/schedule" variant="primary" size="sm">Browse the schedule</Button>}
             />
           ) : (

@@ -19,7 +19,7 @@ const VIEWS = [
 ];
 
 export function SchedulePage() {
-  const { days, tracks, venues, formats, levels, tags, favoriteIds } = useConference();
+  const { days, tracks, venues, formats, levels, tags, reservations } = useConference();
   useDocumentTitle('Schedule');
   const [params, setParams] = useSearchParams();
   const [railOpen, setRailOpen] = useState(false);
@@ -96,7 +96,7 @@ export function SchedulePage() {
   }, [sessions]);
 
   const topicTags = tags.filter((t) => t.kind === 'topic');
-  const savedToday = sessions.filter((s) => favoriteIds.has(s.id)).length;
+  const bookedToday = sessions.filter((s) => reservations.has(s.id)).length;
 
   const rail = (
     <div className="space-y-5">
@@ -109,14 +109,14 @@ export function SchedulePage() {
 
       <div className="rounded-xl border border-hairline bg-raised p-3">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-faint">Starred</span>
-          <Link to="/my-plan" className="text-[11px] font-semibold text-violet-300 hover:text-violet-200">
-            My plan →
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-faint">My agenda</span>
+          <Link to="/my-agenda" className="text-[11px] font-semibold text-emerald-300 hover:text-emerald-200">
+            Open →
           </Link>
         </div>
         <div className="mt-1 flex items-baseline gap-2">
-          <span className="font-display text-2xl leading-none" data-testid="starred-count">{favoriteIds.size}</span>
-          <span className="text-[11px] text-muted">saved · {savedToday} today</span>
+          <span className="font-display text-2xl leading-none" data-testid="starred-count">{reservations.size}</span>
+          <span className="text-[11px] text-muted">sessions · {bookedToday} today</span>
         </div>
       </div>
 
@@ -194,7 +194,7 @@ export function SchedulePage() {
       <SectionHeader
         eyebrow="Programme"
         title="The schedule"
-        description={`${days.reduce((n, d) => n + d.sessionCount, 0)} sessions over ${plural(days.length, 'day')}. Star what you want; it lands in your plan.`}
+        description={`${days.reduce((n, d) => n + d.sessionCount, 0)} sessions over ${plural(days.length, 'day')}. Adding one takes a seat and lands it in your agenda.`}
         action={
           <div className="flex items-center gap-2">
             <div className="flex rounded-lg border border-hairline bg-raised p-0.5" role="tablist" aria-label="Schedule view">
