@@ -4,6 +4,7 @@ import { useConference, useFetch } from '../lib/store.jsx';
 import * as api from '../lib/api.js';
 import { plural } from '../lib/format.js';
 import { SpeakerCard } from '../components/SpeakerCard.jsx';
+import { SpeakerSpotlight } from '../components/SpeakerSpotlight.jsx';
 import { SearchInput, Select } from '../components/FilterBar.jsx';
 import { Button, EmptyState, ErrorState, SectionHeader, Skeleton, cx } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
@@ -139,7 +140,10 @@ export function SpeakersPage() {
                 <span className="h-px flex-1 bg-hairline" />
                 <span className="text-[11px] text-faint">{plural(headline.length, 'keynote')}</span>
               </div>
-              <div className="stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+
+              <SpeakerSpotlight speakers={headline} />
+
+              <div className="stagger mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
                 {headline.map((s, i) => (
                   <div key={s.id} style={{ '--i': i }} className="contents">
                     <SpeakerCard speaker={s} variant="headline" />

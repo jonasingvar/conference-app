@@ -36,3 +36,38 @@ test.describe('Speakers', () => {
     expect(first).not.toEqual(other);
   });
 });
+
+test.describe('Headliner spotlight', () => {
+  test('renders and advances through the headliners', async ({ page }) => {
+    await visit(page, '/speakers');
+    const spotlight = page.getByTestId('speaker-spotlight');
+    await expect(spotlight).toBeVisible();
+
+    const first = await spotlight.getByRole('heading').innerText();
+    await spotlight.getByTestId('spotlight-next').click();
+    await expect(spotlight.getByRole('heading')).not.toHaveText(first);
+  });
+
+  test('the filmstrip jumps straight to a speaker', async ({ page }) => {
+    await visit(page, '/speakers');
+    const spotlight = page.getByTestId('speaker-spotlight');
+    const tabs = spotlight.getByRole('tab');
+    const target = await tabs.nth(4).getAttribute('aria-label');
+
+    await tabs.nth(4).click();
+    await expect(spotlight.getByRole('heading', { name: target })).toBeVisible();
+    await expect(tabs.nth(4)).toHaveAttribute('aria-selected', 'true');
+  });
+
+  test('every speaker name matches the pronouns on their profile', async ({ request }) => {
+    const res = await request.get('http://localhost:3001/api/speakers');
+    const speakers = await res.json();
+    // Portraits are classified in server/avatar-presentation.json and the seed
+    // picks the name + pronouns to match, so these must never disagree.
+    for (const s of speakers) {
+      expect(s.imageUrl, `${s.name} has no portrait`).toMatch(/^\/avatars\/speaker-\d{3}\.jpg$/);
+      expect(s.pronouns, `${s.name} has odd pronouns`).toMatch(/^(he|she)\//);
+    }
+    expect(speakers.length).toBe(110);
+  });
+});

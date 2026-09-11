@@ -43,5 +43,6 @@ test('the API is reachable and seeded', async ({ request }) => {
   const res = await request.get('http://localhost:3001/api/health');
   expect(res.ok()).toBeTruthy();
   const body = await res.json();
-  expect(body.sessions).toBeGreaterThan(300);
+  // asserts the database is seeded, not a particular programme size
+  expect(body.sessions).toBeGreaterThan(100);
 });

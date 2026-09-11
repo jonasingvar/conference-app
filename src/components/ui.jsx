@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { accent } from '../lib/accents.js';
 import { Icon } from './Icon.jsx';
 import { GeneratedAvatar } from './GeneratedAvatar.jsx';
+import { CountUp } from './CountUp.jsx';
 
 const cx = (...parts) => parts.filter(Boolean).join(' ');
 export { cx };
@@ -207,7 +208,9 @@ export function Stat({ value, label, accent: accentName = 'violet' }) {
   const a = accent(accentName);
   return (
     <div className="card px-4 py-3.5">
-      <div className={cx('font-display text-2xl leading-none sm:text-3xl', a.text)}>{value}</div>
+      <div className={cx('font-display text-2xl leading-none sm:text-3xl', a.text)}>
+        {typeof value === 'number' ? <CountUp value={value} /> : value}
+      </div>
       <div className="mt-1.5 text-[11px] font-medium uppercase tracking-wider text-faint">{label}</div>
     </div>
   );

@@ -14,8 +14,9 @@
  * Speakers whose file is missing fall back to the generated SVG portrait,
  * so a partial run is harmless.
  */
-import { mkdirSync, existsSync, writeFileSync, readdirSync, unlinkSync } from 'node:fs';
+import { mkdirSync, existsSync, writeFileSync, readdirSync, unlinkSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -25,9 +26,9 @@ const TMP_DIR = join(OUT_DIR, '.tmp');
 
 const SOURCE = 'https://thispersondoesnotexist.com/random-person.jpeg';
 const REFERER = 'https://thispersondoesnotexist.com/';
-const SIZE = 256;          // plenty for a 96px avatar at 2× DPI
-const CONCURRENCY = 4;     // gentle on a free public service
-const GAP_MS = 250;
+const SIZE = 256;     // plenty for a 96px avatar at 2× DPI
+const GAP_MS = 900;   // the source regenerates on a timer — request too fast
+                      // and it hands back the same face repeatedly
 
 const args = process.argv.slice(2);
 const force = args.includes('--force');
@@ -53,11 +54,17 @@ console.log(`→ fetching ${todo.length} portraits (${SIZE}px) …`);
 let done = 0;
 let failed = 0;
 
+/** Content hashes we have already accepted, so no face appears twice. */
+const seen = new Set();
+for (const f of readdirSync(OUT_DIR).filter((f) => f.endsWith('.jpg'))) {
+  seen.add(createHash('sha1').update(readFileSync(join(OUT_DIR, f))).digest('hex'));
+}
+
 async function fetchOne(i) {
   const tmp = join(TMP_DIR, name(i));
   const out = join(OUT_DIR, name(i));
 
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= 6; attempt++) {
     try {
       const res = await fetch(SOURCE, {
         headers: { 'User-Agent': 'orbit-conference-app/1.0 (workshop sample data)', Referer: REFERER },
@@ -66,6 +73,13 @@ async function fetchOne(i) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const buf = Buffer.from(await res.arrayBuffer());
       if (buf.length < 20_000) throw new Error(`suspiciously small (${buf.length}b)`);
+
+      // The source serves whatever it generated most recently, so back-to-back
+      // requests can return an identical face. Wait it out rather than
+      // accepting a duplicate.
+      const digest = createHash('sha1').update(buf).digest('hex');
+      if (seen.has(digest)) throw new Error('duplicate face');
+      seen.add(digest);
 
       writeFileSync(tmp, buf);
       // sips ships with macOS; on other platforms the full-size file is kept.
@@ -82,27 +96,21 @@ async function fetchOne(i) {
       }
       return;
     } catch (err) {
-      if (attempt === 3) {
+      if (attempt === 6) {
         failed++;
         console.warn(`   ✗ ${name(i)}: ${err.message}`);
         return;
       }
-      await sleep(1200 * attempt);
+      await sleep(err.message === 'duplicate face' ? 1500 : 1200 * attempt);
     }
   }
 }
 
-// A small worker pool, staggered so we never open a burst of sockets.
-const queue = [...todo];
-await Promise.all(
-  Array.from({ length: CONCURRENCY }, async (_, w) => {
-    await sleep(w * GAP_MS);
-    while (queue.length) {
-      await fetchOne(queue.shift());
-      await sleep(GAP_MS);
-    }
-  }),
-);
+// Strictly sequential. Parallel requests get served the same cached face.
+for (const i of todo) {
+  await fetchOne(i);
+  await sleep(GAP_MS);
+}
 
 try { readdirSync(TMP_DIR).forEach((f) => unlinkSync(join(TMP_DIR, f))); } catch {}
 const total = readdirSync(OUT_DIR).filter((f) => f.endsWith('.jpg')).length;

@@ -1,5 +1,5 @@
 import { db, migrate, dropAll, DB_PATH } from './db.js';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,6 +27,11 @@ const ACCENTS = ['violet', 'cyan', 'amber', 'rose', 'emerald', 'sky', 'fuchsia',
  * missing or partial set is never a broken image.
  */
 const AVATAR_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'avatars');
+/** Apparent presentation of each portrait, so names can be matched to faces. */
+const PRESENTATION = JSON.parse(
+  readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'avatar-presentation.json'), 'utf8'),
+).presentation;
+
 const AVATARS = existsSync(AVATAR_DIR)
   ? new Set(readdirSync(AVATAR_DIR).filter((f) => f.endsWith('.jpg')))
   : new Set();
@@ -146,13 +151,18 @@ const tagRows = db.prepare('SELECT * FROM tags').all();
 const tagsByKind = (k) => tagRows.filter((t) => t.kind === k);
 
 /* ============================= SPEAKERS ============================ */
-const FIRST = ['Maya','Dmitri','Aisha','Tobias','Priya','Marcus','Lena','Kenji','Sofia','Elias','Nadia','Rowan','Ines','Idris','Clara','Hugo','Yuki','Amara','Viktor','Noor','Theo','Camille','Rahul','Freya','Omar','Astrid','Zara','Felix','Mira','Anton','Leila','Casper','Ivy','Santiago','Greta','Kwame','Anouk','Rafael','Saoirse','Bruno','Tamsin','Diego','Hanne','Yusuf','Lucia','Arne','Neha','Emil','Pierre','Ingrid','Samir','Wren','Otto','Delphine','Kai','Rosa','Magnus','Amelie','Devon','Sanne','Milo','Nia','Bastien','Ilse','Ravi','Elke','Tariq','Juno','Solveig','Adeola','Matteo','Birgit','Imani','Lars','Chiara','Fenna','Osei','Marit','Tomas','Esther','Bram','Noa','Oskar','Farida','Lucian','Sigrid','Malik','Renske','Hana','Aurelio','Katinka','Jamal','Elin','Nikolai','Ayla','Rune','Divya','Cormac','Liv','Idun'];
+/**
+ * First names are split by presentation so a speaker's name matches their
+ * portrait. Which pool a speaker draws from is decided by their photo, not the
+ * other way round — see server/avatar-presentation.json.
+ */
+const FIRST_M = ['Dmitri','Tobias','Marcus','Kenji','Elias','Idris','Hugo','Viktor','Theo','Rahul','Omar','Felix','Anton','Casper','Santiago','Kwame','Rafael','Bruno','Diego','Yusuf','Arne','Emil','Pierre','Samir','Otto','Magnus','Milo','Bastien','Ravi','Tariq','Matteo','Lars','Osei','Tomas','Bram','Oskar','Lucian','Malik','Aurelio','Jamal','Nikolai','Rune','Cormac','Anders','Mateusz','Ignacio','Tomasz','Joaquin','Henrik','Soren'];
+const FIRST_F = ['Maya','Aisha','Priya','Lena','Sofia','Nadia','Ines','Clara','Yuki','Amara','Noor','Camille','Freya','Astrid','Zara','Mira','Leila','Ivy','Greta','Anouk','Saoirse','Tamsin','Hanne','Lucia','Neha','Ingrid','Delphine','Rosa','Amelie','Sanne','Nia','Ilse','Elke','Solveig','Adeola','Birgit','Imani','Chiara','Fenna','Marit','Esther','Noa','Farida','Sigrid','Renske','Hana','Katinka','Elin','Ayla','Divya','Liv','Idun','Annika','Beatriz','Carmen','Dalia','Eira','Johanna','Mariam','Rosalie'];
 const LAST = ['Okonkwo','Petrov','Rahman','Lindqvist','Venkatesan','Delacroix','Hoffmann','Nakamura','Almeida','Vasquez','Haddad','Fitzgerald','Moreau','Abubakar','Novak','Silva','Tanaka','Diallo','Kovac','Bensaid','Papadakis','Laurent','Krishnan','Bergstrom','El-Amin','Halvorsen','Mansour','Wagner','Chatterjee','Sokolov','Nasser','Jensen','Whitfield','Ortega','Vandenberg','Mensah','de Vries','Costa','Byrne','Ferreira','Ashworth','Navarro','Solberg','Ozturk','Marchetti','Nilsson','Bhattacharya','Lindgren','Rousseau','Dahl','Khoury','Ellery','Brandt','Fontaine','Yamamoto','Delgado','Eriksen','Beaumont','Ashby','Visser','Radcliffe','Adeyemi','Girard','Boelens','Iyer','Farouk','Winters','Thorne','Vasilenko','Okafor','Bakker','Castellanos','Lindholm','Quintero','Aaltonen','Mbeki','Serrano','Hedlund','Duarte','Karlsen','Osborne','Pereira','Wieczorek','Amadi','Fontana','Skov','Toussaint','Vermeulen','Zielinski','Aguirre','Bjornsson','Cordova','Falk','Ghazali','Holm','Jadhav','Kestrel','Lauridsen'];
 const COMPANIES = ['Hyperion Labs','Vertex Robotics','Northwind AI','Lumen Systems','Kestrel Research','Foundry Compute','Basalt','Meridian Health AI','Arcadia Bank','Volta Motors','Praxis Legal','Helix Bio','Orbital Retail','Cartographer','SignalFire Energy','Tessellate','Blackbird Security','Cobalt Studio','Riverbend Insurance','Atlas Logistics','Quanta Telecom','Sundial','Nimbus Cloud','Grove Education','Hearth Media','Ironwood Manufacturing','Solstice Games','Wayfare Travel','Pinnacle Consulting','Bramble','Longitude','Keystone Gov Digital','Cinder','Fathom Analytics','Aperture Media','Waypoint Labs','Trellis','Mosaic Retail','Halcyon','Driftwood Ventures','Palisade Robotics','Verdant Agritech','Clearwater Utilities','Northgate Rail'];
 const JOBS = ['Principal Research Scientist','Staff ML Engineer','Head of AI Platform','Distinguished Engineer','VP of Engineering','Director of Applied AI','Founding Engineer','Research Lead','Principal AI Architect','Senior Staff Engineer','Chief Scientist','Head of Developer Experience','Lead MLOps Engineer','Director of Product, AI','Principal Security Researcher','Head of Model Evaluation','Staff Infrastructure Engineer','AI Engineering Manager','Chief Technology Officer','Head of Responsible AI','Senior Research Engineer','Platform Architect','Developer Advocate','Head of Data','Staff Applied Scientist'];
 const CITIES = [['San Francisco','United States'],['Stockholm','Sweden'],['Berlin','Germany'],['Tokyo','Japan'],['Bengaluru','India'],['London','United Kingdom'],['Amsterdam','Netherlands'],['Toronto','Canada'],['Paris','France'],['São Paulo','Brazil'],['Lagos','Nigeria'],['Singapore','Singapore'],['Sydney','Australia'],['Kraków','Poland'],['Barcelona','Spain'],['Nairobi','Kenya'],['Seoul','South Korea'],['Dublin','Ireland'],['Oslo','Norway'],['Lisbon','Portugal'],['Austin','United States'],['New York','United States'],['Zurich','Switzerland'],['Tel Aviv','Israel'],['Mexico City','Mexico'],['Vancouver','Canada'],['Helsinki','Finland'],['Copenhagen','Denmark']];
 const LANGS = ['English','Spanish','German','French','Japanese','Portuguese','Swedish','Hindi','Mandarin','Dutch','Arabic','Korean','Polish','Italian'];
-const PRONOUNS = ['she/her','she/her','he/him','he/him','they/them','she/they','he/they'];
 
 const BIO_OPEN = ['spends most days','has spent the last decade','leads a small team that is','writes and speaks about','builds tooling for engineers who are','works at the messy seam between research and production,','runs the platform group responsible for','has shipped three generations of systems aimed at'];
 const BIO_MID = ['turning research prototypes into systems that survive real traffic','making evaluation boring enough that teams actually run it','shaving latency off inference paths nobody else wants to touch','convincing large organizations that a good retrieval index beats a bigger model','designing agent harnesses that fail loudly instead of quietly','teaching product teams to write specs an agent can actually execute','building the guardrails that let a bank put a model in front of customers','dragging a twenty-year-old codebase into the age of coding agents','measuring what models actually do rather than what the demo suggested','keeping a fleet of accelerators busy without setting money on fire','replacing hand-written glue with systems that explain themselves','making document pipelines work on the PDFs nobody wants to open'];
@@ -192,15 +202,24 @@ SPEAKING_ATTENDEES.forEach((s) => {
     s.twitter, s.github, s.linkedin, s.website, 1);
 });
 
-for (let i = 0; i < 178; i++) {
-  let name; do { name = `${pick(FIRST)} ${pick(LAST)}`; } while (seen.has(name));
+for (let i = 0; i < 108; i++) {
+  // ids run 1,2 for the two hand-written speaking attendees, then 3 upward —
+  // so this speaker's portrait is speaker-{i + 3}.jpg
+  const presentation = PRESENTATION[String(i + 3)] ?? (chance(0.5) ? 'm' : 'f');
+  const firstNames = presentation === 'm' ? FIRST_M : FIRST_F;
+
+  let name; do { name = `${pick(firstNames)} ${pick(LAST)}`; } while (seen.has(name));
   seen.add(name);
   const h = name.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '');
   const [city, country] = pick(CITIES);
   const first = name.split(' ')[0];
   const firstTime = chance(0.22);
+  const pronouns = presentation === 'm'
+    ? pick(['he/him', 'he/him', 'he/him', 'he/they'])
+    : pick(['she/her', 'she/her', 'she/her', 'she/they']);
+
   spStmt.run(
-    name, pick(PRONOUNS), pick(JOBS), pick(COMPANIES),
+    name, pronouns, pick(JOBS), pick(COMPANIES),
     `${first} ${pick(BIO_OPEN)} ${pick(BIO_MID)}. ${pick(BIO_END)}`,
     initialsOf(name), pick(ACCENTS),
     null, // image_url — drop generated portraits in here later
@@ -213,7 +232,7 @@ for (let i = 0; i < 178; i++) {
     chance(0.6) ? h : null,
     chance(0.75) ? `in/${h}` : null,
     chance(0.3) ? `https://${h}.dev` : null,
-    i < 12 ? 1 : 0,
+    i < 10 ? 1 : 0,
   );
 }
 // Attach a portrait to every speaker we have a file for.
@@ -301,8 +320,34 @@ const blastFurnace = rooms.find((r) => r.name === 'The Blast Furnace');
 const bookable = rooms.filter((r) => !['Social'].includes(r.kind) && r.id !== mainStage.id);
 
 const usedTitles = new Set();
-let spCursor = 0;
-const nextSpeaker = () => assignable[(spCursor = (spCursor + 1) % assignable.length)];
+/**
+ * Speaking slots are dealt from a weighted pool rather than round-robin.
+ * Round-robin gave almost everyone exactly the same number of talks; real
+ * programmes have a long tail — most people speak once or twice, headliners
+ * turn up everywhere.
+ */
+const buildSpeakerPool = () => {
+  const pool = [];
+  assignable.forEach((sp) => {
+    const appearances = sp.featured ? int(4, 6)
+      : chance(0.42) ? 1
+      : chance(0.62) ? 2
+      : int(3, 4);
+    for (let n = 0; n < appearances; n++) pool.push(sp);
+  });
+  // Fisher-Yates with the seeded PRNG, so the deal stays deterministic.
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool;
+};
+
+let speakerPool = buildSpeakerPool();
+const nextSpeaker = () => {
+  if (!speakerPool.length) speakerPool = buildSpeakerPool();
+  return speakerPool.pop();
+};
 
 function addSession(opts) {
   const room = opts.room;
@@ -344,7 +389,7 @@ DAYS.forEach((day, dayIdx) => {
   assignable.filter((s) => s.featured).slice(dayIdx * 3, dayIdx * 3 + int(1, 2)).forEach((s) => ssStmt.run(kid, s.id, 'Speaker'));
 
   SLOTS.forEach(([start, end]) => {
-    pickN(bookable, int(11, 15)).forEach((room) => {
+    pickN(bookable, int(5, 8)).forEach((room) => {
       let title, guard = 0;
       do { title = makeTitle(); guard++; } while (usedTitles.has(title) && guard < 30);
       usedTitles.add(title);

@@ -16,7 +16,7 @@ export function SpeakerCard({ speaker, variant = 'grid' }) {
     return (
       <Link
         to={`/speakers/${speaker.id}`}
-        className="group relative flex flex-col overflow-hidden rounded-xl border border-hairline bg-raised transition-colors hover:border-white/20 hover:bg-overlay/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400"
+        className="group relative flex flex-col overflow-hidden rounded-xl border border-hairline bg-raised transition-all duration-200 hover:-translate-y-1 hover:border-white/20 hover:bg-overlay/70 hover:shadow-2xl hover:shadow-black/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400"
       >
         <div className="relative h-20 overflow-hidden">
           <GeneratedCover seed={speaker.name} accent={speaker.accent} variant="strata"
@@ -29,7 +29,7 @@ export function SpeakerCard({ speaker, variant = 'grid' }) {
 
         <div className="flex flex-1 flex-col px-5 pb-5">
           <Avatar name={speaker.name} initials={speaker.initials} accent={speaker.accent}
-            imageUrl={speaker.imageUrl} size="lg" className="-mt-9 ring-4 ring-raised" />
+            imageUrl={speaker.imageUrl} size="lg" className="-mt-9 ring-4 ring-raised transition-transform duration-300 group-hover:scale-110" />
           <h3 className="mt-3 font-display text-lg leading-tight transition-colors group-hover:text-violet-200">
             {speaker.name}
           </h3>
@@ -76,7 +76,7 @@ export function SpeakerCard({ speaker, variant = 'grid' }) {
       to={`/speakers/${speaker.id}`}
       className={cx(
         'group relative flex flex-col items-center gap-3 rounded-xl border border-hairline bg-raised p-5 text-center',
-        'transition-colors hover:border-white/20 hover:bg-overlay/70',
+        'transition-all duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-overlay/70',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400',
       )}
     >

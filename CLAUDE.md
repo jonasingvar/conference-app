@@ -135,6 +135,18 @@ committed, so the app never touches the network at runtime. `speakers.image_url`
 and `users.image_url` point at them; a speaker with no file falls back to the
 generated SVG portrait, so a partial set is never a broken image.
 
+Two rules if you ever regenerate a portrait:
+
+1. **Fetch sequentially.** The source serves whatever it generated most
+   recently, so concurrent requests come back identical. The script is
+   sequential and hashes each image to reject duplicates — do not "speed it up".
+2. **Update `server/avatar-presentation.json`.** It records whether each
+   portrait reads as masculine or feminine, and the seed picks the speaker's
+   first name and pronouns *from the photo*. Change a face without updating that
+   file and you get a speaker whose name fights their picture. The source
+   dataset also contains children; they are not plausible speakers, so eyeball
+   any replacement before committing it.
+
 **Everything else is generated deterministically from a string:**
 
 - `GeneratedAvatar` — the SVG portrait fallback, hashed from a name.
@@ -145,6 +157,20 @@ generated SVG portrait, so a partial set is never a broken image.
 
 Same input, same output, on every machine — which keeps screenshots and tests
 stable.
+
+## Motion
+
+Animation is CSS-driven and lives in `src/index.css`: `ken-burns`, `slide-in`,
+`fade-zoom`, `fill` (autoplay progress), `stagger` (list entrance), `reveal`
+(scroll-triggered), `pop`, `live-ring`, `shimmer`.
+
+- `<Reveal>` wraps a block so it lifts into view on first scroll, via the
+  `useInView` hook.
+- `<CountUp>` animates a number once it is on screen.
+- The whole lot is switched off by the `prefers-reduced-motion` block at the
+  bottom of `index.css`, which also forces `.reveal` content visible — so
+  nothing is ever hidden behind an animation that never runs. Anything new you
+  add must survive that same test.
 
 ## Visual hierarchy
 

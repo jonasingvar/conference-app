@@ -5,6 +5,8 @@ import { accent } from '../lib/accents.js';
 import { dayLabel, plural, timeRange } from '../lib/format.js';
 import { fastestRoute } from '../lib/travel.js';
 import { SessionCard } from '../components/SessionCard.jsx';
+import { Reveal } from '../components/Reveal.jsx';
+import { CountUp } from '../components/CountUp.jsx';
 import { LiveNow } from '../components/LiveNow.jsx';
 import { GeneratedCover } from '../components/GeneratedCover.jsx';
 import { SpeakerCard } from '../components/SpeakerCard.jsx';
@@ -55,7 +57,9 @@ function Hero({ conference, stats }) {
               <div key={label}>
                 <dt className="sr-only">{label}</dt>
                 <dd>
-                  <span className="block font-display text-2xl leading-none sm:text-3xl">{value ?? '—'}</span>
+                  <span className="block font-display text-2xl leading-none sm:text-3xl">
+                    {value ? <CountUp value={value} /> : '—'}
+                  </span>
                   <span className="mt-1.5 block text-[10px] font-semibold uppercase tracking-[0.14em] text-faint">{label}</span>
                 </dd>
               </div>
@@ -347,14 +351,14 @@ export function HomePage() {
   return (
     <div className="space-y-16 sm:space-y-20">
       <Hero conference={conference} stats={stats} />
-      <LiveNow />
-      {announcements && <AnnouncementStrip announcements={announcements} />}
-      <YourPlan />
-      <Keynotes />
-      <TrackGrid />
-      <VenueSplit />
-      <FeaturedSpeakers />
-      <PopularSessions />
+      <Reveal><LiveNow /></Reveal>
+      {announcements && <Reveal><AnnouncementStrip announcements={announcements} /></Reveal>}
+      <Reveal><YourPlan /></Reveal>
+      <Reveal><Keynotes /></Reveal>
+      <Reveal><TrackGrid /></Reveal>
+      <Reveal><VenueSplit /></Reveal>
+      <Reveal><FeaturedSpeakers /></Reveal>
+      <Reveal><PopularSessions /></Reveal>
     </div>
   );
 }
