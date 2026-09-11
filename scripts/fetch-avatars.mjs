@@ -14,7 +14,7 @@
  * Speakers whose file is missing fall back to the generated SVG portrait,
  * so a partial run is harmless.
  */
-import { mkdirSync, existsSync, writeFileSync, readdirSync, unlinkSync, readFileSync } from 'node:fs';
+import { mkdirSync, existsSync, writeFileSync, readdirSync, unlinkSync, readFileSync, rmdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
@@ -113,5 +113,6 @@ for (const i of todo) {
 }
 
 try { readdirSync(TMP_DIR).forEach((f) => unlinkSync(join(TMP_DIR, f))); } catch {}
+try { rmdirSync(TMP_DIR); } catch {}
 const total = readdirSync(OUT_DIR).filter((f) => f.endsWith('.jpg')).length;
 console.log(`✓ ${total} portraits in public/avatars${failed ? ` (${failed} failed — re-run to fill gaps)` : ''}`);
