@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { visit, MID_SESSION, BETWEEN_SLOTS, ATTENDEES } from './helpers.js';
+import { visit, momentOn, conferenceDays, MID_SESSION_TIME, BETWEEN_SLOTS_TIME, ATTENDEES } from './helpers.js';
 
 test.describe('Conference clock', () => {
   test('mid-slot shows what is running, with progress', async ({ page }) => {
-    await visit(page, '/', { at: MID_SESSION });
+    await visit(page, '/', { at: await momentOn(0, MID_SESSION_TIME) });
     const strip = page.getByTestId('live-now');
     await expect(strip).toBeVisible();
     await expect(strip.getByRole('heading', { name: /Happening right now/i })).toBeVisible();
@@ -11,20 +11,22 @@ test.describe('Conference clock', () => {
   });
 
   test('between slots it counts down to the next one', async ({ page }) => {
-    await visit(page, '/', { at: BETWEEN_SLOTS });
+    await visit(page, '/', { at: await momentOn(0, BETWEEN_SLOTS_TIME) });
     const strip = page.getByTestId('live-now');
     await expect(strip.getByRole('heading', { name: /changing rooms/i })).toBeVisible();
     await expect(strip.getByText(/^in \d/).first()).toBeVisible();
   });
 
   test('a running session is flagged live on the schedule', async ({ page }) => {
-    await visit(page, '/schedule?day=2026-10-12&view=list', { at: MID_SESSION });
+    const [day1] = await conferenceDays();
+    await visit(page, `/schedule?day=${day1}&view=list`, { at: await momentOn(0, MID_SESSION_TIME) });
     await expect(page.getByTestId('result-count')).not.toHaveText(/Loading/);
     await expect(page.getByTestId('slot-10:15').getByText('Live').first()).toBeVisible();
   });
 
   test('the live endpoint agrees with the UI', async ({ request }) => {
-    const res = await request.get('http://localhost:3001/api/live?day=2026-10-12&time=10:30');
+    const [day1] = await conferenceDays();
+    const res = await request.get(`http://localhost:3001/api/live?day=${day1}&time=10:30`);
     expect(res.ok()).toBeTruthy();
     const body = await res.json();
     expect(body.happeningNow.length).toBeGreaterThan(0);
@@ -36,7 +38,7 @@ test.describe('Conference clock', () => {
 
 test.describe('Food', () => {
   test('open-now filter only keeps places that are open', async ({ page }) => {
-    await visit(page, '/food', { at: MID_SESSION });
+    await visit(page, '/food', { at: await momentOn(0, MID_SESSION_TIME) });
     await expect(page.getByTestId('vendor-count')).not.toHaveText(/Loading/);
     const before = await page.getByTestId('vendor-count').textContent();
 

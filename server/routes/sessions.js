@@ -11,7 +11,7 @@ export const sessionsRouter = Router();
  * Sort:    time (default) | rating | popularity
  */
 sessionsRouter.get('/', (req, res) => {
-  const { day, trackSlug, tagSlug, venueId, roomId, level, format, speakerId, q, favoritesOf, sort } = req.query;
+  const { day, trackSlug, tagSlug, venueId, roomId, level, format, speakerId, q, favoritesOf, followedBy, sort } = req.query;
   const where = [];
   const args = [];
 
@@ -34,6 +34,14 @@ sessionsRouter.get('/', (req, res) => {
   if (speakerId) {
     where.push('EXISTS (SELECT 1 FROM session_speakers ss WHERE ss.session_id = s.id AND ss.speaker_id = ?)');
     args.push(speakerId);
+  }
+  if (followedBy) {
+    // sessions given by anyone this attendee follows
+    where.push(`EXISTS (
+      SELECT 1 FROM session_speakers ss
+      JOIN speaker_follows sf ON sf.speaker_id = ss.speaker_id
+      WHERE ss.session_id = s.id AND sf.user_id = ?)`);
+    args.push(followedBy);
   }
   if (favoritesOf) {
     where.push('EXISTS (SELECT 1 FROM favorites f WHERE f.session_id = s.id AND f.user_id = ?)');

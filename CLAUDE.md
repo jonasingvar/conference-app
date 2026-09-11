@@ -106,9 +106,30 @@ Never write `` `bg-${color}-500` ``.
 **Add `data-testid` to anything a test needs to find** — result counts, panels,
 list containers. Do not put testids on decorative elements.
 
+## Two different commitments
+
+Starring and reserving are **not** the same thing, and the UI must keep saying so:
+
+- **Star** (`favorites`) is a bookmark. Free, unlimited, holds nothing.
+- **Reserve** (`reservations`) takes one of a finite number of seats. It moves
+  `sessions.seats_taken` for *everybody*, and when the room is full you are
+  waitlisted instead. Releasing a confirmed seat promotes whoever has waited
+  longest. All of it is transactional — see `server/lib/seats.js`.
+
+**My Plan is the union**: anything you starred *or* hold a seat for, with each
+row flagged. The store is the source of truth for your own reservation state —
+never fall back to the payload a page was fetched with, or "released" becomes
+unreachable until a refresh.
+
 ## The conference clock
 
-ORBIT '26 is in the future, so "now" is simulated. `src/lib/clock.js` takes the
+**Day 1 is the day you seed.** `npm run db:seed` sets the conference to start
+today unless `ORBIT_START_DATE` says otherwise, so whoever runs it is standing
+in Day 1 with the morning's sessions already finished. Tests must therefore ask
+the API for the dates (`conferenceDays()` in `tests/helpers.js`) rather than
+hard-coding them.
+
+"Now" within that day is simulated. `src/lib/clock.js` takes the
 viewer's real time of day and projects it onto a conference day, then ticks every
 30 seconds. Open the app at 10:40 and you are standing in the 10:15 slot watching
 it run; outside 08:00–22:30 it clamps to a lively mid-morning moment.

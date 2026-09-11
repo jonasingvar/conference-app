@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { visit, waitForResults, ATTENDEES } from './helpers.js';
+import { visit, waitForResults, conferenceDays, ATTENDEES } from './helpers.js';
 
 test.describe('Schedule', () => {
   test('lists sessions for the selected day', async ({ page }) => {
@@ -17,10 +17,11 @@ test.describe('Schedule', () => {
     // the filter rail is collapsed on narrow viewports
     const filters = page.getByRole('button', { name: /^Filters/ });
     if (await filters.isVisible()) await filters.click();
-    await page.getByTestId('tab-2026-10-14').click();
+    const days = await conferenceDays();
+    await page.getByTestId(`tab-${days[2]}`).click();
     await waitForResults(page);
-    await expect(page.getByTestId('result-count')).toContainText('Oct 14');
-    await expect(page).toHaveURL(/day=2026-10-14/);
+    await expect(page).toHaveURL(new RegExp(`day=${days[2]}`));
+    await expect(page.getByTestId('result-count')).not.toHaveText(first);
   });
 
   test('search narrows the list and survives a reload', async ({ page }) => {

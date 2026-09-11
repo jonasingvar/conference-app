@@ -35,14 +35,25 @@ metaRouter.get('/bootstrap', (req, res) => {
   const levels = db.prepare('SELECT level, COUNT(*) n FROM sessions GROUP BY level').all()
     .map((l) => ({ name: l.level, count: l.n }));
 
+  const first = days[0]?.date;
+  const last = days[days.length - 1]?.date;
+  const fmt = (iso, opts) => new Date(`${iso}T12:00:00Z`)
+    .toLocaleDateString('en-US', { timeZone: 'UTC', ...opts });
+  const sameMonth = first && last && first.slice(0, 7) === last.slice(0, 7);
+  const dateRange = first && last
+    ? sameMonth
+      ? `${fmt(first, { month: 'long', day: 'numeric' })}–${fmt(last, { day: 'numeric' })}, ${first.slice(0, 4)}`
+      : `${fmt(first, { month: 'long', day: 'numeric' })} – ${fmt(last, { month: 'long', day: 'numeric' })}, ${first.slice(0, 4)}`
+    : '';
+
   res.json({
     conference: {
       name: 'ORBIT',
-      edition: "'26",
+      edition: `’${first ? first.slice(2, 4) : '26'}`,
       tagline: 'The Applied AI Conference',
       city: 'Las Vegas, NV',
-      dates: 'October 12–15, 2026',
-      startDate: days[0]?.date ?? '2026-10-12',
+      dates: dateRange,
+      startDate: first,
     },
     venues, travel, tracks, tags, rooms, users, days, formats, levels, cuisines,
   });

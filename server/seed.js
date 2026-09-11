@@ -36,7 +36,7 @@ const AVATARS = existsSync(AVATAR_DIR)
   ? new Set(readdirSync(AVATAR_DIR).filter((f) => f.endsWith('.jpg')))
   : new Set();
 
-console.log('→ Seeding ORBIT ’26 →', DB_PATH);
+console.log(`→ Seeding ORBIT ’26 → ${DB_PATH}`);
 dropAll();
 migrate();
 const prep = (sql) => db.prepare(sql);
@@ -296,8 +296,26 @@ const makeTitle = () => {
 };
 const makeAbstract = () => `${pick(OPEN)} ${pick(BODY)} ${pick(CLOSE)}`;
 
-const DAYS = ['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15'];
-const DAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday'];
+/**
+ * Day 1 is the day you seed, unless ORBIT_START_DATE says otherwise.
+ *
+ * That means whoever runs `npm run db:seed` is standing in Day 1, and the
+ * conference clock (which maps real time-of-day onto the conference day) puts
+ * them mid-programme with the morning's sessions already finished. For a
+ * workshop that is the whole point — the app is live, not a museum piece.
+ *
+ *   ORBIT_START_DATE=2026-11-03 npm run db:seed   # pin it to a known date
+ */
+const isoDay = (d) => d.toISOString().slice(0, 10);
+const addDays = (iso, n) => {
+  const d = new Date(`${iso}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return isoDay(d);
+};
+
+const START_DATE = process.env.ORBIT_START_DATE ?? isoDay(new Date());
+const DAYS = [0, 1, 2, 3].map((n) => addDays(START_DATE, n));
+console.log(`  Day 1 is ${DAYS[0]} — set ORBIT_START_DATE to pin it`);
 const SLOTS = [
   ['09:00', '09:45'], ['10:15', '11:00'], ['11:30', '12:15'],
   ['13:30', '14:15'], ['14:45', '15:30'], ['16:00', '16:45'], ['17:15', '18:00'],
@@ -509,7 +527,7 @@ const users = db.prepare('SELECT * FROM users').all();
  */
 const fStmt = prep('INSERT OR IGNORE INTO favorites (user_id,session_id,created_at) VALUES (?,?,?)');
 const savedAt = () =>
-  `2026-10-${String(int(1, 11)).padStart(2, '0')}T${String(int(8, 22)).padStart(2, '0')}:${String(int(10, 59)).padStart(2, '0')}:00Z`;
+  `${addDays(DAYS[0], -int(1, 11))}T${String(int(8, 22)).padStart(2, '0')}:${String(int(10, 59)).padStart(2, '0')}:00Z`;
 
 const slotsByDay = {};
 DAYS.forEach((day) => {
@@ -548,7 +566,7 @@ const pairFor = (day, s1, s2) => [
 ];
 [[DAYS[0], '10:15', '11:30'], [DAYS[3], '09:00', '10:15']].forEach(([d, s1, s2]) => {
   pairFor(d, s1, s2).forEach((row, n) => {
-    if (row) fStmt.run(users[0].id, row.id, `2026-10-09T11:0${n}:00Z`);
+    if (row) fStmt.run(users[0].id, row.id, `${addDays(DAYS[0], -3)}T11:0${n}:00Z`);
   });
 });
 
@@ -703,16 +721,16 @@ SPONSOR_DATA.forEach(([name, tier, blurb, perk, hiring], i) => {
 
 /* =========================== ANNOUNCEMENTS ========================= */
 const ANN = [
-  ['Budget 30 minutes to get to the Foundry', 'The Foundry at Red Rock Yards is 6.2 miles from Aurora. The free shuttle takes about 27 minutes door to door and runs every 20 minutes; a rideshare is roughly 18 minutes. Back-to-back sessions across the two sites are not realistically possible.', 'warning', FOUNDRY.id, '2026-10-11T15:00:00Z', 1],
-  ['Wednesday’s keynote is at the Foundry', 'Day 3 opens with “Evaluation Is the New Compiler” in The Blast Furnace, not at Aurora. Shuttles run continuously from 06:30 that morning. Arrive early — the yard entrance backs up.', 'warning', FOUNDRY.id, '2026-10-13T05:00:00Z', 1],
-  ['Doors open at 07:30 on Day 1', 'Registration is on Level 1 of the Aurora Convention Center, past the north entrance. Badge pickup opens at 07:30. Bring photo ID matching your ticket.', 'info', AURORA.id, '2026-10-11T16:00:00Z', 0],
-  ['Nebula Main Stage will reach capacity for the opening keynote', 'Overflow viewing with full audio is available in Quasar Hall and Pulsar Theater. Both open 20 minutes before the session starts.', 'warning', AURORA.id, '2026-10-12T13:30:00Z', 0],
-  ['Workshop laptops: set up before you arrive', 'Every hands-on workshop expects Node 22+ and Docker installed locally. The setup guide is linked from each workshop session page. There is not enough conference wifi in Nevada for four hundred people to pull a 4GB image at once.', 'info', null, '2026-10-11T09:00:00Z', 0],
-  ['The Boiler Room has no phone signal', 'It is a basement inside a steel works. Wifi is wired-backhauled and solid, cellular is not. Tell someone where you are going.', 'info', FOUNDRY.id, '2026-10-12T07:00:00Z', 0],
-  ['Block party moved to the Smelter yard', 'Wednesday night’s party has moved outdoors to The Smelter. Same time, better sound, bring a jacket — the desert gets cold after dark. Last shuttle back to Aurora is 01:15.', 'success', FOUNDRY.id, '2026-10-13T18:00:00Z', 0],
-  ['Recordings go live 24 hours after each session', 'Everything in Nebula, Quasar, Pulsar, Vector, Ironworks and Hangar Seven is recorded. Workshops and roundtables are not. Recordings appear on the session page automatically.', 'info', null, '2026-10-12T08:00:00Z', 0],
-  ['Quiet room available on Level 3', 'Context Window is reserved as a quiet space from 09:00–18:00 daily. No calls, no sessions scheduled, no exceptions.', 'success', AURORA.id, '2026-10-12T07:00:00Z', 0],
-  ['The Cooling Tower is stairs-only', 'The spiral staircase to the Cooling Tower mezzanine is the only access. If you need step-free routing, the same sessions are livestreamed to Ironworks B.', 'warning', FOUNDRY.id, '2026-10-12T06:30:00Z', 0],
+  ['Budget 30 minutes to get to the Foundry', 'The Foundry at Red Rock Yards is 6.2 miles from Aurora. The free shuttle takes about 27 minutes door to door and runs every 20 minutes; a rideshare is roughly 18 minutes. Back-to-back sessions across the two sites are not realistically possible.', 'warning', FOUNDRY.id, `${addDays(DAYS[0], -1)}T15:00:00Z`, 1],
+  ['Wednesday’s keynote is at the Foundry', 'Day 3 opens with “Evaluation Is the New Compiler” in The Blast Furnace, not at Aurora. Shuttles run continuously from 06:30 that morning. Arrive early — the yard entrance backs up.', 'warning', FOUNDRY.id, `${DAYS[2]}T05:00:00Z`, 1],
+  ['Doors open at 07:30 on Day 1', 'Registration is on Level 1 of the Aurora Convention Center, past the north entrance. Badge pickup opens at 07:30. Bring photo ID matching your ticket.', 'info', AURORA.id, `${addDays(DAYS[0], -1)}T16:00:00Z`, 0],
+  ['Nebula Main Stage will reach capacity for the opening keynote', 'Overflow viewing with full audio is available in Quasar Hall and Pulsar Theater. Both open 20 minutes before the session starts.', 'warning', AURORA.id, `${DAYS[0]}T13:30:00Z`, 0],
+  ['Workshop laptops: set up before you arrive', 'Every hands-on workshop expects Node 22+ and Docker installed locally. The setup guide is linked from each workshop session page. There is not enough conference wifi in Nevada for four hundred people to pull a 4GB image at once.', 'info', null, `${addDays(DAYS[0], -1)}T09:00:00Z`, 0],
+  ['The Boiler Room has no phone signal', 'It is a basement inside a steel works. Wifi is wired-backhauled and solid, cellular is not. Tell someone where you are going.', 'info', FOUNDRY.id, `${DAYS[0]}T07:00:00Z`, 0],
+  ['Block party moved to the Smelter yard', 'Wednesday night’s party has moved outdoors to The Smelter. Same time, better sound, bring a jacket — the desert gets cold after dark. Last shuttle back to Aurora is 01:15.', 'success', FOUNDRY.id, `${DAYS[2]}T18:00:00Z`, 0],
+  ['Recordings go live 24 hours after each session', 'Everything in Nebula, Quasar, Pulsar, Vector, Ironworks and Hangar Seven is recorded. Workshops and roundtables are not. Recordings appear on the session page automatically.', 'info', null, `${DAYS[0]}T08:00:00Z`, 0],
+  ['Quiet room available on Level 3', 'Context Window is reserved as a quiet space from 09:00–18:00 daily. No calls, no sessions scheduled, no exceptions.', 'success', AURORA.id, `${DAYS[0]}T07:00:00Z`, 0],
+  ['The Cooling Tower is stairs-only', 'The spiral staircase to the Cooling Tower mezzanine is the only access. If you need step-free routing, the same sessions are livestreamed to Ironworks B.', 'warning', FOUNDRY.id, `${DAYS[0]}T06:30:00Z`, 0],
 ];
 const aStmt = prep('INSERT INTO announcements (title,body,kind,venue_id,posted_at,pinned) VALUES (?,?,?,?,?,?)');
 ANN.forEach((a) => aStmt.run(...a));

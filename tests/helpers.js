@@ -17,11 +17,26 @@ export const ATTENDEES = {
 };
 
 /**
- * A moment mid-morning on day 1, inside the 10:15 slot. Pin the clock to this
- * so live-state tests do not depend on when they happen to run.
+ * Day 1 is whatever date the database was seeded on, so tests must ask rather
+ * than hard-code. Cached per worker.
  */
-export const MID_SESSION = '2026-10-12T10:30';
-export const BETWEEN_SLOTS = '2026-10-12T11:10';
+let cachedDays = null;
+export async function conferenceDays() {
+  if (!cachedDays) {
+    const res = await fetch('http://localhost:3001/api/bootstrap');
+    cachedDays = (await res.json()).days.map((d) => d.date);
+  }
+  return cachedDays;
+}
+
+/** `await momentOn(0, '10:30')` → a clock value inside day 1's 10:15 slot. */
+export async function momentOn(dayIndex, time) {
+  const days = await conferenceDays();
+  return `${days[dayIndex]}T${time}`;
+}
+
+export const MID_SESSION_TIME = '10:30';   // inside the 10:15 slot
+export const BETWEEN_SLOTS_TIME = '11:10'; // the gap before 11:30
 
 /** Open a route as a given attendee, optionally with the clock pinned. */
 export async function visit(page, path = '/', { as = ATTENDEES.jonas, at = null } = {}) {

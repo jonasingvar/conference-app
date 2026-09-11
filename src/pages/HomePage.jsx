@@ -311,6 +311,33 @@ function YourPlan() {
   );
 }
 
+/** Following a speaker has to buy you something — this is the payoff. */
+function FromSpeakersYouFollow() {
+  const { currentUser, followingIds } = useConference();
+  const { data, loading } = useFetch(
+    () => api.getFollowedSessions(currentUser.id),
+    [currentUser.id, followingIds.size],
+  );
+  const sessions = (data ?? []).slice(0, 3);
+  if (!loading && sessions.length === 0) return null;
+
+  return (
+    <section data-testid="followed-sessions">
+      <SectionHeader
+        eyebrow={`${followingIds.size} speakers followed`}
+        title="From speakers you follow"
+        description="Everyone you follow, and what they are presenting."
+        action={<Button to="/speakers" size="sm">Find more <Icon name="chevronRight" className="size-3.5" /></Button>}
+      />
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {loading
+          ? Array.from({ length: 3 }, (_, i) => <Skeleton key={i} className="h-64" />)
+          : sessions.map((s) => <SessionCard key={s.id} session={s} showDay />)}
+      </div>
+    </section>
+  );
+}
+
 function FeaturedSpeakers() {
   const { data, loading } = useFetch(() => api.getSpeakers({ featured: 'true' }), []);
   const { data: stats } = useFetch(api.getStats, []);
@@ -365,6 +392,7 @@ export function HomePage() {
       <Reveal><Keynotes /></Reveal>
       <Reveal><TrackGrid /></Reveal>
       <Reveal><VenueSplit /></Reveal>
+      <Reveal><FromSpeakersYouFollow /></Reveal>
       <Reveal><FeaturedSpeakers /></Reveal>
       <Reveal><PopularSessions /></Reveal>
     </div>
