@@ -211,7 +211,7 @@ export function MyAgendaPage() {
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Stat value={totalReserved} label="Seats booked" accent="emerald" />
-            <Stat value={days.length} label="Days here" accent="cyan" />
+            <Stat value={totalWaitlisted} label="On a waitlist" accent={totalWaitlisted ? 'amber' : 'emerald'} />
             <Stat value={totalConflicts} label="Time clashes" accent={totalConflicts ? 'rose' : 'emerald'} />
             <Stat value={crossVenueDays} label="Cross-town days" accent="amber" />
           </div>

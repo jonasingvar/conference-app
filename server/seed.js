@@ -609,17 +609,44 @@ users.forEach((u, i) => {
   });
 });
 
-// One session deliberately at capacity with a known holder, so the waitlist and
-// the promotion-on-release path are both reachable from the UI.
-const soldOut = db.prepare(`
-  SELECT id, capacity, title FROM sessions
-  WHERE is_keynote = 0 AND format != 'Social' AND capacity < 400
-  ORDER BY (format = 'Workshop') DESC, avg_rating DESC LIMIT 1`).get();
-if (soldOut) {
-  db.prepare('UPDATE sessions SET seats_taken = capacity WHERE id = ?').run(soldOut.id);
-  resStmt.run(users[0].id, soldOut.id, 'confirmed', savedAt());
-  console.log(`  · "${soldOut.title}" seeded full (${soldOut.capacity} seats) so the waitlist is reachable`);
-}
+/*
+ * Sold-out sessions.
+ *
+ * A waitlist you can never reach is not a feature, so a realistic slice of the
+ * programme is deliberately at or near capacity — small rooms and well-rated
+ * talks first, which is how it actually goes. Some already have queues.
+ */
+const popular = db.prepare(`
+  SELECT id, capacity, title, format FROM sessions
+  WHERE is_keynote = 0 AND format != 'Social'
+  ORDER BY (format = 'Workshop') DESC, (capacity < 250) DESC, avg_rating DESC`).all();
+
+const fullSessions = popular.slice(0, Math.max(6, Math.round(popular.length * 0.12)));
+fullSessions.forEach((sess) => {
+  db.prepare('UPDATE sessions SET seats_taken = capacity WHERE id = ?').run(sess.id);
+});
+
+// A handful more sit just under the line, so "3 seats left" is reachable too.
+popular.slice(fullSessions.length, fullSessions.length + 8).forEach((sess) => {
+  db.prepare('UPDATE sessions SET seats_taken = ? WHERE id = ?')
+    .run(Math.max(0, sess.capacity - int(1, 4)), sess.id);
+});
+
+/*
+ * Queues on the sold-out ones. Other attendees are already waiting, so the
+ * position you get is rarely #1 — and the promotion path has someone to
+ * promote. Jonas holds a confirmed seat on the first, which is the fixture the
+ * promotion test relies on.
+ */
+const waitStmt = prep("INSERT OR IGNORE INTO reservations (user_id,session_id,status,created_at) VALUES (?,?,'waitlisted',?)");
+fullSessions.slice(0, 5).forEach((sess, i) => {
+  pickN(users, int(1, 3)).forEach((u, n) => {
+    waitStmt.run(u.id, sess.id, `${addDays(DAYS[0], -2)}T${String(9 + n).padStart(2, '0')}:${String(int(10, 59))}:00Z`);
+  });
+  if (i === 0) resStmt.run(users[0].id, sess.id, 'confirmed', savedAt());
+});
+
+console.log(`  · ${fullSessions.length} sessions seeded full, with queues on ${Math.min(5, fullSessions.length)} of them`);
 
 /* speaker follows */
 const flStmt = prep('INSERT OR IGNORE INTO speaker_follows (user_id,speaker_id) VALUES (?,?)');

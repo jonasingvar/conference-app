@@ -14,7 +14,7 @@ import { Icon } from './Icon.jsx';
  * rendered as full-width bars at their own time.
  */
 export function ScheduleGrid({ sessions }) {
-  const { reservationFor, toggleSeat, clock } = useConference();
+  const { reservationFor, toggleSeat, seatsFor, clock } = useConference();
 
   const gridSessions = sessions.filter((s) => !s.isKeynote && s.format !== 'Social');
   const bannerSessions = sessions.filter((s) => s.isKeynote || s.format === 'Social');
@@ -167,6 +167,24 @@ export function ScheduleGrid({ sessions }) {
                                 <Icon name={seat === 'waitlisted' ? 'clock' : seat ? 'check' : 'ticket'} className="size-3.5" />
                               </button>
                             </div>
+                            {(() => {
+                              const live = seatsFor(s.id);
+                              const left = live?.seatsLeft ?? s.seatsLeft;
+                              const waiting = live?.waitlistCount ?? s.waitlistCount ?? 0;
+                              if (left === 0) {
+                                return (
+                                  <span className="mt-1.5 inline-flex w-fit items-center gap-1 rounded bg-rose-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-300">
+                                    Full{waiting > 0 && ` · ${waiting}`}
+                                  </span>
+                                );
+                              }
+                              if (left <= 10) {
+                                return (
+                                  <span className="mt-1.5 text-[10px] font-semibold text-amber-300">{left} left</span>
+                                );
+                              }
+                              return null;
+                            })()}
                             <div className="mt-auto flex items-center gap-1.5 pt-2">
                               {s.speakers?.[0] && (
                                 <>

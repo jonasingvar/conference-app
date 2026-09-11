@@ -68,6 +68,7 @@ export function ConferenceProvider({ children }) {
       capacity: state.capacity,
       isFull: state.isFull,
       waitlistCount: state.waitlistCount,
+      waitlistPosition: state.waitlistPosition ?? null,
     }));
     setReservations((prev) => {
       const next = new Map(prev);

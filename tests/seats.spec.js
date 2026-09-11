@@ -149,3 +149,44 @@ test.describe('Seat reservation', () => {
   });
 
 });
+
+test.describe('Waitlists', () => {
+  test('the programme actually contains full sessions with queues', async ({ request }) => {
+    const all = await (await request.get(`${API}/sessions`)).json();
+    const full = all.filter((s) => s.isFull);
+    expect(full.length, 'no sold-out sessions to waitlist onto').toBeGreaterThan(3);
+    expect(full.some((s) => s.waitlistCount > 0), 'no session has a queue').toBeTruthy();
+  });
+
+  test('a full session shows the queue length in the listing', async ({ page, request }) => {
+    const all = await (await request.get(`${API}/sessions`)).json();
+    const queued = all.find((s) => s.isFull && s.waitlistCount > 0);
+    test.skip(!queued, 'no queued session');
+
+    await visit(page, `/schedule?day=${queued.day}&view=list`);
+    const card = page.locator('article').filter({ hasText: queued.title }).first();
+    await expect(card).toContainText(/Full · \d+ waiting/);
+  });
+
+  test('joining a queue reports a position behind the people already there', async ({ page, request }) => {
+    const all = await (await request.get(`${API}/sessions`)).json();
+    const queued = all.find((s) => s.isFull && s.waitlistCount > 0);
+    test.skip(!queued, 'no queued session');
+
+    await visit(page, `/sessions/${queued.id}`, { as: ATTENDEES.kenji });
+    const release = page.getByTestId('release-seat');
+    if (await release.isVisible().catch(() => false)) {
+      await release.click();
+      await page.getByTestId('reserve-seat').waitFor();
+    }
+
+    await page.getByTestId('reserve-seat').click();
+    const panel = page.getByTestId('reservation-waitlisted');
+    await expect(panel).toBeVisible();
+    await expect(panel).toContainText(/Position \d+ of \d+/);
+    await expect(panel).toContainText(/ahead of you|next in line/);
+
+    await page.getByTestId('release-seat').click();
+    await expect(page.getByTestId('reserve-seat')).toBeVisible();
+  });
+});

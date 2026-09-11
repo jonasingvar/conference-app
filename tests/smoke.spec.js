@@ -59,3 +59,16 @@ test('every link in the footer resolves', async ({ page }) => {
     await expect(page.getByRole('heading', { name: /Nothing scheduled here/i })).toHaveCount(0);
   }
 });
+
+test('the venues page switches venue and shows a live room board', async ({ page }) => {
+  await visit(page, '/venues');
+  const venues = page.locator('[data-testid^="venue-tab-"]');
+  await expect(venues).toHaveCount(2);
+
+  const first = page.locator('[data-testid^="venue-board-"]');
+  await expect(first).toBeVisible();
+  const beforeId = await first.getAttribute('data-testid');
+
+  await venues.nth(1).click();
+  await expect(page.locator('[data-testid^="venue-board-"]')).not.toHaveAttribute('data-testid', beforeId);
+});

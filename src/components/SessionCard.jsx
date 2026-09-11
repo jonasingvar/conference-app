@@ -18,7 +18,7 @@ import { progressOf, toMinutes } from '../lib/clock.js';
  * these without every card melting into the next.
  */
 export function SessionCard({ session, variant = 'grid', showDay = false }) {
-  const { toggleSeat, clock, reservationFor } = useConference();
+  const { toggleSeat, clock, reservationFor, seatsFor } = useConference();
   const reservation = reservationFor(session.id);
   const onAgenda = Boolean(reservation);
 
@@ -29,7 +29,11 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
   const isDone = onToday && nowMins >= toMinutes(session.endsAt);
   const a = accent(session.track.color);
   const v = accent(session.venue.accent);
-  const nearlyFull = session.fillRate >= 0.92;
+  // Live counts win over the payload the list was fetched with.
+  const live = seatsFor(session.id);
+  const seatsLeft = live?.seatsLeft ?? session.seatsLeft;
+  const waiting = live?.waitlistCount ?? session.waitlistCount ?? 0;
+  const isFull = seatsLeft === 0;
   const offsite = !session.venue.isPrimary;
 
   if (variant === 'row') {
@@ -191,7 +195,13 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
         <span className="text-overlay">·</span>
         <span className="text-faint">{session.level}</span>
         <div className="ml-auto flex items-center gap-2.5">
-          {nearlyFull && <span className="font-bold text-rose-300">Nearly full</span>}
+          {isFull ? (
+            <span className="font-bold text-rose-300">
+              Full{waiting > 0 && ` · ${waiting} waiting`}
+            </span>
+          ) : seatsLeft <= 10 ? (
+            <span className="font-bold text-amber-300">{seatsLeft} seats left</span>
+          ) : null}
           {session.isRecorded && <Icon name="play" className="size-3 text-faint" />}
           <Rating value={session.avgRating} count={session.ratingCount} showValue={false} />
         </div>

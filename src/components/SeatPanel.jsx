@@ -25,6 +25,9 @@ export function SeatPanel({ session }) {
   // to the payload the page was fetched with would make "released" unreachable,
   // because that payload still says 'confirmed' until the next refetch.
   const status = reservationFor(session.id);
+  // The live value wins: after joining a queue the page payload is stale.
+  const waitlistPosition = live?.waitlistPosition ?? session.seats?.waitlistPosition ?? null;
+  const ahead = waitlistPosition ? waitlistPosition - 1 : null;
 
   const pct = capacity ? Math.min(100, Math.round((seatsTaken / capacity) * 100)) : 0;
   const isFull = seatsLeft === 0;
@@ -73,8 +76,17 @@ export function SeatPanel({ session }) {
             You are on the waitlist
           </p>
           <p className="mt-1 text-[12px] text-muted">
-            We will pass you the next seat someone releases. Walk-ups are admitted if the room has space.
+            {ahead === null
+              ? 'We will pass you the next seat someone releases.'
+              : ahead === 0
+                ? 'You are next in line — the next seat released is yours.'
+                : `${plural(ahead, 'person', 'people')} ahead of you. We will pass you a seat as they are released.`}
           </p>
+          {waitlistPosition && (
+            <p className="mt-2 font-mono text-[11px] text-amber-200/80">
+              Position {waitlistPosition} of {waitlistCount}
+            </p>
+          )}
         </div>
       )}
 

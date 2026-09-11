@@ -181,7 +181,12 @@ Two rules if you ever regenerate a portrait:
 - `GeneratedCover` — key art for sessions, tracks, vendors and sponsors.
   Variants: `orbit` (keynotes, heroes), `mesh` (category tiles), `strata`
   (wide banners), `mark` (logo-like squares).
-- `VenueRouteMap` — the two sites projected from their real lat/lng.
+- `VenueRouteMap` — the two sites projected from their real lat/lng. This is the
+  *only* map in the app, and it is honest because the coordinates are real.
+  There was once a per-venue "floor plan" built from invented `map_x`/`map_y`
+  values; it looked like geography, meant nothing, and has been removed. Do not
+  bring it back — `VenueBoard` shows what is actually happening in each room
+  instead.
 
 Same input, same output, on every machine — which keeps screenshots and tests
 stable.

@@ -15,7 +15,9 @@ export const SESSION_SELECT = `
     r.name  AS room_name,   r.building, r.floor, r.walk_minutes, r.capacity AS room_capacity,
     r.kind  AS room_kind,   r.accessible AS room_accessible, r.amenities AS room_amenities,
     v.id    AS venue_id,    v.name AS venue_name, v.short_name AS venue_short,
-    v.accent AS venue_accent, v.emoji AS venue_emoji, v.is_primary AS venue_is_primary
+    v.accent AS venue_accent, v.emoji AS venue_emoji, v.is_primary AS venue_is_primary,
+    (SELECT COUNT(*) FROM reservations r
+      WHERE r.session_id = s.id AND r.status = 'waitlisted') AS waitlist_count
   FROM sessions s
   JOIN tracks t ON t.id = s.track_id
   JOIN rooms  r ON r.id = s.room_id
@@ -80,6 +82,8 @@ export function toSession(row, extra = {}) {
     seatsTaken: row.seats_taken,
     seatsLeft: Math.max(0, row.capacity - row.seats_taken),
     fillRate: row.capacity ? Math.min(1, row.seats_taken / row.capacity) : 0,
+    isFull: row.seats_taken >= row.capacity,
+    waitlistCount: row.waitlist_count ?? 0,
     isKeynote: !!row.is_keynote,
     isRecorded: !!row.is_recorded,
     requiresRsvp: !!row.requires_rsvp,
