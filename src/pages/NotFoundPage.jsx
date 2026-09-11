@@ -1,6 +1,8 @@
 import { EmptyState, Button } from '../components/ui.jsx';
+import { useDocumentTitle } from '../lib/useDocumentTitle.js';
 
 export function NotFoundPage() {
+  useDocumentTitle('Not found');
   return (
     <div className="py-20">
       <EmptyState

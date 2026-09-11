@@ -9,6 +9,7 @@ import { GeneratedCover } from '../components/GeneratedCover.jsx';
 import { SearchInput, Select } from '../components/FilterBar.jsx';
 import { Button, Chip, EmptyState, ErrorState, SectionHeader, Skeleton, cx } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
+import { useDocumentTitle } from '../lib/useDocumentTitle.js';
 
 const ALL = 'all';
 
@@ -102,6 +103,7 @@ function VendorCard({ vendor, venue, now, featured }) {
 }
 
 export function FoodPage() {
+  useDocumentTitle('Food & drink');
   const { venues, venueById, cuisines = [], clock } = useConference();
   const [params, setParams] = useSearchParams();
 

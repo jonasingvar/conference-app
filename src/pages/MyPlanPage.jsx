@@ -6,6 +6,7 @@ import { dayLabel, plural, timeRange } from '../lib/format.js';
 import { SessionCard } from '../components/SessionCard.jsx';
 import { Avatar, Button, Chip, EmptyState, ErrorState, SectionHeader, Skeleton, Stat, cx } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
+import { useDocumentTitle } from '../lib/useDocumentTitle.js';
 
 /**
  * Shown only for attendees whose account is linked to a speaker profile.
@@ -155,6 +156,7 @@ function DayPlan({ day }) {
 
 export function MyPlanPage() {
   const { currentUser } = useConference();
+  useDocumentTitle(currentUser ? `${currentUser.name.split(' ')[0]}’s plan` : 'My plan');
   const { data, loading, error, reload } = useFetch(() => api.getSchedule(currentUser.id), [currentUser.id]);
 
   const totalConflicts = (data?.days ?? []).reduce((n, d) => n + d.conflicts.length, 0);

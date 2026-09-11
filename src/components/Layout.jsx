@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useConference } from '../lib/store.jsx';
 import { UserSwitcher } from './UserSwitcher.jsx';
+import { RouteChange } from './RouteChange.jsx';
 import { Icon } from './Icon.jsx';
 import { cx } from './ui.jsx';
 
@@ -42,6 +43,7 @@ export function Layout() {
 
   return (
     <div className="relative z-10 flex min-h-dvh flex-col">
+      <RouteChange />
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-violet-600 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold"
@@ -125,10 +127,74 @@ export function Layout() {
         <Outlet />
       </main>
 
-      <footer className="border-t border-hairline">
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-8 text-xs text-faint sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-          <p>ORBIT ’26 · The Applied AI Conference · Las Vegas, October 12–15 2026</p>
-          <p>Aurora Convention Center &amp; The Foundry at Red Rock Yards</p>
+      <footer className="mt-8 border-t border-hairline">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,minmax(0,1fr))]">
+            <div>
+              <span className="flex items-center gap-2.5">
+                <span className="grid size-8 place-items-center rounded-lg bg-gradient-to-br from-violet-500 via-violet-600 to-cyan-500 text-sm">
+                  🛰️
+                </span>
+                <span className="font-display text-lg tracking-tight">ORBIT ’26</span>
+              </span>
+              <p className="mt-3 max-w-xs text-[13px] leading-relaxed text-muted">
+                The Applied AI Conference. Four days of engineers who actually shipped it.
+              </p>
+              <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.14em] text-faint">
+                Oct 12–15, 2026 · Las Vegas, NV
+              </p>
+            </div>
+
+            {[
+              {
+                title: 'Programme',
+                links: [
+                  ['Schedule', '/schedule'],
+                  ['Speakers', '/speakers'],
+                  ['My plan', '/my-plan'],
+                ],
+              },
+              {
+                title: 'On site',
+                links: [
+                  ['Venues & stages', '/venues'],
+                  ['Getting between sites', '/venues'],
+                  ['Food & drink', '/food'],
+                ],
+              },
+              {
+                title: 'Conference',
+                links: [
+                  ['Partners & sponsors', '/expo'],
+                  ['Code of conduct', '/code-of-conduct'],
+                  ['Accessibility', '/accessibility'],
+                ],
+              },
+            ].map((col) => (
+              <nav key={col.title} aria-label={col.title}>
+                <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-faint">{col.title}</h2>
+                <ul className="mt-3 space-y-2">
+                  {col.links.map(([label, to]) => (
+                    <li key={label}>
+                      <NavLink to={to} className="text-[13px] text-muted transition-colors hover:text-ink">
+                        {label}
+                      </NavLink>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            ))}
+          </div>
+
+          <div className="mt-10 flex flex-col gap-3 border-t border-hairline pt-6 text-xs text-faint sm:flex-row sm:items-center sm:justify-between">
+            <p>Aurora Convention Center &amp; The Foundry at Red Rock Yards</p>
+            <p className="font-mono">
+              Sessions and speaker data are open —{' '}
+              <a href="/api/bootstrap" className="underline underline-offset-2 transition-colors hover:text-ink">
+                /api
+              </a>
+            </p>
+          </div>
         </div>
       </footer>
     </div>

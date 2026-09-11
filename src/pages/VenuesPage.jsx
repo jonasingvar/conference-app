@@ -7,6 +7,7 @@ import { routesBetween } from '../lib/travel.js';
 import { Button, Chip, SectionHeader, Skeleton, cx } from '../components/ui.jsx';
 import { VenueRouteMap } from '../components/VenueRouteMap.jsx';
 import { Icon } from '../components/Icon.jsx';
+import { useDocumentTitle } from '../lib/useDocumentTitle.js';
 
 const KIND_ICON = {
   Keynote: 'mic', Theater: 'mic', Breakout: 'users', Workshop: 'layers',
@@ -184,6 +185,7 @@ function VenueSection({ venue }) {
 }
 
 export function VenuesPage() {
+  useDocumentTitle('Venues & stages');
   const { data, loading, error } = useFetch(api.getVenues, []);
   const stageCount = (data ?? []).reduce((n, v) => n + v.rooms.length, 0);
 

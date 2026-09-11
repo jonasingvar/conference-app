@@ -12,6 +12,8 @@ import { MyPlanPage } from './pages/MyPlanPage.jsx';
 import { VenuesPage } from './pages/VenuesPage.jsx';
 import { FoodPage } from './pages/FoodPage.jsx';
 import { ExpoPage } from './pages/ExpoPage.jsx';
+import { CodeOfConductPage } from './pages/CodeOfConductPage.jsx';
+import { AccessibilityPage } from './pages/AccessibilityPage.jsx';
 import { NotFoundPage } from './pages/NotFoundPage.jsx';
 
 export function App() {
@@ -38,6 +40,8 @@ export function App() {
         <Route path="venues" element={<VenuesPage />} />
         <Route path="food" element={<FoodPage />} />
         <Route path="expo" element={<ExpoPage />} />
+        <Route path="code-of-conduct" element={<CodeOfConductPage />} />
+        <Route path="accessibility" element={<AccessibilityPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

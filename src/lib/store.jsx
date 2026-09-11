@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import * as api from './api.js';
 import { useConferenceClock } from './clock.js';
+import { useToast } from '../components/Toaster.jsx';
 
 /**
  * One app-wide context holding:
@@ -24,6 +25,7 @@ export function ConferenceProvider({ children }) {
   const [favoriteIds, setFavoriteIds] = useState(() => new Set());
   const [followingIds, setFollowingIds] = useState(() => new Set());
   const clock = useConferenceClock(data?.days ?? []);
+  const toast = useToast();
 
   useEffect(() => {
     api.getBootstrap().then(setData).catch(setError);
@@ -42,17 +44,26 @@ export function ConferenceProvider({ children }) {
       });
   }, [currentUserId]);
 
-  const toggleFavorite = useCallback(async (sessionId) => {
-    const isFavorite = favoriteIds.has(sessionId);
+  const setFavorite = useCallback(async (sessionId, wanted) => {
     setFavoriteIds((prev) => {
       const next = new Set(prev);
-      if (isFavorite) next.delete(sessionId);
-      else next.add(sessionId);
+      if (wanted) next.add(sessionId);
+      else next.delete(sessionId);
       return next;
     });
-    const call = isFavorite ? api.removeFavorite : api.addFavorite;
+    const call = wanted ? api.addFavorite : api.removeFavorite;
     await call(currentUserId, sessionId);
-  }, [currentUserId, favoriteIds]);
+  }, [currentUserId]);
+
+  const toggleFavorite = useCallback(async (sessionId) => {
+    const wasFavorite = favoriteIds.has(sessionId);
+    await setFavorite(sessionId, !wasFavorite);
+    toast({
+      message: wasFavorite ? 'Removed from your plan' : 'Saved to your plan',
+      icon: wasFavorite ? 'close' : 'check',
+      action: { label: 'Undo', onClick: () => setFavorite(sessionId, wasFavorite) },
+    });
+  }, [favoriteIds, setFavorite, toast]);
 
   const toggleFollow = useCallback(async (speakerId) => {
     const following = followingIds.has(speakerId);
@@ -64,7 +75,8 @@ export function ConferenceProvider({ children }) {
     });
     const call = following ? api.unfollowSpeaker : api.followSpeaker;
     await call(currentUserId, speakerId);
-  }, [currentUserId, followingIds]);
+    toast({ message: following ? 'Unfollowed' : 'Following — their sessions show in your feed', icon: 'bell' });
+  }, [currentUserId, followingIds, toast]);
 
   const value = useMemo(() => {
     const users = data?.users ?? [];

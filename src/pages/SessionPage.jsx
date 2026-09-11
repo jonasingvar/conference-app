@@ -8,6 +8,7 @@ import { SessionCard } from '../components/SessionCard.jsx';
 import { GeneratedCover } from '../components/GeneratedCover.jsx';
 import { Avatar, Button, Chip, EmptyState, ErrorState, FavoriteButton, Rating, Skeleton, TrackPill, cx } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
+import { useDocumentTitle } from '../lib/useDocumentTitle.js';
 
 function CapacityBar({ session }) {
   const pct = Math.round(session.fillRate * 100);
@@ -64,6 +65,7 @@ export function SessionPage() {
   const { id } = useParams();
   const { isFavorite, toggleFavorite } = useConference();
   const { data: session, loading, error, reload } = useFetch(() => api.getSession(id), [id]);
+  useDocumentTitle(session?.title);
 
   if (loading) {
     return (

@@ -7,6 +7,7 @@ import { SessionCard } from '../components/SessionCard.jsx';
 import { Avatar, Button, Chip, EmptyState, ErrorState, Skeleton, cx } from '../components/ui.jsx';
 import { Icon, BrandIcon } from '../components/Icon.jsx';
 import { GeneratedCover } from '../components/GeneratedCover.jsx';
+import { useDocumentTitle } from '../lib/useDocumentTitle.js';
 
 /** Each network gets its own mark — four identical icons told you nothing. */
 const SOCIAL_LINKS = [
@@ -20,6 +21,7 @@ export function SpeakerPage() {
   const { id } = useParams();
   const { isFollowing, toggleFollow } = useConference();
   const { data: speaker, loading, error, reload } = useFetch(() => api.getSpeaker(id), [id]);
+  useDocumentTitle(speaker?.name);
   const following = speaker ? isFollowing(speaker.id) : false;
 
   if (loading) return <div className="space-y-4"><Skeleton className="h-56" /><Skeleton className="h-64" /></div>;

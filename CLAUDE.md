@@ -61,6 +61,7 @@ src/
                      ScheduleGrid.jsx, SpeakerSpotlight.jsx, LiveNow.jsx,
                      GeneratedAvatar.jsx, GeneratedCover.jsx, VenueRouteMap.jsx …
   pages/             one file per route, named <Thing>Page
+  public/images/     optional hero photography — see that folder's README
 tests/               Playwright specs + helpers.js
 scripts/shot.mjs     screenshot tool
 data/orbit.db        generated, gitignored
@@ -157,6 +158,21 @@ Two rules if you ever regenerate a portrait:
 
 Same input, same output, on every machine — which keeps screenshots and tests
 stable.
+
+## Chrome and correctness
+
+Things that are easy to forget and immediately read as unfinished:
+
+- **Every page calls `useDocumentTitle`.** The tab, the history entry and a
+  bookmark all read from it. New route, new title.
+- **`<RouteChange>` in the layout** resets scroll and moves focus to `#main` on
+  every navigation. React Router does neither by default — without it you click
+  a nav link and land halfway down the next page.
+- **`useToast()`** for anything the user does that would otherwise be silent.
+  Saving a session toasts with an Undo action; the toast stack lives above the
+  store in `main.jsx` so `store.jsx` can reach it.
+- **Footer links must resolve.** There is a smoke test that walks every footer
+  link and fails if one hits the not-found page.
 
 ## Motion
 

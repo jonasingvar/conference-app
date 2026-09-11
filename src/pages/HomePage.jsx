@@ -6,18 +6,23 @@ import { dayLabel, plural, timeRange } from '../lib/format.js';
 import { fastestRoute } from '../lib/travel.js';
 import { SessionCard } from '../components/SessionCard.jsx';
 import { Reveal } from '../components/Reveal.jsx';
+import { HeroMedia } from '../components/HeroMedia.jsx';
+import { SponsorMarquee } from '../components/SponsorMarquee.jsx';
 import { CountUp } from '../components/CountUp.jsx';
 import { LiveNow } from '../components/LiveNow.jsx';
 import { GeneratedCover } from '../components/GeneratedCover.jsx';
 import { SpeakerCard } from '../components/SpeakerCard.jsx';
 import { Avatar, Button, Chip, SectionHeader, Skeleton, Stat, cx } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
+import { useDocumentTitle } from '../lib/useDocumentTitle.js';
 
 function Hero({ conference, stats }) {
   const { days, venues } = useConference();
 
   return (
     <section className="relative overflow-hidden rounded-3xl border border-hairline" data-testid="hero">
+      {/* Photography if any has been added; otherwise the gradient below carries it. */}
+      <HeroMedia />
       <div className="absolute inset-0 bg-[radial-gradient(42rem_24rem_at_12%_-5%,rgba(139,92,246,0.30),transparent_62%),radial-gradient(34rem_20rem_at_92%_8%,rgba(34,211,238,0.22),transparent_60%)]" />
       <div className="absolute inset-0 opacity-40 [background-image:linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] [background-size:52px_52px] [mask-image:radial-gradient(60rem_30rem_at_30%_0%,black,transparent)]" />
 
@@ -346,12 +351,14 @@ function PopularSessions() {
 
 export function HomePage() {
   const { conference } = useConference();
+  useDocumentTitle("ORBIT '26");
   const { data: stats } = useFetch(api.getStats, []);
   const { data: announcements } = useFetch(api.getAnnouncements, []);
 
   return (
     <div className="space-y-16 sm:space-y-20">
       <Hero conference={conference} stats={stats} />
+      <SponsorMarquee />
       <Reveal><LiveNow /></Reveal>
       {announcements && <Reveal><AnnouncementStrip announcements={announcements} /></Reveal>}
       <Reveal><YourPlan /></Reveal>

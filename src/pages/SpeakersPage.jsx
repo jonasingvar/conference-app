@@ -8,6 +8,7 @@ import { SpeakerSpotlight } from '../components/SpeakerSpotlight.jsx';
 import { SearchInput, Select } from '../components/FilterBar.jsx';
 import { Button, EmptyState, ErrorState, SectionHeader, Skeleton, cx } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
+import { useDocumentTitle } from '../lib/useDocumentTitle.js';
 
 const ALL = 'all';
 
@@ -19,6 +20,7 @@ const ALL = 'all';
  */
 export function SpeakersPage() {
   const { tracks } = useConference();
+  useDocumentTitle('Speakers');
   const [params, setParams] = useSearchParams();
 
   const q = params.get('q') ?? '';

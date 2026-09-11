@@ -10,6 +10,7 @@ import { ScheduleGrid } from '../components/ScheduleGrid.jsx';
 import { SearchInput, Select } from '../components/FilterBar.jsx';
 import { Button, EmptyState, ErrorState, SectionHeader, Skeleton, cx } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
+import { useDocumentTitle } from '../lib/useDocumentTitle.js';
 
 const ALL = 'all';
 const VIEWS = [
@@ -19,6 +20,7 @@ const VIEWS = [
 
 export function SchedulePage() {
   const { days, tracks, venues, formats, levels, tags, favoriteIds } = useConference();
+  useDocumentTitle('Schedule');
   const [params, setParams] = useSearchParams();
   const [railOpen, setRailOpen] = useState(false);
 

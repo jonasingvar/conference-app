@@ -4,6 +4,7 @@ import { plural } from '../lib/format.js';
 import { Button, Chip, ErrorState, SectionHeader, Skeleton, cx } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
 import { GeneratedCover } from '../components/GeneratedCover.jsx';
+import { useDocumentTitle } from '../lib/useDocumentTitle.js';
 
 const TIERS = ['Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze'];
 
@@ -67,6 +68,7 @@ function SponsorCard({ sponsor, style, venue }) {
 }
 
 export function ExpoPage() {
+  useDocumentTitle('Partners & sponsors');
   const { venueById } = useConference();
   const { data, loading, error, reload } = useFetch(api.getSponsors, []);
   const sponsors = data ?? [];

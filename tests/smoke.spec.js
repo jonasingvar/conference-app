@@ -15,6 +15,8 @@ const ROUTES = [
   { path: '/venues', name: 'Venues', heading: /Venues & stages/i },
   { path: '/food', name: 'Food', heading: /Food & drink/i },
   { path: '/expo', name: 'Expo', heading: /Partners & sponsors/i },
+  { path: '/code-of-conduct', name: 'Code of conduct', heading: /Code of conduct/i },
+  { path: '/accessibility', name: 'Accessibility', heading: /^Accessibility$/i },
 ];
 
 for (const route of ROUTES) {
@@ -45,4 +47,15 @@ test('the API is reachable and seeded', async ({ request }) => {
   const body = await res.json();
   // asserts the database is seeded, not a particular programme size
   expect(body.sessions).toBeGreaterThan(100);
+});
+
+test('every link in the footer resolves', async ({ page }) => {
+  await visit(page, '/');
+  const hrefs = await page.getByRole('contentinfo').getByRole('link')
+    .evaluateAll((els) => [...new Set(els.map((e) => e.getAttribute('href')))]);
+
+  for (const href of hrefs.filter((h) => h?.startsWith('/') && !h.startsWith('/api'))) {
+    await visit(page, href);
+    await expect(page.getByRole('heading', { name: /Nothing scheduled here/i })).toHaveCount(0);
+  }
 });
