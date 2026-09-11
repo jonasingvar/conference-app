@@ -36,7 +36,7 @@ export function SchedulePage() {
   // A horizontally scrolling matrix is a poor default on a phone, so the grid
   // is only the default where there is room for it. An explicit ?view= wins.
   const wide = useMediaQuery('(min-width: 1024px)');
-  const view = params.get('view') ?? (wide ? 'grid' : 'list');
+  const requestedView = params.get('view') ?? (wide ? 'grid' : 'list');
 
   const set = (key, value) => {
     const next = new URLSearchParams(params);
@@ -62,6 +62,30 @@ export function SchedulePage() {
   const activeKeys = ['track', 'venue', 'level', 'format', 'tag', 'q'].filter((k) => filters[k] && filters[k] !== ALL);
   const clearAll = () => setParams(new URLSearchParams({ day: filters.day, view }));
 
+  /*
+   * The grid is a whole-day view: rooms across, time down. A venue filter just
+   * drops columns, which is fine. Any *content* filter leaves scattered cells
+   * in a mostly empty matrix, so the grid is genuinely unavailable — and the
+   * toggle must say so rather than staying lit while the list renders.
+   */
+  const BLOCKERS = [
+    ['q', 'a search'],
+    ['track', 'a track filter'],
+    ['tag', 'a topic filter'],
+    ['level', 'a level filter'],
+    ['format', 'a format filter'],
+  ];
+  const blocker = BLOCKERS.find(([key]) => filters[key] && filters[key] !== ALL);
+  const clearBlocker = () => {
+    const next = new URLSearchParams(params);
+    BLOCKERS.forEach(([key]) => next.delete(key));
+    next.set('view', 'grid');
+    setParams(next, { replace: true });
+  };
+
+  const view = blocker ? 'list' : requestedView;
+  const showGrid = view === 'grid';
+
   const slots = useMemo(() => {
     const map = new Map();
     for (const s of sessions) {
@@ -73,8 +97,6 @@ export function SchedulePage() {
 
   const topicTags = tags.filter((t) => t.kind === 'topic');
   const savedToday = sessions.filter((s) => favoriteIds.has(s.id)).length;
-  // Filtering hides columns, so the matrix only makes sense unfiltered-ish.
-  const gridUsable = view === 'grid' && !filters.q && filters.track === ALL && filters.tag === ALL;
 
   const rail = (
     <div className="space-y-5">
@@ -176,21 +198,30 @@ export function SchedulePage() {
         action={
           <div className="flex items-center gap-2">
             <div className="flex rounded-lg border border-hairline bg-raised p-0.5" role="tablist" aria-label="Schedule view">
-              {VIEWS.map((v) => (
-                <button
-                  key={v.value}
-                  type="button"
-                  role="tab"
-                  aria-selected={view === v.value}
-                  onClick={() => set('view', v.value)}
-                  data-testid={`view-${v.value}`}
-                  className={cx('inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors',
-                    view === v.value ? 'bg-overlay text-ink' : 'text-muted hover:text-ink')}
-                >
-                  <Icon name={v.icon} className="size-3.5" />
-                  {v.label}
-                </button>
-              ))}
+              {VIEWS.map((v) => {
+                const disabled = v.value === 'grid' && Boolean(blocker);
+                return (
+                  <button
+                    key={v.value}
+                    type="button"
+                    role="tab"
+                    aria-selected={view === v.value}
+                    aria-disabled={disabled}
+                    disabled={disabled}
+                    title={disabled ? `Grid shows a whole day — not available with ${blocker[1]}` : undefined}
+                    onClick={() => set('view', v.value)}
+                    data-testid={`view-${v.value}`}
+                    className={cx(
+                      'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors',
+                      view === v.value && !disabled ? 'bg-overlay text-ink' : 'text-muted hover:text-ink',
+                      disabled && 'cursor-not-allowed opacity-40 hover:text-muted',
+                    )}
+                  >
+                    <Icon name={v.icon} className="size-3.5" />
+                    {v.label}
+                  </button>
+                );
+              })}
             </div>
             <Button size="sm" className="lg:hidden" onClick={() => setRailOpen((o) => !o)}>
               <Icon name="filter" className="size-3.5" />
@@ -211,10 +242,16 @@ export function SchedulePage() {
             <p className="text-xs text-muted" data-testid="result-count">
               {loading ? 'Loading…' : `${plural(sessions.length, 'session')} on ${dayLabel(filters.day)}`}
             </p>
-            {view === 'grid' && !gridUsable && !loading && (
-              <p className="text-[11px] text-amber-300">
-                Grid shows whole rooms — searching or filtering by track switches to the list.
-              </p>
+            {blocker && !loading && (
+              <button
+                type="button"
+                onClick={clearBlocker}
+                data-testid="grid-blocked-notice"
+                className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/[0.08] px-3 py-1 text-[11px] font-medium text-amber-200 transition-colors hover:bg-amber-500/15"
+              >
+                <Icon name="info" className="size-3" />
+                Grid shows a whole day — not available with {blocker[1]}. Show whole day
+              </button>
             )}
           </div>
 
@@ -229,9 +266,9 @@ export function SchedulePage() {
             />
           )}
 
-          {!loading && sessions.length > 0 && gridUsable && <ScheduleGrid sessions={sessions} />}
+          {!loading && sessions.length > 0 && showGrid && <ScheduleGrid sessions={sessions} />}
 
-          {!loading && sessions.length > 0 && !gridUsable && slots.map(([time, items]) => (
+          {!loading && sessions.length > 0 && !showGrid && slots.map(([time, items]) => (
             <section key={time} className="card overflow-hidden" data-testid={`slot-${time}`}>
               <header className="flex items-center justify-between gap-3 border-b border-hairline px-4 py-3 sm:px-5">
                 <div className="flex items-baseline gap-3">

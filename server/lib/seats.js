@@ -1,0 +1,82 @@
+import { db } from '../db.js';
+
+/**
+ * Seat inventory.
+ *
+ * `sessions.seats_taken` is the live count — it moves when someone reserves or
+ * releases. Everything here runs inside a transaction because a reservation
+ * touches two tables and must not half-apply.
+ *
+ * When a session is full, reservations are accepted as `waitlisted` and do not
+ * consume a seat. Releasing a confirmed seat promotes the longest-waiting
+ * person automatically.
+ */
+
+const getSession = db.prepare('SELECT id, capacity, seats_taken FROM sessions WHERE id = ?');
+const getReservation = db.prepare('SELECT status, created_at FROM reservations WHERE user_id = ? AND session_id = ?');
+const insertReservation = db.prepare(
+  'INSERT INTO reservations (user_id, session_id, status, created_at) VALUES (?, ?, ?, ?)');
+const deleteReservation = db.prepare('DELETE FROM reservations WHERE user_id = ? AND session_id = ?');
+const bumpSeats = db.prepare('UPDATE sessions SET seats_taken = MAX(0, seats_taken + ?) WHERE id = ?');
+const nextWaiting = db.prepare(`
+  SELECT user_id FROM reservations
+  WHERE session_id = ? AND status = 'waitlisted'
+  ORDER BY created_at, user_id LIMIT 1`);
+const promote = db.prepare("UPDATE reservations SET status = 'confirmed' WHERE user_id = ? AND session_id = ?");
+const countWaiting = db.prepare("SELECT COUNT(*) n FROM reservations WHERE session_id = ? AND status = 'waitlisted'");
+const waitlistAhead = db.prepare(`
+  SELECT COUNT(*) n FROM reservations
+  WHERE session_id = ? AND status = 'waitlisted' AND created_at < ?`);
+
+/** Current seat state for one session, from one attendee's point of view. */
+export function seatState(sessionId, userId) {
+  const s = getSession.get(sessionId);
+  if (!s) return null;
+  const mine = userId ? getReservation.get(userId, sessionId) : null;
+
+  return {
+    sessionId: s.id,
+    capacity: s.capacity,
+    seatsTaken: s.seats_taken,
+    seatsLeft: Math.max(0, s.capacity - s.seats_taken),
+    isFull: s.seats_taken >= s.capacity,
+    waitlistCount: countWaiting.get(sessionId).n,
+    status: mine?.status ?? null,
+    waitlistPosition: mine?.status === 'waitlisted'
+      ? waitlistAhead.get(sessionId, mine.created_at).n + 1
+      : null,
+  };
+}
+
+export const reserveSeat = db.transaction((userId, sessionId) => {
+  const s = getSession.get(sessionId);
+  if (!s) return null;
+  if (getReservation.get(userId, sessionId)) return seatState(sessionId, userId); // already holding one
+
+  const full = s.seats_taken >= s.capacity;
+  insertReservation.run(userId, sessionId, full ? 'waitlisted' : 'confirmed', new Date().toISOString());
+  if (!full) bumpSeats.run(1, sessionId);
+
+  return seatState(sessionId, userId);
+});
+
+export const releaseSeat = db.transaction((userId, sessionId) => {
+  const mine = getReservation.get(userId, sessionId);
+  if (!mine) return seatState(sessionId, userId);
+
+  deleteReservation.run(userId, sessionId);
+
+  let promoted = null;
+  if (mine.status === 'confirmed') {
+    bumpSeats.run(-1, sessionId);
+    // hand the freed seat to whoever has been waiting longest
+    const next = nextWaiting.get(sessionId);
+    if (next) {
+      promote.run(next.user_id, sessionId);
+      bumpSeats.run(1, sessionId);
+      promoted = next.user_id;
+    }
+  }
+
+  return { ...seatState(sessionId, userId), promoted };
+});

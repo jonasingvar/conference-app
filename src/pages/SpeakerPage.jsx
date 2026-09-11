@@ -9,13 +9,20 @@ import { Icon, BrandIcon } from '../components/Icon.jsx';
 import { GeneratedCover } from '../components/GeneratedCover.jsx';
 import { useDocumentTitle } from '../lib/useDocumentTitle.js';
 
-/** Each network gets its own mark — four identical icons told you nothing. */
-const SOCIAL_LINKS = [
-  { key: 'twitter', brand: 'x', label: 'X', href: (v) => `https://x.com/${v.replace('@', '')}` },
-  { key: 'github', brand: 'github', label: 'GitHub', href: (v) => `https://github.com/${v}` },
-  { key: 'linkedin', brand: 'linkedin', label: 'LinkedIn', href: (v) => `https://linkedin.com/${v}` },
-  { key: 'website', icon: 'globe', label: 'Website', href: (v) => v },
+/**
+ * These speakers are fictional and so are their handles. We show the platform
+ * and the handle, but deliberately do not link anywhere — a link would either
+ * 404 or, worse, land on a real stranger's profile.
+ */
+const SOCIALS = [
+  { key: 'twitter', brand: 'x', label: 'X' },
+  { key: 'github', brand: 'github', label: 'GitHub' },
+  { key: 'linkedin', brand: 'linkedin', label: 'LinkedIn' },
+  { key: 'website', icon: 'globe', label: 'Website' },
 ];
+
+const handleOf = (key, value) =>
+  key === 'website' ? value.replace(/^https?:\/\//, '') : value.replace(/^in\//, '');
 
 export function SpeakerPage() {
   const { id } = useParams();
@@ -86,18 +93,16 @@ export function SpeakerPage() {
                 {following ? 'Following' : 'Follow'}
               </Button>
               <span className="mx-1 h-5 w-px bg-hairline" />
-              {SOCIAL_LINKS.map(({ key, brand, icon, label, href }) => speaker.socials[key] && (
-                <a
+              {SOCIALS.map(({ key, brand, icon, label }) => speaker.socials[key] && (
+                <span
                   key={key}
-                  href={href(speaker.socials[key])}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label={`${speaker.name} on ${label}`}
-                  title={label}
-                  className="grid size-9 place-items-center rounded-lg border border-hairline bg-raised text-muted transition-colors hover:border-white/20 hover:bg-overlay hover:text-ink"
+                  title={`${label} · ${handleOf(key, speaker.socials[key])}`}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-hairline bg-raised px-2.5 py-1.5 text-muted"
                 >
-                  {brand ? <BrandIcon name={brand} className="size-4" /> : <Icon name={icon} className="size-4" />}
-                </a>
+                  {brand ? <BrandIcon name={brand} className="size-3.5" /> : <Icon name={icon} className="size-3.5" />}
+                  <span className="text-[11px]">{handleOf(key, speaker.socials[key])}</span>
+                  <span className="sr-only">on {label}</span>
+                </span>
               ))}
             </div>
           </div>

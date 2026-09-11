@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useMemo } from 'react';
 import { useConference, useFetch } from '../lib/store.jsx';
 import * as api from '../lib/api.js';
 import { accent } from '../lib/accents.js';
@@ -155,19 +156,49 @@ function DayPlan({ day }) {
 }
 
 export function MyPlanPage() {
-  const { currentUser } = useConference();
+  const { currentUser, isFavorite, reservationFor } = useConference();
   useDocumentTitle(currentUser ? `${currentUser.name.split(' ')[0]}’s plan` : 'My plan');
   const { data, loading, error, reload } = useFetch(() => api.getSchedule(currentUser.id), [currentUser.id]);
 
-  const totalConflicts = (data?.days ?? []).reduce((n, d) => n + d.conflicts.length, 0);
-  const crossVenueDays = (data?.days ?? []).filter((d) => d.venuesVisited.length > 1).length;
+  /*
+   * The fetched plan is a snapshot. Unstarring a row used to leave it on screen
+   * until a refresh, so the list is filtered through the store's live favourite
+   * set instead — remove a session and its row goes immediately, and Undo in
+   * the toast brings it straight back because the data is still here.
+   */
+  const days = useMemo(() => (data?.days ?? [])
+    .map((d) => {
+      const sessions = d.sessions.filter((s) => isFavorite(s.id) || reservationFor(s.id));
+      const keptIds = new Set(sessions.map((s) => s.id));
+      return {
+        ...d,
+        sessions,
+        conflicts: d.conflicts.filter((c) => c.sessionIds.every((id) => keptIds.has(id))),
+        totalMinutes: sessions.reduce((n, s) => n + s.durationMins, 0),
+        venuesVisited: [...new Set(sessions.map((s) => s.venue.shortName))],
+      };
+    })
+    .filter((d) => d.sessions.length > 0), [data, isFavorite, reservationFor]);
+
+  const totalSessions = days.reduce((n, d) => n + d.sessions.length, 0);
+  const totalReserved = days.reduce((n, d) => n + d.sessions.filter((s) => reservationFor(s.id) === 'confirmed').length, 0);
+  const totalWaitlisted = days.reduce((n, d) => n + d.sessions.filter((s) => reservationFor(s.id) === 'waitlisted').length, 0);
+  const totalConflicts = days.reduce((n, d) => n + d.conflicts.length, 0);
+  const crossVenueDays = days.filter((d) => d.venuesVisited.length > 1).length;
 
   return (
     <div className="space-y-10">
       <SectionHeader
         eyebrow={currentUser.ticketTier === 'Speaker' ? 'Speaker view' : 'Attendee view'}
         title={`${currentUser.name.split(' ')[0]}’s plan`}
-        description={`${currentUser.jobTitle} at ${currentUser.company}. Saved sessions are private to this attendee — switch attendees in the header to see a different plan.`}
+        description={
+          <>
+            Everything you have <strong className="font-semibold text-ink">starred</strong> or hold a{' '}
+            <strong className="font-semibold text-ink">seat</strong> for. Starring is a bookmark;
+            reserving takes an actual chair out of the room.
+            {totalWaitlisted > 0 && ` You are on ${plural(totalWaitlisted, 'waitlist')}.`}
+          </>
+        }
         action={<Button to="/schedule" size="sm">Add more <Icon name="chevronRight" className="size-3.5" /></Button>}
       />
 
@@ -180,13 +211,13 @@ export function MyPlanPage() {
       {data && (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Stat value={data.totalSessions} label="Saved sessions" />
-            <Stat value={data.days.length} label="Days with plans" accent="cyan" />
+            <Stat value={totalReserved} label="Seats reserved" accent="emerald" />
+            <Stat value={totalSessions} label="On your plan" />
             <Stat value={totalConflicts} label="Time clashes" accent={totalConflicts ? 'rose' : 'emerald'} />
             <Stat value={crossVenueDays} label="Cross-town days" accent="amber" />
           </div>
 
-          {data.days.length === 0 ? (
+          {days.length === 0 ? (
             <EmptyState
               icon="bookmark"
               title="Nothing saved yet"
@@ -195,7 +226,7 @@ export function MyPlanPage() {
             />
           ) : (
             <div className="space-y-12">
-              {data.days.map((d) => <DayPlan key={d.date} day={d} />)}
+              {days.map((d) => <DayPlan key={d.date} day={d} />)}
             </div>
           )}
         </>

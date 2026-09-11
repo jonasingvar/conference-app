@@ -18,7 +18,8 @@ import { progressOf, toMinutes } from '../lib/clock.js';
  * these without every card melting into the next.
  */
 export function SessionCard({ session, variant = 'grid', showDay = false }) {
-  const { isFavorite, toggleFavorite, clock } = useConference();
+  const { isFavorite, toggleFavorite, clock, reservationFor } = useConference();
+  const reservation = reservationFor(session.id);
   const favorite = isFavorite(session.id);
 
   // Live state, relative to the conference clock.
@@ -67,6 +68,16 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
                   <Icon name="car" className="size-3" /> {session.venue.shortName}
                 </span>
               )}
+              {reservation === 'confirmed' && (
+                <span className="inline-flex items-center gap-1 font-semibold text-emerald-300">
+                  <Icon name="ticket" className="size-3" /> Seat reserved
+                </span>
+              )}
+              {reservation === 'waitlisted' && (
+                <span className="inline-flex items-center gap-1 font-semibold text-amber-300">
+                  <Icon name="clock" className="size-3" /> Waitlisted
+                </span>
+              )}
             </div>
           </div>
           <FavoriteButton size="sm" active={favorite} onClick={() => toggleFavorite(session.id)} />
@@ -75,9 +86,10 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
     );
   }
 
-  // Feature treatment: keynotes and big rooms earn more visual weight than a
-  // 90-seat roundtable. Without this every card competes equally for attention.
-  const feature = session.isKeynote || session.room.capacity >= 1200;
+  // Feature treatment is for keynotes only. It was also firing on any room over
+  // 1,200 seats, but the daily room set includes big halls, so most of the list
+  // ended up "featured" — which is the same as nothing being featured.
+  const feature = session.isKeynote;
 
   return (
     <article

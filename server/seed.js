@@ -214,6 +214,7 @@ for (let i = 0; i < 108; i++) {
   const [city, country] = pick(CITIES);
   const first = name.split(' ')[0];
   const firstTime = chance(0.22);
+  const yearsExp = int(4, 22);
   const pronouns = presentation === 'm'
     ? pick(['he/him', 'he/him', 'he/him', 'he/they'])
     : pick(['she/her', 'she/her', 'she/her', 'she/they']);
@@ -226,7 +227,7 @@ for (let i = 0; i < 108; i++) {
     city, country,
     ['English', ...(chance(0.45) ? pickN(LANGS.filter((l) => l !== 'English'), int(1, 2)) : [])].join(','),
     pickN(tagsByKind('topic'), int(2, 4)).map((t) => t.name).join(','),
-    int(4, 22), firstTime ? 0 : int(2, 60), firstTime ? 0 : flt(3.9, 4.9, 2),
+    yearsExp, firstTime ? 0 : int(1, Math.max(2, yearsExp * 3)), firstTime ? 0 : flt(3.9, 4.9, 2),
     firstTime ? 1 : 0,
     chance(0.7) ? `@${h}` : null,
     chance(0.6) ? h : null,
@@ -396,9 +397,11 @@ DAYS.forEach((day, dayIdx) => {
    */
   const auroraRooms = bookable.filter((r) => r.venue_id === AURORA.id);
   const foundryRooms = bookable.filter((r) => r.venue_id === FOUNDRY.id);
+  // Five columns fits a laptop without horizontal scrolling, which matters
+  // more than programme size for a sample app.
   const todaysRooms = [
-    ...pickN(auroraRooms, int(5, 6)),
-    ...pickN(foundryRooms, 2), // always something across town
+    ...pickN(auroraRooms, 4),
+    ...pickN(foundryRooms, 1), // always something across town
   ].sort((a, b) => a.venue_id - b.venue_id || a.name.localeCompare(b.name));
 
   const roomTrack = new Map(todaysRooms.map((r) => [r.id, pick(tracks)]));
@@ -579,6 +582,35 @@ users.forEach((u, i) => {
     });
   });
 });
+
+/*
+ * Seat reservations. Attendees reserve a seat for a subset of what they saved —
+ * starring is intent, reserving is commitment. One well-rated workshop is
+ * deliberately filled to capacity so the waitlist path is visible without
+ * having to engineer it by hand.
+ */
+const resStmt = prep('INSERT OR IGNORE INTO reservations (user_id,session_id,status,created_at) VALUES (?,?,?,?)');
+users.forEach((u) => {
+  const saved = db.prepare('SELECT session_id FROM favorites WHERE user_id = ?').all(u.id);
+  pickN(saved, Math.round(saved.length * 0.55)).forEach((f) => {
+    const sess = db.prepare('SELECT capacity, seats_taken FROM sessions WHERE id = ?').get(f.session_id);
+    if (sess.seats_taken >= sess.capacity) return;
+    resStmt.run(u.id, f.session_id, 'confirmed', savedAt());
+    db.prepare('UPDATE sessions SET seats_taken = seats_taken + 1 WHERE id = ?').run(f.session_id);
+  });
+});
+
+// One sold-out workshop, so "join the waitlist" is reachable from the UI.
+const soldOut = db.prepare(`
+  SELECT id, capacity FROM sessions
+  WHERE format = 'Workshop' AND day = ? ORDER BY avg_rating DESC LIMIT 1`).get(DAYS[1]);
+if (soldOut) {
+  db.prepare('UPDATE sessions SET seats_taken = capacity WHERE id = ?').run(soldOut.id);
+  // Jonas holds one of those seats, so releasing it has someone to promote —
+  // this is the fixture the waitlist-promotion test depends on.
+  resStmt.run(users[0].id, soldOut.id, 'confirmed', savedAt());
+  console.log(`  · session ${soldOut.id} seeded at capacity (${soldOut.capacity}) for the waitlist path`);
+}
 
 /* speaker follows */
 const flStmt = prep('INSERT OR IGNORE INTO speaker_follows (user_id,speaker_id) VALUES (?,?)');

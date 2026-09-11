@@ -6,30 +6,10 @@ import { dayLabel, plural, relativeDate, timeRange } from '../lib/format.js';
 import { routesBetween } from '../lib/travel.js';
 import { SessionCard } from '../components/SessionCard.jsx';
 import { GeneratedCover } from '../components/GeneratedCover.jsx';
+import { SeatPanel } from '../components/SeatPanel.jsx';
 import { Avatar, Button, Chip, EmptyState, ErrorState, FavoriteButton, Rating, Skeleton, TrackPill, cx } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
 import { useDocumentTitle } from '../lib/useDocumentTitle.js';
-
-function CapacityBar({ session }) {
-  const pct = Math.round(session.fillRate * 100);
-  const tone = pct >= 95 ? 'bg-rose-400' : pct >= 80 ? 'bg-amber-400' : 'bg-emerald-400';
-  return (
-    <div>
-      <div className="flex items-baseline justify-between text-xs">
-        <span className="text-muted">Seats</span>
-        <span className="font-mono text-ink">
-          {session.seatsTaken.toLocaleString()} / {session.capacity.toLocaleString()}
-        </span>
-      </div>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-overlay">
-        <div className={cx('h-full rounded-full transition-all', tone)} style={{ width: `${Math.min(100, pct)}%` }} />
-      </div>
-      <p className="mt-1.5 text-[11px] text-faint">
-        {pct >= 100 ? 'Full — overflow seating only' : `${session.seatsLeft.toLocaleString()} seats left`}
-      </p>
-    </div>
-  );
-}
 
 function TravelNotice({ session }) {
   const { venues, travel } = useConference();
@@ -64,7 +44,8 @@ function TravelNotice({ session }) {
 export function SessionPage() {
   const { id } = useParams();
   const { isFavorite, toggleFavorite } = useConference();
-  const { data: session, loading, error, reload } = useFetch(() => api.getSession(id), [id]);
+  const { currentUserId } = useConference();
+  const { data: session, loading, error, reload } = useFetch(() => api.getSession(id, currentUserId), [id, currentUserId]);
   useDocumentTitle(session?.title);
 
   if (loading) {
@@ -272,9 +253,9 @@ export function SessionPage() {
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
           <TravelNotice session={session} />
 
-          <div className="card space-y-5 p-5">
-            <CapacityBar session={session} />
+          <SeatPanel session={session} />
 
+          <div className="card space-y-5 p-5">
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wider text-faint">Room</h3>
               <p className="mt-1.5 font-medium">{session.room.name}</p>

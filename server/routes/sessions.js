@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db.js';
 import { SESSION_SELECT, hydrateSessions, toSession, toSpeaker } from '../lib/query.js';
+import { seatState } from '../lib/seats.js';
 
 export const sessionsRouter = Router();
 
@@ -77,5 +78,7 @@ sessionsRouter.get('/:id', (req, res) => {
   const competing = db.prepare(`${SESSION_SELECT} WHERE s.day = ? AND s.starts_at = ? AND s.id != ? ORDER BY s.avg_rating DESC LIMIT 6`)
     .all(row.day, row.starts_at, row.id).map((r) => toSession(r));
 
-  res.json({ ...toSession(row, { speakers, tags }), reviews, alsoInRoom, competing });
+  const seats = seatState(row.id, req.query.userId ? Number(req.query.userId) : null);
+
+  res.json({ ...toSession(row, { speakers, tags }), seats, reviews, alsoInRoom, competing });
 });

@@ -40,22 +40,25 @@ export function ScheduleGrid({ sessions }) {
   return (
     <div className="card overflow-hidden" data-testid="schedule-grid">
       <div className="overflow-x-auto">
+        {/* Columns flex to fill the panel and only scroll once they would be
+            narrower than 9rem, so a normal laptop never scrolls sideways. */}
         <div
-          className="min-w-max"
-          style={{ '--cols': rooms.length }}
+          className="min-w-[52rem]"
+          style={{ '--grid': `5rem repeat(${rooms.length}, minmax(9rem, 1fr))` }}
           role="table"
           aria-label="Schedule by room and time"
         >
           {/* header: room + its track for the day */}
-          <div className="sticky top-0 z-20 flex border-b border-hairline bg-surface" role="row">
-            <div className="sticky left-0 z-10 w-20 shrink-0 border-r border-hairline bg-surface px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-faint">
+          <div className="sticky top-0 z-20 grid border-b border-hairline bg-surface"
+            style={{ gridTemplateColumns: 'var(--grid)' }} role="row">
+            <div className="sticky left-0 z-10 border-r border-hairline bg-surface px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider text-faint">
               Time
             </div>
             {rooms.map((room) => {
               const a = accent(room.track.color);
               return (
                 <div key={room.id} role="columnheader"
-                  className="w-52 shrink-0 border-r border-hairline px-3 py-2 last:border-r-0">
+                  className="min-w-0 border-r border-hairline px-3 py-2 last:border-r-0">
                   <div className={cx('mb-1.5 h-0.5 w-full rounded-full bg-gradient-to-r', a.grad)} />
                   <div className="truncate text-xs font-bold">{room.name}</div>
                   <div className="flex items-center gap-1.5">
@@ -83,8 +86,9 @@ export function ScheduleGrid({ sessions }) {
                   const a = accent(s.track.color);
                   const fav = isFavorite(s.id);
                   return (
-                    <div key={s.id} className="flex border-b border-hairline" role="row">
-                      <div className="sticky left-0 z-10 w-20 shrink-0 border-r border-hairline bg-surface px-3 py-3 font-mono text-xs font-bold">
+                    <div key={s.id} className="grid border-b border-hairline"
+                      style={{ gridTemplateColumns: `5rem 1fr` }} role="row">
+                      <div className="sticky left-0 z-10 border-r border-hairline bg-surface px-3 py-3 font-mono text-xs font-bold">
                         {startsAt}
                       </div>
                       <Link to={`/sessions/${s.id}`}
@@ -110,8 +114,9 @@ export function ScheduleGrid({ sessions }) {
                 })}
 
                 {hasCells && (
-                  <div className="flex border-b border-hairline last:border-b-0" role="row">
-                    <div className="sticky left-0 z-10 flex w-20 shrink-0 flex-col justify-center border-r border-hairline bg-surface px-3 py-2">
+                  <div className="grid border-b border-hairline last:border-b-0"
+                    style={{ gridTemplateColumns: 'var(--grid)' }} role="row">
+                    <div className="sticky left-0 z-10 flex flex-col justify-center border-r border-hairline bg-surface px-3 py-2">
                       <span className="font-mono text-xs font-bold">{startsAt}</span>
                       <span className="font-mono text-[10px] text-faint">
                         {rowCells.find(Boolean)?.endsAt}
@@ -122,7 +127,7 @@ export function ScheduleGrid({ sessions }) {
                       const s = cell(room.id, startsAt);
                       if (!s) {
                         return (
-                          <div key={room.id} className="w-52 shrink-0 border-r border-hairline last:border-r-0" role="cell">
+                          <div key={room.id} className="min-w-0 border-r border-hairline last:border-r-0" role="cell">
                             <div className="grid h-full min-h-[5.5rem] place-items-center text-[11px] text-faint/40">—</div>
                           </div>
                         );
@@ -133,7 +138,7 @@ export function ScheduleGrid({ sessions }) {
                       const done = sameDay && nowMins >= toMinutes(s.endsAt);
 
                       return (
-                        <div key={room.id} className="w-52 shrink-0 border-r border-hairline p-1.5 last:border-r-0" role="cell">
+                        <div key={room.id} className="min-w-0 border-r border-hairline p-1.5 last:border-r-0" role="cell">
                           <Link
                             to={`/sessions/${s.id}`}
                             className={cx(

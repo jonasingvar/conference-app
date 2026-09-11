@@ -19,10 +19,9 @@ const TIER_STYLE = {
 
 function SponsorCard({ sponsor, style, venue }) {
   return (
-    <a
-      href={sponsor.website}
-      target="_blank"
-      rel="noreferrer"
+    // Sponsors are fictional, so this is a card rather than a link to a made-up
+    // domain. Booth number is the useful thing anyway.
+    <div
       className={cx(
         'group relative flex flex-col overflow-hidden rounded-xl border border-hairline bg-raised transition-colors',
         'hover:border-white/20 hover:bg-overlay/70',
@@ -51,7 +50,9 @@ function SponsorCard({ sponsor, style, venue }) {
               Booth {sponsor.booth} · {venue?.shortName}
             </p>
           </div>
-          <Icon name="external" className="size-3.5 shrink-0 text-faint opacity-0 transition-opacity group-hover:opacity-100" />
+          <span className="shrink-0 rounded bg-overlay px-1.5 py-0.5 font-mono text-[10px] text-faint">
+            {sponsor.booth}
+          </span>
         </div>
 
         {style.blurb && <p className="mt-3 text-[13px] leading-relaxed text-muted">{sponsor.blurb}</p>}
@@ -63,7 +64,7 @@ function SponsorCard({ sponsor, style, venue }) {
           </div>
         )}
       </div>
-    </a>
+    </div>
   );
 }
 

@@ -24,6 +24,10 @@ export function ConferenceProvider({ children }) {
   });
   const [favoriteIds, setFavoriteIds] = useState(() => new Set());
   const [followingIds, setFollowingIds] = useState(() => new Set());
+  // sessionId -> 'confirmed' | 'waitlisted'
+  const [reservations, setReservations] = useState(() => new Map());
+  // sessionId -> live seat counts, so a reservation updates every view at once
+  const [seatCounts, setSeatCounts] = useState(() => new Map());
   const clock = useConferenceClock(data?.days ?? []);
   const toast = useToast();
 
@@ -37,10 +41,12 @@ export function ConferenceProvider({ children }) {
       .then((u) => {
         setFavoriteIds(new Set(u.favoriteIds));
         setFollowingIds(new Set(u.followedSpeakers.map((s) => s.id)));
+        setReservations(new Map((u.reservations ?? []).map((r) => [r.sessionId, r.status])));
       })
       .catch(() => {
         setFavoriteIds(new Set());
         setFollowingIds(new Set());
+        setReservations(new Map());
       });
   }, [currentUserId]);
 
@@ -78,6 +84,54 @@ export function ConferenceProvider({ children }) {
     toast({ message: following ? 'Unfollowed' : 'Following — their sessions show in your feed', icon: 'bell' });
   }, [currentUserId, followingIds, toast]);
 
+  /** Apply a seat-state payload from the API to local state. */
+  const applySeatState = useCallback((state) => {
+    setSeatCounts((prev) => new Map(prev).set(state.sessionId, {
+      seatsTaken: state.seatsTaken,
+      seatsLeft: state.seatsLeft,
+      capacity: state.capacity,
+      isFull: state.isFull,
+      waitlistCount: state.waitlistCount,
+    }));
+    setReservations((prev) => {
+      const next = new Map(prev);
+      if (state.status) next.set(state.sessionId, state.status);
+      else next.delete(state.sessionId);
+      return next;
+    });
+  }, []);
+
+  const reserveSeat = useCallback(async (sessionId) => {
+    const state = await api.reserveSeat(currentUserId, sessionId);
+    applySeatState(state);
+    toast({
+      message: state.status === 'waitlisted'
+        ? `Room is full — you are #${state.waitlistPosition} on the waitlist`
+        : 'Seat reserved',
+      icon: state.status === 'waitlisted' ? 'clock' : 'ticket',
+    });
+    return state;
+  }, [currentUserId, applySeatState, toast]);
+
+  const releaseSeat = useCallback(async (sessionId) => {
+    const state = await api.releaseSeat(currentUserId, sessionId);
+    applySeatState(state);
+    toast({
+      message: state.promoted ? 'Seat released — passed to someone on the waitlist' : 'Seat released',
+      icon: 'check',
+    });
+    return state;
+  }, [currentUserId, applySeatState, toast]);
+
+  /** Adopt seat state that arrived with a page payload (e.g. session detail). */
+  const adoptSeatState = useCallback((state) => {
+    if (!state) return;
+    setSeatCounts((prev) => (prev.has(state.sessionId) ? prev : new Map(prev).set(state.sessionId, {
+      seatsTaken: state.seatsTaken, seatsLeft: state.seatsLeft, capacity: state.capacity,
+      isFull: state.isFull, waitlistCount: state.waitlistCount,
+    })));
+  }, []);
+
   const value = useMemo(() => {
     const users = data?.users ?? [];
     return {
@@ -94,11 +148,20 @@ export function ConferenceProvider({ children }) {
       followingIds,
       isFollowing: (id) => followingIds.has(id),
       toggleFollow,
+      reservations,
+      reservationFor: (id) => reservations.get(id) ?? null,
+      seatCounts,
+      seatsFor: (id) => seatCounts.get(id) ?? null,
+      reserveSeat,
+      releaseSeat,
+      applySeatState,
+      adoptSeatState,
       trackBySlug: Object.fromEntries((data?.tracks ?? []).map((t) => [t.slug, t])),
       venueById: Object.fromEntries((data?.venues ?? []).map((v) => [v.id, v])),
       roomById: Object.fromEntries((data?.rooms ?? []).map((r) => [r.id, r])),
     };
-  }, [data, error, clock, currentUserId, favoriteIds, toggleFavorite, followingIds, toggleFollow]);
+  }, [data, error, clock, currentUserId, favoriteIds, toggleFavorite, followingIds, toggleFollow,
+      reservations, seatCounts, reserveSeat, releaseSeat, applySeatState, adoptSeatState]);
 
   return <ConferenceContext.Provider value={value}>{children}</ConferenceContext.Provider>;
 }
