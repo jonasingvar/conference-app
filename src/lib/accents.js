@@ -17,3 +17,30 @@ export const ACCENTS = {
 };
 
 export const accent = (name) => ACCENTS[name] ?? ACCENTS.violet;
+
+/**
+ * Real hex values for the same accents, used by generated SVG artwork where
+ * Tailwind classes are not available (gradients, fills, canvas-style drawing).
+ */
+export const ACCENT_HEX = {
+  violet:  ['#a78bfa', '#6d28d9'],
+  cyan:    ['#67e8f9', '#0e7490'],
+  emerald: ['#6ee7b7', '#047857'],
+  amber:   ['#fcd34d', '#b45309'],
+  orange:  ['#fdba74', '#c2410c'],
+  rose:    ['#fda4af', '#be123c'],
+  fuchsia: ['#f0abfc', '#a21caf'],
+  sky:     ['#7dd3fc', '#0369a1'],
+  lime:    ['#bef264', '#4d7c0f'],
+  teal:    ['#5eead4', '#0f766e'],
+};
+
+export const accentHex = (name) => ACCENT_HEX[name] ?? ACCENT_HEX.violet;
+
+/** Stable accent for an arbitrary label (cuisine, tier, category …). */
+export function accentFor(label = '') {
+  const names = Object.keys(ACCENT_HEX);
+  let h = 0;
+  for (let i = 0; i < label.length; i++) h = (h * 31 + label.charCodeAt(i)) >>> 0;
+  return names[h % names.length];
+}

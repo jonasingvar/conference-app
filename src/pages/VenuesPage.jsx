@@ -5,6 +5,7 @@ import { accent } from '../lib/accents.js';
 import { plural } from '../lib/format.js';
 import { routesBetween } from '../lib/travel.js';
 import { Button, Chip, SectionHeader, Skeleton, cx } from '../components/ui.jsx';
+import { VenueRouteMap } from '../components/VenueRouteMap.jsx';
 import { Icon } from '../components/Icon.jsx';
 
 const KIND_ICON = {
@@ -12,24 +13,33 @@ const KIND_ICON = {
   Roundtable: 'users', Lightning: 'sparkle', Demo: 'grid', Social: 'food',
 };
 
-function TravelPanel() {
-  const { venues, travel } = useConference();
+function TravelPanel({ venueData }) {
+  const { venues, travel, rooms } = useConference();
   const [from, to] = venues;
   if (!from || !to) return null;
   const options = routesBetween(travel, from.id, to.id);
+  const withCounts = venues.map((v) => ({
+    ...v,
+    roomCount: (venueData ?? []).find((x) => x.id === v.id)?.rooms.length
+      ?? rooms.filter((r) => r.venueId === v.id).length,
+  }));
 
   return (
-    <section className="card p-6 sm:p-8" data-testid="travel-panel">
-      <div className="flex flex-wrap items-center gap-3">
-        <Icon name="car" className="size-5 text-amber-300" />
-        <h2 className="font-display text-2xl">Getting between the two sites</h2>
+    <section className="card overflow-hidden" data-testid="travel-panel">
+      <div className="border-b border-hairline p-6 sm:p-8 sm:pb-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <Icon name="car" className="size-5 text-amber-300" />
+          <h2 className="font-display text-2xl">Getting between the two sites</h2>
+        </div>
+        <p className="mt-2 max-w-2xl text-sm text-muted">
+          {from.shortName} and {to.shortName} are 6.2 miles apart. A session at one and a session at the other
+          in adjacent slots is not a plan — it is a wish.
+        </p>
       </div>
-      <p className="mt-2 max-w-2xl text-sm text-muted">
-        {from.shortName} and {to.shortName} are 6.2 miles apart. A session at one and a session at the other
-        in adjacent slots is not a plan — it is a wish.
-      </p>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <VenueRouteMap venues={withCounts} routes={options} className="!rounded-none !border-x-0 !border-t-0" />
+
+      <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
         {options.map((o) => (
           <div key={o.mode} className={cx(
             'rounded-2xl border p-4',
@@ -184,7 +194,7 @@ export function VenuesPage() {
         title="Venues &amp; stages"
         description={`${stageCount || '—'} stages across two sites. Check which one a session is at before you commit your morning to it.`}
       />
-      <TravelPanel />
+      <TravelPanel venueData={data} />
       {loading && <Skeleton className="h-96" />}
       {error && <p className="text-sm text-rose-300">{error.message}</p>}
       {(data ?? []).map((v) => <VenueSection key={v.id} venue={v} />)}

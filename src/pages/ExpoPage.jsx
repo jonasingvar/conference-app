@@ -1,17 +1,19 @@
 import { useConference, useFetch } from '../lib/store.jsx';
 import * as api from '../lib/api.js';
 import { plural } from '../lib/format.js';
-import { Avatar, Button, Chip, ErrorState, SectionHeader, Skeleton, cx } from '../components/ui.jsx';
+import { Button, Chip, ErrorState, SectionHeader, Skeleton, cx } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
+import { GeneratedCover } from '../components/GeneratedCover.jsx';
 
 const TIERS = ['Diamond', 'Platinum', 'Gold', 'Silver', 'Bronze'];
 
+/** Tier drives size, artwork and how much copy survives. */
 const TIER_STYLE = {
-  Diamond: { cols: 'sm:grid-cols-2', size: 'xl', pad: 'p-7', title: 'font-display text-2xl' },
-  Platinum: { cols: 'sm:grid-cols-3', size: 'lg', pad: 'p-6', title: 'font-display text-xl' },
-  Gold: { cols: 'sm:grid-cols-3 lg:grid-cols-5', size: 'md', pad: 'p-5', title: 'text-base font-semibold' },
-  Silver: { cols: 'sm:grid-cols-4 lg:grid-cols-6', size: 'sm', pad: 'p-4', title: 'text-sm font-semibold' },
-  Bronze: { cols: 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-6', size: 'xs', pad: 'p-3.5', title: 'text-[13px] font-semibold' },
+  Diamond:  { cols: 'sm:grid-cols-2', mark: 'size-16', pad: 'p-6', title: 'font-display text-2xl', banner: true, blurb: true },
+  Platinum: { cols: 'sm:grid-cols-3', mark: 'size-14', pad: 'p-5', title: 'font-display text-lg', banner: true, blurb: true },
+  Gold:     { cols: 'sm:grid-cols-3 lg:grid-cols-5', mark: 'size-11', pad: 'p-4', title: 'text-[15px] font-semibold leading-tight', blurb: true },
+  Silver:   { cols: 'sm:grid-cols-3 lg:grid-cols-4', mark: 'size-9', pad: 'p-3.5', title: 'text-sm font-semibold leading-tight' },
+  Bronze:   { cols: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4', mark: 'size-8', pad: 'p-3', title: 'text-[13px] font-semibold leading-tight' },
 };
 
 function SponsorCard({ sponsor, style, venue }) {
@@ -21,30 +23,45 @@ function SponsorCard({ sponsor, style, venue }) {
       target="_blank"
       rel="noreferrer"
       className={cx(
-        'group flex flex-col rounded-2xl border border-hairline bg-surface/70 transition-all',
-        'hover:-translate-y-0.5 hover:border-white/15 hover:bg-raised/70',
-        style.pad,
+        'group relative flex flex-col overflow-hidden rounded-xl border border-hairline bg-raised transition-colors',
+        'hover:border-white/20 hover:bg-overlay/70',
       )}
     >
-      <div className="flex items-center gap-3">
-        <Avatar mono initials={sponsor.initials} accent={sponsor.accent} size={style.size} />
-        <div className="min-w-0 flex-1">
-          <h3 className={cx('truncate group-hover:text-violet-200', style.title)}>{sponsor.name}</h3>
-          <p className="truncate text-[11px] text-faint">
-            Booth {sponsor.booth} · {venue?.shortName}
-          </p>
+      {style.banner && (
+        <div className="relative h-16 overflow-hidden">
+          <GeneratedCover seed={sponsor.name} accent={sponsor.accent} variant="strata"
+            className="size-full transition-transform duration-500 group-hover:scale-105" />
+          <div className="absolute inset-0 bg-gradient-to-t from-raised via-raised/50 to-transparent" />
         </div>
-        <Icon name="external" className="size-3.5 shrink-0 text-faint opacity-0 transition-opacity group-hover:opacity-100" />
+      )}
+
+      <div className={cx('flex flex-1 flex-col', style.pad, style.banner && '-mt-7 pt-0')}>
+        <div className="flex items-start gap-3">
+          <GeneratedCover
+            seed={sponsor.name}
+            accent={sponsor.accent}
+            variant="mark"
+            className={cx('shrink-0 rounded-xl', style.mark, style.banner ? 'ring-4 ring-raised' : 'ring-1 ring-white/10')}
+          />
+          <div className={cx('min-w-0 flex-1', style.banner && 'pt-8')}>
+            {/* Names wrap rather than truncate — "Blackbird S…" helps nobody. */}
+            <h3 className={cx('group-hover:text-violet-200', style.title)}>{sponsor.name}</h3>
+            <p className="mt-0.5 text-[11px] text-faint">
+              Booth {sponsor.booth} · {venue?.shortName}
+            </p>
+          </div>
+          <Icon name="external" className="size-3.5 shrink-0 text-faint opacity-0 transition-opacity group-hover:opacity-100" />
+        </div>
+
+        {style.blurb && <p className="mt-3 text-[13px] leading-relaxed text-muted">{sponsor.blurb}</p>}
+
+        {(sponsor.perk || sponsor.hiring) && (
+          <div className="mt-auto flex flex-wrap gap-1.5 pt-4">
+            {sponsor.perk && <Chip accent={sponsor.accent} className="!px-2 !py-0.5 !text-[10px]">{sponsor.perk}</Chip>}
+            {sponsor.hiring && <Chip accent="emerald" className="!px-2 !py-0.5 !text-[10px]">Hiring</Chip>}
+          </div>
+        )}
       </div>
-      {['Diamond', 'Platinum', 'Gold'].includes(sponsor.tier) && (
-        <p className="mt-3 text-[13px] leading-relaxed text-muted">{sponsor.blurb}</p>
-      )}
-      {(sponsor.perk || sponsor.hiring) && (
-        <div className="mt-auto flex flex-wrap gap-1.5 pt-4">
-          {sponsor.perk && <Chip accent={sponsor.accent} className="!px-2 !py-0.5 !text-[10px]">{sponsor.perk}</Chip>}
-          {sponsor.hiring && <Chip accent="emerald" className="!px-2 !py-0.5 !text-[10px]">Hiring</Chip>}
-        </div>
-      )}
     </a>
   );
 }
@@ -77,8 +94,8 @@ export function ExpoPage() {
               <span className="h-px flex-1 bg-hairline" />
               <span className="text-[11px] text-faint">{plural(tierSponsors.length, 'partner')}</span>
             </div>
-            <div className={cx('grid gap-3', style.cols)}>
-              {tierSponsors.map((s) => (
+            <div className={cx('stagger grid gap-3', style.cols)}>
+              {tierSponsors.map((s, i) => (
                 <SponsorCard key={s.id} sponsor={s} style={style} venue={venueById[s.venueId]} />
               ))}
             </div>

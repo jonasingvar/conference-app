@@ -16,11 +16,20 @@ export const ATTENDEES = {
   priya: 6,      // Speaker — presenting 2 sessions
 };
 
-/** Open a route as a given attendee. Always use this instead of page.goto(). */
-export async function visit(page, path = '/', { as = ATTENDEES.jonas } = {}) {
-  await page.addInitScript((id) => {
+/**
+ * A moment mid-morning on day 1, inside the 10:15 slot. Pin the clock to this
+ * so live-state tests do not depend on when they happen to run.
+ */
+export const MID_SESSION = '2026-10-12T10:30';
+export const BETWEEN_SLOTS = '2026-10-12T11:10';
+
+/** Open a route as a given attendee, optionally with the clock pinned. */
+export async function visit(page, path = '/', { as = ATTENDEES.jonas, at = null } = {}) {
+  await page.addInitScript(({ id, clockAt }) => {
     window.localStorage.setItem('orbit:currentUserId', String(id));
-  }, as);
+    if (clockAt) window.localStorage.setItem('orbit:clockAt', clockAt);
+    else window.localStorage.removeItem('orbit:clockAt');
+  }, { id: as, clockAt: at });
   await page.goto(path);
   await expect(page.getByRole('banner')).toBeVisible();
 }

@@ -4,6 +4,9 @@ import { timeRange } from '../lib/format.js';
 import { useConference } from '../lib/store.jsx';
 import { Avatar, Chip, FavoriteButton, Rating, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
+import { GeneratedCover } from './GeneratedCover.jsx';
+import { LiveBadge } from './LiveNow.jsx';
+import { progressOf, toMinutes } from '../lib/clock.js';
 
 /**
  * The workhorse card, in two layouts:
@@ -15,8 +18,14 @@ import { Icon } from './Icon.jsx';
  * these without every card melting into the next.
  */
 export function SessionCard({ session, variant = 'grid', showDay = false }) {
-  const { isFavorite, toggleFavorite } = useConference();
+  const { isFavorite, toggleFavorite, clock } = useConference();
   const favorite = isFavorite(session.id);
+
+  // Live state, relative to the conference clock.
+  const onToday = clock?.day === session.day;
+  const nowMins = clock ? toMinutes(clock.time) : -1;
+  const isLive = onToday && nowMins >= toMinutes(session.startsAt) && nowMins < toMinutes(session.endsAt);
+  const isDone = onToday && nowMins >= toMinutes(session.endsAt);
   const a = accent(session.track.color);
   const v = accent(session.venue.accent);
   const nearlyFull = session.fillRate >= 0.92;
@@ -27,13 +36,15 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
       <div className={cx(
         'group relative flex scroll-mt-28 items-stretch gap-0 overflow-hidden rounded-xl border bg-raised transition-colors',
         'hover:border-white/20 hover:bg-overlay',
-        favorite ? 'border-amber-400/30' : 'border-hairline',
+        isLive ? 'border-rose-400/45' : favorite ? 'border-amber-400/30' : 'border-hairline',
+        isDone && 'opacity-55',
       )}>
         <span className={cx('w-1 shrink-0 bg-gradient-to-b', a.grad)} aria-hidden="true" />
         <div className="flex min-w-0 flex-1 items-start gap-3 p-3">
           <div className="w-[4.25rem] shrink-0 pt-0.5">
             <div className="font-mono text-xs font-semibold text-ink">{session.startsAt}</div>
             <div className="font-mono text-[10px] text-faint">{session.endsAt}</div>
+            {isLive && <LiveBadge className="mt-1 !px-1.5" />}
           </div>
           <div className="min-w-0 flex-1">
             <Link to={`/sessions/${session.id}`} className="block focus-visible:outline-none">
@@ -64,16 +75,40 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
     );
   }
 
+  // Feature treatment: keynotes and big rooms earn more visual weight than a
+  // 90-seat roundtable. Without this every card competes equally for attention.
+  const feature = session.isKeynote || session.room.capacity >= 1200;
+
   return (
     <article
       className={cx(
         'group relative flex scroll-mt-28 flex-col overflow-hidden rounded-xl border bg-raised transition-colors duration-150',
         'hover:border-white/20 hover:bg-overlay/70',
-        favorite ? 'border-amber-400/40' : 'border-hairline',
+        isLive ? 'border-rose-400/50' : favorite ? 'border-amber-400/40' : 'border-hairline',
+        feature && 'sm:col-span-2',
+        isDone && 'opacity-60',
       )}
     >
       {/* Track rail — the primary way to tell cards apart at a glance. */}
-      <span className={cx('absolute inset-y-0 left-0 w-1 bg-gradient-to-b', a.grad)} aria-hidden="true" />
+      <span className={cx('absolute inset-y-0 left-0 z-10 w-1 bg-gradient-to-b', a.grad)} aria-hidden="true" />
+
+      {feature && (
+        <div className="relative h-20 overflow-hidden border-b border-hairline">
+          <GeneratedCover seed={session.title} accent={session.track.color}
+            variant={session.isKeynote ? 'orbit' : 'mesh'} className="size-full" />
+          <div className="absolute inset-0 bg-gradient-to-t from-raised via-raised/35 to-transparent" />
+          <div className="absolute bottom-2 left-5 flex items-center gap-2">
+            {session.isKeynote && (
+              <span className="rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
+                Keynote
+              </span>
+            )}
+            <span className="rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white/85 backdrop-blur-sm">
+              {session.room.capacity.toLocaleString()} seats
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Header row */}
       <div className="flex items-start justify-between gap-3 px-4 pl-5 pt-3.5">
@@ -88,14 +123,20 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
             {timeRange(session.startsAt, session.endsAt)}
           </span>
         </div>
-        <FavoriteButton active={favorite} onClick={() => toggleFavorite(session.id)} />
+        <div className="flex shrink-0 items-center gap-2">
+          {isLive && <LiveBadge />}
+          <FavoriteButton active={favorite} onClick={() => toggleFavorite(session.id)} />
+        </div>
       </div>
 
       {/* Body */}
       <div className="flex flex-1 flex-col px-5 pb-4 pt-2.5">
         <Link to={`/sessions/${session.id}`} className="focus-visible:outline-none">
           <span className="absolute inset-0" aria-hidden="true" />
-          <h3 className="line-clamp-2 font-display text-[1.0625rem] leading-snug transition-colors group-hover:text-violet-200">
+          <h3 className={cx(
+            'line-clamp-2 font-display leading-snug transition-colors group-hover:text-violet-200',
+            feature ? 'text-xl' : 'text-[1.0625rem]',
+          )}>
             {session.title}
           </h3>
         </Link>
@@ -103,7 +144,9 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
           <p className="mt-1 line-clamp-1 text-[11px] italic text-faint">{session.subtitle}</p>
         )}
 
-        <p className="mt-2.5 line-clamp-2 text-[12.5px] leading-relaxed text-muted">{session.abstract}</p>
+        <p className={cx('mt-2.5 text-[12.5px] leading-relaxed text-muted', feature ? 'line-clamp-3' : 'line-clamp-2')}>
+          {session.abstract}
+        </p>
 
         {session.speakers?.length > 0 && (
           <div className="mt-4 flex items-center gap-2.5 pt-1">
@@ -146,6 +189,13 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
           <Rating value={session.avgRating} count={session.ratingCount} showValue={false} />
         </div>
       </div>
+
+      {isLive && (
+        <div className="h-1 w-full bg-overlay">
+          <div className={cx('h-full bg-gradient-to-r transition-all duration-1000', a.grad)}
+            style={{ width: `${Math.round(progressOf(session, clock.time) * 100)}%` }} />
+        </div>
+      )}
     </article>
   );
 }

@@ -26,6 +26,7 @@ const qs = (params = {}) => {
 
 export const getBootstrap = () => api('/bootstrap');
 export const getStats = () => api('/stats');
+export const getLive = ({ day, time }) => api(`/live${qs({ day, time })}`);
 export const getSessions = (filters) => api(`/sessions${qs(filters)}`);
 export const getSession = (id) => api(`/sessions/${id}`);
 export const getSpeakers = (filters) => api(`/speakers${qs(filters)}`);

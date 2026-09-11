@@ -141,7 +141,7 @@ export function SchedulePage() {
           </header>
           {/* auto-fit means a slot with one session fills the row rather than
               leaving two empty columns next to it */}
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-3 p-3 sm:p-4">
+          <div className="grid grid-flow-row-dense grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-3 p-3 sm:p-4">
             {items.map((s) => <SessionCard key={s.id} session={s} />)}
           </div>
         </section>

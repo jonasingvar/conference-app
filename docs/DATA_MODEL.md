@@ -86,6 +86,15 @@ Drop a real image URL into that column and it is used instead, no code change.
 `GET /api/users/:id` returns `isSpeaker: true`, a `speaker` object and
 `speakingSessions`, which is what renders the speaker panel on My Plan.
 
+## Time
+
+Nothing in the database stores a timezone. `sessions.starts_at` / `ends_at` are
+local venue time as `HH:MM`, and `day` is a plain date. The app's sense of "now"
+is simulated client-side by `src/lib/clock.js` and passed to
+`GET /api/live?day=&time=`, which returns the sessions running at that instant
+plus the next slot. The server has no clock of its own — it answers questions
+about a moment you give it, which is what makes the whole thing testable.
+
 ## Determinism
 
 `server/seed.js` uses its own linear congruential PRNG seeded with `20261012`.

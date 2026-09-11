@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db.js';
-import { toVenue, toRoom, toSponsor, toVendor, toAnnouncement, toUser } from '../lib/query.js';
+import { SESSION_SELECT, hydrateSessions, toVenue, toRoom, toSponsor, toVendor, toAnnouncement, toUser } from '../lib/query.js';
 
 export const metaRouter = Router();
 
@@ -29,6 +29,7 @@ metaRouter.get('/bootstrap', (req, res) => {
       weekday: new Date(`${d.day}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' }),
       sessionCount: d.n,
     }));
+  const cuisines = db.prepare('SELECT DISTINCT cuisine FROM vendors ORDER BY cuisine').all().map((c) => c.cuisine);
   const formats = db.prepare('SELECT format, COUNT(*) n FROM sessions GROUP BY format ORDER BY n DESC').all()
     .map((f) => ({ name: f.format, count: f.n }));
   const levels = db.prepare('SELECT level, COUNT(*) n FROM sessions GROUP BY level').all()
@@ -43,7 +44,7 @@ metaRouter.get('/bootstrap', (req, res) => {
       dates: 'October 12–15, 2026',
       startDate: days[0]?.date ?? '2026-10-12',
     },
-    venues, travel, tracks, tags, rooms, users, days, formats, levels,
+    venues, travel, tracks, tags, rooms, users, days, formats, levels, cuisines,
   });
 });
 
@@ -77,6 +78,36 @@ metaRouter.get('/sponsors', (req, res) => {
 
 metaRouter.get('/announcements', (req, res) => {
   res.json(db.prepare('SELECT * FROM announcements ORDER BY pinned DESC, posted_at DESC').all().map(toAnnouncement));
+});
+
+/**
+ * GET /api/live?day=YYYY-MM-DD&time=HH:MM
+ * What is running right now, and what starts next. Drives the live strip.
+ */
+metaRouter.get('/live', (req, res) => {
+  const { day, time } = req.query;
+  if (!day || !time) return res.status(400).json({ error: 'day and time are required' });
+
+  const running = db.prepare(`${SESSION_SELECT}
+    WHERE s.day = ? AND s.starts_at <= ? AND s.ends_at > ?
+    ORDER BY s.is_keynote DESC, s.capacity DESC`).all(day, time, time);
+
+  const nextSlot = db.prepare(
+    'SELECT MIN(starts_at) t FROM sessions WHERE day = ? AND starts_at > ?').get(day, time)?.t;
+
+  const upcoming = nextSlot
+    ? db.prepare(`${SESSION_SELECT}
+        WHERE s.day = ? AND s.starts_at = ?
+        ORDER BY s.is_keynote DESC, s.avg_rating DESC`).all(day, nextSlot)
+    : [];
+
+  res.json({
+    day,
+    time,
+    nextSlot: nextSlot ?? null,
+    happeningNow: hydrateSessions(running),
+    upNext: hydrateSessions(upcoming),
+  });
 });
 
 metaRouter.get('/stats', (req, res) => {

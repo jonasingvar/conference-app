@@ -41,7 +41,7 @@ server/
   index.js           express app, mounts routers, 404 + error handlers
   lib/query.js       shared SQL fragments and every snake_case → camelCase mapper
   routes/
-    meta.js          /bootstrap, /venues, /vendors, /sponsors, /announcements, /stats
+    meta.js          /bootstrap, /live, /venues, /vendors, /sponsors, /announcements, /stats
     sessions.js      /sessions, /sessions/:id
     speakers.js      /speakers, /speakers/:id
     users.js         /users, /users/:id, /users/:id/schedule, favourites, follows
@@ -53,9 +53,12 @@ src/
     api.js           one function per endpoint; nothing else calls fetch()
     store.jsx        ConferenceProvider (global data) + useFetch (page data)
     format.js        time/date/pluralisation helpers
-    accents.js       accent name → fixed Tailwind class strings
+    accents.js       accent name → fixed Tailwind class strings (+ hex for SVG)
     travel.js        travel-time helpers for the two-venue split
-  components/        Layout, SessionCard, SpeakerCard, UserSwitcher, ui.jsx, Icon.jsx …
+    clock.js         the conference clock: simulated "now", progress, open/closed
+  components/        Layout, SessionCard, SpeakerCard, UserSwitcher, ui.jsx, Icon.jsx,
+                     LiveNow.jsx, GeneratedAvatar.jsx, GeneratedCover.jsx,
+                     VenueRouteMap.jsx …
   pages/             one file per route, named <Thing>Page
 tests/               Playwright specs + helpers.js
 scripts/shot.mjs     screenshot tool
@@ -100,6 +103,49 @@ Never write `` `bg-${color}-500` ``.
 
 **Add `data-testid` to anything a test needs to find** — result counts, panels,
 list containers. Do not put testids on decorative elements.
+
+## The conference clock
+
+ORBIT '26 is in the future, so "now" is simulated. `src/lib/clock.js` takes the
+viewer's real time of day and projects it onto a conference day, then ticks every
+30 seconds. Open the app at 10:40 and you are standing in the 10:15 slot watching
+it run; outside 08:00–22:30 it clamps to a lively mid-morning moment.
+
+`useConference().clock` gives you `{ day, time }`. Use it — do not call `new Date()`
+in a component. `GET /api/live?day=&time=` returns what is running and what starts
+next.
+
+Pin it for demos and tests with `?at=2026-10-13T14:30`, or the `orbit:clockAt`
+localStorage key. `tests/helpers.js` exports `MID_SESSION` and `BETWEEN_SLOTS`
+and `visit(page, path, { at })` sets it for you — **any test that touches live
+state must pin the clock**, otherwise it passes or fails depending on the hour
+it runs.
+
+## Imagery
+
+There is no photography in this repo and none should be added. Everything visual
+is generated deterministically from a string:
+
+- `GeneratedAvatar` — a portrait per person, hashed from their name.
+- `GeneratedCover` — key art for sessions, tracks, vendors and sponsors.
+  Variants: `orbit` (keynotes, heroes), `mesh` (category tiles), `strata`
+  (wide banners), `mark` (logo-like squares).
+- `VenueRouteMap` — the two sites projected from their real lat/lng.
+
+Same input, same output, on every machine — which keeps screenshots and tests
+stable. Speakers also have an `image_url` column: set it and `<Avatar>` uses the
+real photo instead, no code change.
+
+## Visual hierarchy
+
+Not every card is equal, and the UI must say so. Sessions that are keynotes or
+in rooms of 1,200+ seats get the `feature` treatment in `SessionCard` — cover
+art, a wider span, more of the abstract. The top-rated vendor and the Diamond
+and Platinum sponsors get similar promotion. When you add a new card type, ask
+what makes one instance more important than another and show it.
+
+Grids that mix feature and normal cards use `grid-flow-row-dense` so the wide
+ones never leave holes.
 
 ## Verifying a change
 

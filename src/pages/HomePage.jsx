@@ -5,6 +5,8 @@ import { accent } from '../lib/accents.js';
 import { dayLabel, plural, timeRange } from '../lib/format.js';
 import { fastestRoute } from '../lib/travel.js';
 import { SessionCard } from '../components/SessionCard.jsx';
+import { LiveNow } from '../components/LiveNow.jsx';
+import { GeneratedCover } from '../components/GeneratedCover.jsx';
 import { SpeakerCard } from '../components/SpeakerCard.jsx';
 import { Avatar, Button, Chip, SectionHeader, Skeleton, Stat, cx } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
@@ -17,7 +19,7 @@ function Hero({ conference, stats }) {
       <div className="absolute inset-0 bg-[radial-gradient(42rem_24rem_at_12%_-5%,rgba(139,92,246,0.30),transparent_62%),radial-gradient(34rem_20rem_at_92%_8%,rgba(34,211,238,0.22),transparent_60%)]" />
       <div className="absolute inset-0 opacity-40 [background-image:linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] [background-size:52px_52px] [mask-image:radial-gradient(60rem_30rem_at_30%_0%,black,transparent)]" />
 
-      <div className="relative grid gap-8 px-6 py-10 sm:px-10 sm:py-12 lg:grid-cols-[1.1fr_minmax(0,21rem)] lg:items-stretch lg:gap-12 lg:px-12">
+      <div className="relative grid gap-8 px-6 py-10 sm:px-10 sm:py-12 lg:grid-cols-[1.1fr_minmax(0,21rem)] lg:items-center lg:gap-12 lg:px-12">
         <div>
           <Chip accent="cyan" className="mb-5 !py-1.5">
             <span className="size-1.5 animate-pulse-dot rounded-full bg-cyan-400" />
@@ -64,7 +66,7 @@ function Hero({ conference, stats }) {
         {/* Programme at a glance — real data, and it stops the hero feeling empty. */}
         <div className="flex flex-col rounded-2xl border border-white/[0.09] bg-black/25 p-5 backdrop-blur-sm">
           <h2 className="text-[10px] font-bold uppercase tracking-[0.18em] text-faint">Programme at a glance</h2>
-          <ul className="mt-4 flex flex-1 flex-col justify-between gap-3 pb-4">
+          <ul className="mt-4 space-y-3">
             {days.map((d, i) => {
               const max = Math.max(...days.map((x) => x.sessionCount));
               return (
@@ -88,7 +90,7 @@ function Hero({ conference, stats }) {
             })}
           </ul>
 
-          <div className="mt-auto space-y-2 border-t border-white/[0.08] pt-4">
+          <div className="mt-5 space-y-2 border-t border-white/[0.08] pt-4">
             {venues.map((v) => (
               <div key={v.id} className="flex items-center gap-2.5 text-xs">
                 <span aria-hidden="true">{v.emoji}</span>
@@ -196,14 +198,20 @@ function TrackGrid() {
             <Link
               key={t.id}
               to={`/schedule?track=${t.slug}`}
-              className="group relative overflow-hidden rounded-2xl border border-hairline bg-surface/70 p-4 transition-all hover:-translate-y-0.5 hover:border-white/15 hover:bg-raised/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400"
+              className="group relative overflow-hidden rounded-2xl border border-hairline bg-surface transition-colors hover:border-white/20 hover:bg-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400"
             >
-              <span className={cx('absolute inset-x-0 top-0 h-px bg-gradient-to-r opacity-80', a.grad)} />
+              <div className="absolute inset-0 opacity-60 transition-opacity duration-300 group-hover:opacity-90">
+                <GeneratedCover seed={t.name} accent={t.color} variant="mesh" className="size-full" />
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-br from-surface/70 via-surface/88 to-surface" />
+              <span className={cx('absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r', a.grad)} />
+              <div className="relative p-4">
               <div className="flex items-center justify-between gap-2">
                 <h3 className={cx('font-semibold leading-tight', a.text)}>{t.name}</h3>
                 <span className="shrink-0 font-mono text-[11px] text-faint">{counts[t.slug] ?? '—'}</span>
               </div>
               <p className="mt-2 line-clamp-3 text-[12px] leading-relaxed text-muted">{t.description}</p>
+              </div>
             </Link>
           );
         })}
@@ -228,8 +236,15 @@ function Keynotes() {
               <Link
                 key={s.id}
                 to={`/sessions/${s.id}`}
-                className="group relative flex flex-col overflow-hidden rounded-2xl border border-hairline bg-surface/70 p-6 transition-all hover:-translate-y-0.5 hover:border-white/15 hover:bg-raised/70"
+                style={{ '--i': i }}
+                className="group relative flex flex-col overflow-hidden rounded-2xl border border-hairline bg-surface transition-colors hover:border-white/20 hover:bg-raised"
               >
+                <div className="relative h-28 overflow-hidden">
+                  <GeneratedCover seed={s.title} accent={s.track.color} variant="orbit"
+                    className="size-full transition-transform duration-500 group-hover:scale-105" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/45 to-transparent" />
+                </div>
+                <div className="flex flex-1 flex-col p-6 pt-4">
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-violet-300">
                     Day {i + 1} · {dayLabel(s.day)}
@@ -254,6 +269,7 @@ function Keynotes() {
                     <div className="truncate font-medium">{s.speakers.map((sp) => sp.name).join(', ')}</div>
                     <div className={cx('truncate', v.text)}>{s.room.name} · {timeRange(s.startsAt, s.endsAt)}</div>
                   </div>
+                </div>
                 </div>
               </Link>
             );
@@ -314,7 +330,7 @@ function PopularSessions() {
         title="What people are talking about"
         action={<Button to="/schedule" size="sm">See all <Icon name="chevronRight" className="size-3.5" /></Button>}
       />
-      <div className="mt-6 grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-4">
+      <div className="mt-6 grid grid-flow-row-dense grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-4">
         {loading
           ? Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="h-72" />)
           : top.map((s) => <SessionCard key={s.id} session={s} showDay />)}
@@ -331,6 +347,7 @@ export function HomePage() {
   return (
     <div className="space-y-16 sm:space-y-20">
       <Hero conference={conference} stats={stats} />
+      <LiveNow />
       {announcements && <AnnouncementStrip announcements={announcements} />}
       <YourPlan />
       <Keynotes />
