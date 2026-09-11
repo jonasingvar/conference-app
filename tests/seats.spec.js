@@ -46,9 +46,7 @@ async function findPromotionFixture(request) {
   return null;
 }
 
-// These mutate shared seat counts, so they must not overlap within a project.
-test.describe.configure({ mode: 'serial' });
-
+// Each test picks a different session per project, so they can run in parallel.
 test.describe('Seat reservation', () => {
   test('reserving moves the seat count, and releasing gives it back', async ({ page, request }, testInfo) => {
     const { open } = await findSessions(request, testInfo);

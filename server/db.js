@@ -174,6 +174,15 @@ CREATE TABLE IF NOT EXISTS reservations (
   PRIMARY KEY (user_id, session_id)
 );
 
+-- Proof you actually turned up. Self check-in opens shortly before a session
+-- starts and closes when it ends; rating a session requires one.
+CREATE TABLE IF NOT EXISTS check_ins (
+  user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  session_id    INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  checked_in_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, session_id)
+);
+
 CREATE TABLE IF NOT EXISTS speaker_follows (
   user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   speaker_id INTEGER NOT NULL REFERENCES speakers(id) ON DELETE CASCADE,
@@ -241,6 +250,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_room      ON sessions(room_id);
 CREATE INDEX IF NOT EXISTS idx_ss_speaker         ON session_speakers(speaker_id);
 CREATE INDEX IF NOT EXISTS idx_st_tag             ON session_tags(tag_id);
 CREATE INDEX IF NOT EXISTS idx_reservations_user  ON reservations(user_id);
+CREATE INDEX IF NOT EXISTS idx_checkins_user      ON check_ins(user_id);
 CREATE INDEX IF NOT EXISTS idx_reservations_sess  ON reservations(session_id, status, created_at);
 CREATE INDEX IF NOT EXISTS idx_rooms_venue        ON rooms(venue_id);
 `;
@@ -253,6 +263,7 @@ export function dropAll() {
   db.pragma('foreign_keys = OFF');
   db.exec(`
     DROP TABLE IF EXISTS ratings;
+    DROP TABLE IF EXISTS check_ins;
     DROP TABLE IF EXISTS reservations;
     DROP TABLE IF EXISTS speaker_follows;
     DROP TABLE IF EXISTS session_tags;

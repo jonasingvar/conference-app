@@ -13,7 +13,12 @@ async function api(path, options = {}) {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error ?? `Request failed: ${res.status}`);
+    const error = new Error(body.error ?? `Request failed: ${res.status}`);
+    // Some 4xx responses are meaningful (a 409 carries the conflicting seat),
+    // so keep the parsed body on the error rather than throwing it away.
+    error.status = res.status;
+    error.payload = body;
+    throw error;
   }
   return res.json();
 }
@@ -42,6 +47,18 @@ export const getSchedule = (userId) => api(`/users/${userId}/schedule`);
 
 export const reserveSeat = (userId, sessionId) => api(`/users/${userId}/reservations/${sessionId}`, { method: 'PUT' });
 export const releaseSeat = (userId, sessionId) => api(`/users/${userId}/reservations/${sessionId}`, { method: 'DELETE' });
+
+export const getAttendance = (userId, sessionId, { day, time }) =>
+  api(`/users/${userId}/attendance/${sessionId}${qs({ day, time })}`);
+
+export const checkIn = (userId, sessionId, now) =>
+  api(`/users/${userId}/checkins/${sessionId}`, { method: 'PUT', body: JSON.stringify(now) });
+
+export const rateSession = (userId, sessionId, payload) =>
+  api(`/users/${userId}/ratings/${sessionId}`, { method: 'PUT', body: JSON.stringify(payload) });
+
+export const agendaCalendarUrl = (userId) => `/api/users/${userId}/agenda.ics`;
+export const sessionCalendarUrl = (sessionId) => `/api/sessions/${sessionId}.ics`;
 
 export const followSpeaker = (userId, speakerId) => api(`/users/${userId}/follows/${speakerId}`, { method: 'PUT' });
 export const unfollowSpeaker = (userId, speakerId) => api(`/users/${userId}/follows/${speakerId}`, { method: 'DELETE' });

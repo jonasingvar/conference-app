@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { db } from '../db.js';
 import { SESSION_SELECT, hydrateSessions, toUser, toSpeaker, toSession, toMinutes } from '../lib/query.js';
 import { reserveSeat, releaseSeat, seatState } from '../lib/seats.js';
+import { attendanceState, checkIn, rateSession } from '../lib/attendance.js';
+import { agendaCalendar } from '../lib/ical.js';
 
 /** Sessions this user is presenting, if their account is linked to a speaker. */
 function speakingSessions(speakerId) {
@@ -42,6 +44,10 @@ usersRouter.get('/:id', (req, res) => {
     speakingSessions: speakingSessions(row.speaker_id),
     reservations: db.prepare('SELECT session_id, status FROM reservations WHERE user_id = ?').all(row.id)
       .map((r) => ({ sessionId: r.session_id, status: r.status })),
+    checkIns: db.prepare('SELECT session_id FROM check_ins WHERE user_id = ?').all(row.id)
+      .map((c) => c.session_id),
+    ratings: db.prepare('SELECT session_id, stars FROM ratings WHERE user_id = ?').all(row.id)
+      .map((r) => ({ sessionId: r.session_id, stars: r.stars })),
   }));
 });
 
@@ -49,6 +55,13 @@ usersRouter.get('/:id', (req, res) => {
  * GET /api/users/:id/schedule
  * Every session this attendee holds a seat or a waitlist place for.
  */
+/** A subscribable feed of everything this attendee holds a seat for. */
+usersRouter.get('/:id/agenda.ics', (req, res) => {
+  const ics = agendaCalendar(Number(req.params.id));
+  if (!ics) return res.status(404).json({ error: 'Attendee not found' });
+  res.type('text/calendar').set('Content-Disposition', 'attachment; filename="orbit-agenda.ics"').send(ics);
+});
+
 usersRouter.get('/:id/schedule', (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
   if (!user) return res.status(404).json({ error: 'Attendee not found' });
@@ -107,7 +120,37 @@ usersRouter.get('/:id/schedule', (req, res) => {
 usersRouter.put('/:id/reservations/:sessionId', (req, res) => {
   const state = reserveSeat(Number(req.params.id), Number(req.params.sessionId));
   if (!state) return res.status(404).json({ error: 'Session not found' });
+  // 409: you already hold a seat that overlaps this one
+  res.status(state.rejected === 'overlap' ? 409 : 200).json(state);
+});
+
+/**
+ * Turning up and saying what you thought. `now` comes from the client, because
+ * the conference clock is simulated — see CLAUDE.md.
+ */
+usersRouter.get('/:id/attendance/:sessionId', (req, res) => {
+  const state = attendanceState(Number(req.params.sessionId), Number(req.params.id),
+    { day: req.query.day, time: req.query.time });
+  if (!state) return res.status(404).json({ error: 'Session not found' });
   res.json(state);
+});
+
+usersRouter.put('/:id/checkins/:sessionId', (req, res) => {
+  const state = checkIn(Number(req.params.id), Number(req.params.sessionId),
+    { day: req.body?.day, time: req.body?.time });
+  if (!state) return res.status(404).json({ error: 'Session not found' });
+  res.status(state.rejected ? 409 : 200).json(state);
+});
+
+usersRouter.put('/:id/ratings/:sessionId', (req, res) => {
+  const stars = Number(req.body?.stars);
+  if (!Number.isInteger(stars) || stars < 1 || stars > 5) {
+    return res.status(400).json({ error: 'stars must be an integer from 1 to 5' });
+  }
+  const state = rateSession(Number(req.params.id), Number(req.params.sessionId),
+    { stars, comment: req.body?.comment }, { day: req.body?.day, time: req.body?.time });
+  if (!state) return res.status(404).json({ error: 'Session not found' });
+  res.status(state.rejected ? 409 : 200).json(state);
 });
 
 usersRouter.delete('/:id/reservations/:sessionId', (req, res) => {

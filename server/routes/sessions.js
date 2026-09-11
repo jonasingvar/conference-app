@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../db.js';
 import { SESSION_SELECT, hydrateSessions, toSession, toSpeaker } from '../lib/query.js';
 import { seatState } from '../lib/seats.js';
+import { sessionCalendar } from '../lib/ical.js';
 
 export const sessionsRouter = Router();
 
@@ -54,6 +55,12 @@ sessionsRouter.get('/', (req, res) => {
 
   const sql = `${SESSION_SELECT} ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY ${orderBy}`;
   res.json(hydrateSessions(db.prepare(sql).all(...args)));
+});
+
+sessionsRouter.get('/:id.ics', (req, res) => {
+  const ics = sessionCalendar(Number(req.params.id));
+  if (!ics) return res.status(404).json({ error: 'Session not found' });
+  res.type('text/calendar').set('Content-Disposition', `attachment; filename="orbit-${req.params.id}.ics"`).send(ics);
 });
 
 sessionsRouter.get('/:id', (req, res) => {

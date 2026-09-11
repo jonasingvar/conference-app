@@ -198,7 +198,14 @@ export function MyAgendaPage() {
             {totalWaitlisted > 0 && ` You are on ${plural(totalWaitlisted, 'waitlist')}.`}
           </>
         }
-        action={<Button to="/schedule" size="sm">Add more <Icon name="chevronRight" className="size-3.5" /></Button>}
+        action={
+          <div className="flex items-center gap-2">
+            <Button href={api.agendaCalendarUrl(currentUser.id)} size="sm" data-testid="export-calendar">
+              <Icon name="calendar" className="size-3.5" /> Add to calendar
+            </Button>
+            <Button to="/schedule" size="sm">Add more <Icon name="chevronRight" className="size-3.5" /></Button>
+          </div>
+        }
       />
 
       {currentUser.isSpeaker && <SpeakingPanel user={currentUser} />}

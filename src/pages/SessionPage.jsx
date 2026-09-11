@@ -7,6 +7,7 @@ import { routesBetween } from '../lib/travel.js';
 import { SessionCard } from '../components/SessionCard.jsx';
 import { GeneratedCover } from '../components/GeneratedCover.jsx';
 import { SeatPanel } from '../components/SeatPanel.jsx';
+import { AttendancePanel } from '../components/AttendancePanel.jsx';
 import { Avatar, Button, Chip, EmptyState, ErrorState, Rating, Skeleton, TrackPill, cx } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
 import { useDocumentTitle } from '../lib/useDocumentTitle.js';
@@ -114,6 +115,9 @@ export function SessionPage() {
               {reservation === 'waitlisted' ? 'On the waitlist'
                 : reservation ? 'On my agenda'
                 : 'Add to my agenda'}
+            </Button>
+            <Button href={api.sessionCalendarUrl(session.id)}>
+              <Icon name="calendar" className="size-3.5" /> Add to calendar
             </Button>
             {session.slidesUrl && (
               <Button href={session.slidesUrl} target="_blank" rel="noreferrer">
@@ -255,6 +259,8 @@ export function SessionPage() {
           <TravelNotice session={session} />
 
           <SeatPanel session={session} />
+
+          <AttendancePanel session={session} />
 
           <div className="card space-y-5 p-5">
             <div>

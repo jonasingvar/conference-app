@@ -62,3 +62,19 @@ export function failOnPageErrors(page, errors = []) {
 export async function waitForResults(page, testId = 'result-count') {
   await expect(page.getByTestId(testId)).not.toHaveText(/Loading/, { timeout: 10_000 });
 }
+
+/**
+ * Clear an attendee's seats for one day.
+ *
+ * Seat state is real and persists across runs, so a test that books something
+ * will hit the overlap guard on its next run unless it tidies up. Call this
+ * before any test that adds a session.
+ */
+export async function clearAgendaFor(request, userId, day) {
+  const res = await request.get(`http://localhost:3001/api/users/${userId}/schedule`);
+  const plan = await res.json();
+  const onDay = (plan.days ?? []).find((d) => d.date === day);
+  for (const session of onDay?.sessions ?? []) {
+    await request.delete(`http://localhost:3001/api/users/${userId}/reservations/${session.id}`);
+  }
+}

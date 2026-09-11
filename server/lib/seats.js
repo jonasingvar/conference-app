@@ -12,7 +12,7 @@ import { db } from '../db.js';
  * person automatically.
  */
 
-const getSession = db.prepare('SELECT id, capacity, seats_taken FROM sessions WHERE id = ?');
+const getSession = db.prepare('SELECT id, capacity, seats_taken, day, starts_at, ends_at, title FROM sessions WHERE id = ?');
 const getReservation = db.prepare('SELECT status, created_at FROM reservations WHERE user_id = ? AND session_id = ?');
 const insertReservation = db.prepare(
   'INSERT INTO reservations (user_id, session_id, status, created_at) VALUES (?, ?, ?, ?)');
@@ -48,10 +48,39 @@ export function seatState(sessionId, userId) {
   };
 }
 
+/**
+ * You cannot hold two seats at the same time. This is the one invariant every
+ * real reservation system enforces — AWS re:Invent and Google I/O both block
+ * it outright rather than warning — because a seat you cannot physically use
+ * is a seat somebody else wanted.
+ */
+const overlapping = db.prepare(`
+  SELECT s.id, s.title, s.starts_at, s.ends_at, r.status
+  FROM reservations r
+  JOIN sessions s ON s.id = r.session_id
+  WHERE r.user_id = ?
+    AND r.status = 'confirmed'
+    AND s.id != ?
+    AND s.day = ?
+    AND s.starts_at < ?
+    AND ? < s.ends_at
+  LIMIT 1`);
+
 export const reserveSeat = db.transaction((userId, sessionId) => {
   const s = getSession.get(sessionId);
   if (!s) return null;
   if (getReservation.get(userId, sessionId)) return seatState(sessionId, userId); // already holding one
+
+  const clash = overlapping.get(userId, sessionId, s.day, s.ends_at, s.starts_at);
+  if (clash) {
+    return {
+      ...seatState(sessionId, userId),
+      rejected: 'overlap',
+      conflictsWith: {
+        id: clash.id, title: clash.title, startsAt: clash.starts_at, endsAt: clash.ends_at,
+      },
+    };
+  }
 
   const full = s.seats_taken >= s.capacity;
   insertReservation.run(userId, sessionId, full ? 'waitlisted' : 'confirmed', new Date().toISOString());

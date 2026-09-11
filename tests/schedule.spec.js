@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { visit, waitForResults, conferenceDays, ATTENDEES } from './helpers.js';
+import { visit, waitForResults, conferenceDays, clearAgendaFor, ATTENDEES } from './helpers.js';
 
 test.describe('Schedule', () => {
   test('lists sessions for the selected day', async ({ page }) => {
@@ -76,8 +76,14 @@ test.describe('Schedule grid', () => {
     await expect(page.locator('article').first()).toBeVisible();
   });
 
-  test('adding from a grid cell updates the agenda count', async ({ page }) => {
-    await visit(page, '/schedule?view=grid', { as: ATTENDEES.marcus });
+  test('adding from a grid cell updates the agenda count', async ({ page, request }, testInfo) => {
+    // Marcus only attends the first two days, so days 3 and 4 are free of the
+    // overlap guard — and each project takes a different one, because seat
+    // counts are shared server state and the projects run concurrently.
+    const days = await conferenceDays();
+    const day = days[testInfo.project.name === 'mobile' ? 2 : 3];
+    await clearAgendaFor(request, ATTENDEES.marcus, day);
+    await visit(page, `/schedule?view=grid&day=${day}`, { as: ATTENDEES.marcus });
     const count = page.getByTestId('starred-count');
     const before = Number(await count.innerText());
 

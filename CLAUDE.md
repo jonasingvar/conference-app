@@ -127,6 +127,40 @@ what this app does.
   to the payload a page was fetched with, or "removed" stays unreachable until a
   refresh.
 
+## The attendee chain
+
+Four real rules, each borrowed from how conferences actually run. They are the
+interesting part of this app — all of them write state, and each one gates the
+next:
+
+1. **Add a session** → takes a seat, or a waitlist place. **You cannot hold two
+   seats in overlapping slots** — the API returns 409 with the clashing session,
+   and the UI offers a swap. Every real system blocks this rather than warning.
+2. **Check in** → opens 15 minutes before the session starts, closes when it
+   ends. You cannot check in to something that has not happened.
+3. **Rate it** → only if you checked in, only once it is over. One rating per
+   person, editable. Ratings roll up onto `sessions.avg_rating` immediately.
+4. **Export** → `/api/users/:id/agenda.ics` and `/api/sessions/:id.ics`.
+
+`server/lib/seats.js` and `server/lib/attendance.js` hold the rules; both run
+inside transactions. Check-in and rating take the clock from the *client*,
+because conference time is simulated.
+
+### Writing tests against this
+
+Seat, check-in and rating state is **real and persists between runs**, and the
+desktop and mobile projects run concurrently. So:
+
+- Give each project a **different attendee or a different day** — never let two
+  projects mutate the same counter.
+- **Clean up after yourself**: `clearAgendaFor(request, userId, day)` in
+  `tests/helpers.js`. A test that books a seat and does not release it will hit
+  the overlap guard on its next run.
+- There is deliberately **no way to undo a check-in**, so pick a session the
+  attendee has not been to rather than trying to reset one.
+- Do not use `test.describe.configure({ mode: 'serial' })` with conditional
+  `test.skip()` — a skip abandons the rest of the group.
+
 ## The conference clock
 
 **Day 1 is the day you seed.** `npm run db:seed` sets the conference to start

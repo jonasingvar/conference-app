@@ -21,7 +21,8 @@ this document explains the shape and the parts that carry meaning.
 | `users` | 6 | Attendees. No passwords — there is no auth |
 | `reservations` | ~63 | An attendee's agenda. Holds a real seat; waitlisted when full |
 | `speaker_follows` | ~85 | |
-| `ratings` | ~38 | Drawn from sessions the attendee actually booked |
+| `ratings` | ~42 | Only submittable by someone who checked in |
+| `check_ins` | grows | Proof of attendance; gates rating |
 | `vendors` | 24 | Food and drink, positioned on the venue maps |
 | `sponsors` | 28 | Five tiers, booth numbers, perks |
 | `announcements` | 10 | Two are pinned and surface on the home page |

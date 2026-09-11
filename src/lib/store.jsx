@@ -83,12 +83,36 @@ export function ConferenceProvider({ children }) {
    * seat (or a waitlist place). There is no separate bookmark — see CLAUDE.md.
    */
   const reserveSeat = useCallback(async (sessionId) => {
-    const state = await api.reserveSeat(currentUserId, sessionId);
+    let state;
+    try {
+      state = await api.reserveSeat(currentUserId, sessionId);
+    } catch (err) {
+      // 409 means an overlapping seat; the API sends the clash back in the body
+      state = err.payload ?? null;
+      if (!state) throw err;
+    }
+    if (state.rejected === 'overlap') {
+      toast({
+        message: `Clashes with “${state.conflictsWith.title}” at ${state.conflictsWith.startsAt}`,
+        icon: 'alert',
+        duration: 6000,
+        action: {
+          label: 'Swap',
+          onClick: async () => {
+            await api.releaseSeat(currentUserId, state.conflictsWith.id)
+              .then(applySeatState);
+            await api.reserveSeat(currentUserId, sessionId).then(applySeatState);
+          },
+        },
+      });
+      return state;
+    }
+
     applySeatState(state);
     toast({
       message: state.status === 'waitlisted'
         ? `Room is full — you are #${state.waitlistPosition} on the waitlist`
-        : 'Seat reserved',
+        : 'Seat booked',
       icon: state.status === 'waitlisted' ? 'clock' : 'ticket',
     });
     return state;
