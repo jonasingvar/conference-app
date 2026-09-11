@@ -11,10 +11,11 @@ this document explains the shape and the parts that carry meaning.
 | `venues` | 2 | Two physical sites, 6.2 miles apart |
 | `venue_travel` | 8 | Travel time + cost per mode, both directions |
 | `rooms` | 29 | Stages, workshops, roundtables; each belongs to a venue |
+| — | — | Each *day* uses a stable 7–8 of them, each themed to one track |
 | `tracks` | 10 | Programme tracks, each with a colour |
 | `tags` | 69 | Four kinds: `topic`, `tech`, `audience`, `vibe` |
-| `speakers` | 180 | Fictional. Two are linked to attendee accounts |
-| `sessions` | ~362 | 4 days × 7 slots × 11–15 parallel, plus keynotes and socials |
+| `speakers` | 110 | Fictional, with synthetic portraits. Two are linked to attendee accounts |
+| `sessions` | ~182 | 4 days × 7 slots × 7–8 parallel, plus keynotes and socials |
 | `session_speakers` | ~515 | Many-to-many, with a `role` (Speaker / Moderator / Host) |
 | `session_tags` | ~2600 | Many-to-many |
 | `users` | 6 | Attendees. No passwords — there is no auth |

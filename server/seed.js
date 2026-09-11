@@ -388,8 +388,24 @@ DAYS.forEach((day, dayIdx) => {
   db.prepare('DELETE FROM session_speakers WHERE session_id = ?').run(kid);
   assignable.filter((s) => s.featured).slice(dayIdx * 3, dayIdx * 3 + int(1, 2)).forEach((s) => ssStmt.run(kid, s.id, 'Speaker'));
 
+  /*
+   * Real conferences run a room all day and give it a theme, rather than
+   * scattering talks across whichever room happens to be free. Doing the same
+   * here keeps the programme believable and, more practically, makes the grid
+   * view a dense matrix instead of a mostly-empty spreadsheet.
+   */
+  const auroraRooms = bookable.filter((r) => r.venue_id === AURORA.id);
+  const foundryRooms = bookable.filter((r) => r.venue_id === FOUNDRY.id);
+  const todaysRooms = [
+    ...pickN(auroraRooms, int(5, 6)),
+    ...pickN(foundryRooms, 2), // always something across town
+  ].sort((a, b) => a.venue_id - b.venue_id || a.name.localeCompare(b.name));
+
+  const roomTrack = new Map(todaysRooms.map((r) => [r.id, pick(tracks)]));
+
   SLOTS.forEach(([start, end]) => {
-    pickN(bookable, int(5, 8)).forEach((room) => {
+    todaysRooms.forEach((room) => {
+      if (!chance(0.88)) return; // the occasional empty slot — rooms get cleaned
       let title, guard = 0;
       do { title = makeTitle(); guard++; } while (usedTitles.has(title) && guard < 30);
       usedTitles.add(title);
@@ -402,7 +418,7 @@ DAYS.forEach((day, dayIdx) => {
       addSession({
         title, subtitle: pick(SUBTITLES), abstract: makeAbstract(),
         prereq: isWorkshop ? (pick(PREREQS) ?? 'Bring a laptop. Setup instructions are linked from this page.') : pick(PREREQS),
-        track: pick(tracks), room, day, start, end, format,
+        track: roomTrack.get(room.id), room, day, start, end, format,
         level: isWorkshop ? pick(['Intermediate', 'Advanced']) : pick(LEVELS),
         language: chance(0.05) ? pick(['Spanish', 'Japanese', 'German']) : 'English',
         seats: Math.min(room.capacity, Math.round(room.capacity * flt(0.22, 1.04, 2))),

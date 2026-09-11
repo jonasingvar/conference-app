@@ -18,7 +18,7 @@ test.describe('Conference clock', () => {
   });
 
   test('a running session is flagged live on the schedule', async ({ page }) => {
-    await visit(page, '/schedule?day=2026-10-12', { at: MID_SESSION });
+    await visit(page, '/schedule?day=2026-10-12&view=list', { at: MID_SESSION });
     await expect(page.getByTestId('result-count')).not.toHaveText(/Loading/);
     await expect(page.getByTestId('slot-10:15').getByText('Live').first()).toBeVisible();
   });

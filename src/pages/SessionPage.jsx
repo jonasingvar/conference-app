@@ -5,6 +5,7 @@ import { accent } from '../lib/accents.js';
 import { dayLabel, plural, relativeDate, timeRange } from '../lib/format.js';
 import { routesBetween } from '../lib/travel.js';
 import { SessionCard } from '../components/SessionCard.jsx';
+import { GeneratedCover } from '../components/GeneratedCover.jsx';
 import { Avatar, Button, Chip, EmptyState, ErrorState, FavoriteButton, Rating, Skeleton, TrackPill, cx } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
 
@@ -130,11 +131,6 @@ export function SessionPage() {
               <Icon name="star" filled={favorite} className="size-4" />
               {favorite ? 'Saved to my plan' : 'Save to my plan'}
             </Button>
-            {session.recordingUrl && (
-              <Button href={session.recordingUrl} target="_blank" rel="noreferrer">
-                <Icon name="play" className="size-3.5" /> Recording
-              </Button>
-            )}
             {session.slidesUrl && (
               <Button href={session.slidesUrl} target="_blank" rel="noreferrer">
                 <Icon name="layers" className="size-3.5" /> Slides
@@ -152,6 +148,34 @@ export function SessionPage() {
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-8">
+          {session.recordingUrl && (
+            <a
+              href={session.recordingUrl}
+              target="_blank"
+              rel="noreferrer"
+              data-testid="video-poster"
+              className="group relative block aspect-video overflow-hidden rounded-xl border border-hairline"
+            >
+              <GeneratedCover seed={session.title} accent={session.track.color} variant="orbit"
+                className="size-full transition-transform duration-700 group-hover:scale-105" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10" />
+
+              <span className="absolute inset-0 grid place-items-center">
+                <span className="grid size-16 place-items-center rounded-full bg-white/95 text-black shadow-2xl transition-transform duration-300 group-hover:scale-110 sm:size-20">
+                  <Icon name="play" filled className="ml-1 size-6 sm:size-7" />
+                </span>
+              </span>
+
+              <span className="absolute inset-x-0 bottom-0 flex flex-wrap items-center gap-x-3 gap-y-1 p-4 sm:p-5">
+                <span className="rounded-full bg-rose-500/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                  Recording
+                </span>
+                <span className="text-sm font-semibold text-white">Watch this session</span>
+                <span className="ml-auto font-mono text-xs text-white/70">{session.durationMins} min</span>
+              </span>
+            </a>
+          )}
+
           <section>
             <h2 className="font-display text-xl">About this session</h2>
             <p className="mt-3 text-[15px] leading-relaxed text-muted">{session.abstract}</p>

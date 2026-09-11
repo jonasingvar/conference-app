@@ -20,7 +20,7 @@ test.describe('Session detail', () => {
 
   test('off-site sessions warn about travel time', async ({ page }) => {
     // Find a Foundry session, then open it.
-    await visit(page, '/schedule?venue=2');
+    await visit(page, '/schedule?venue=2&view=list');
     await expect(page.getByTestId('result-count')).not.toHaveText(/Loading/);
     await page.locator('article').first().getByRole('heading').click();
 

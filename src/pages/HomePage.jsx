@@ -28,7 +28,7 @@ function Hero({ conference, stats }) {
             {conference.dates} · {conference.city}
           </Chip>
 
-          <h1 className="font-display text-[2.75rem] leading-[0.94] sm:text-6xl lg:text-[4.25rem]">
+          <h1 className="font-display text-[3rem] leading-[0.9] tracking-[-0.045em] sm:text-7xl lg:text-[5rem]">
             <span className="text-gradient">The model is<br />the easy part.</span>
           </h1>
 
@@ -47,20 +47,21 @@ function Hero({ conference, stats }) {
             <Button to="/my-plan" size="lg">Build my plan</Button>
           </div>
 
-          <dl className="mt-9 grid max-w-lg grid-cols-4 gap-4 border-t border-white/[0.08] pt-6">
+          {/* a hard modular grid — every figure in its own cell */}
+          <dl className="mt-9 grid max-w-xl grid-cols-2 border-l border-t border-white/[0.10] sm:grid-cols-4">
             {[
               [stats?.sessions, 'Sessions'],
               [stats?.speakers, 'Speakers'],
               [stats?.rooms, 'Stages'],
               [stats?.countries, 'Countries'],
             ].map(([value, label]) => (
-              <div key={label}>
+              <div key={label} className="border-b border-r border-white/[0.10] px-4 py-3.5">
                 <dt className="sr-only">{label}</dt>
                 <dd>
-                  <span className="block font-display text-2xl leading-none sm:text-3xl">
+                  <span className="block font-display text-3xl leading-none tracking-tight sm:text-4xl">
                     {value ? <CountUp value={value} /> : '—'}
                   </span>
-                  <span className="mt-1.5 block text-[10px] font-semibold uppercase tracking-[0.14em] text-faint">{label}</span>
+                  <span className="mt-2 block font-mono text-[10px] uppercase tracking-[0.16em] text-faint">{label}</span>
                 </dd>
               </div>
             ))}

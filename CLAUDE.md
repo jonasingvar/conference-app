@@ -58,8 +58,8 @@ src/
     travel.js        travel-time helpers for the two-venue split
     clock.js         the conference clock: simulated "now", progress, open/closed
   components/        Layout, SessionCard, SpeakerCard, UserSwitcher, ui.jsx, Icon.jsx,
-                     LiveNow.jsx, GeneratedAvatar.jsx, GeneratedCover.jsx,
-                     VenueRouteMap.jsx …
+                     ScheduleGrid.jsx, SpeakerSpotlight.jsx, LiveNow.jsx,
+                     GeneratedAvatar.jsx, GeneratedCover.jsx, VenueRouteMap.jsx …
   pages/             one file per route, named <Thing>Page
 tests/               Playwright specs + helpers.js
 scripts/shot.mjs     screenshot tool
@@ -171,6 +171,25 @@ Animation is CSS-driven and lives in `src/index.css`: `ken-burns`, `slide-in`,
   bottom of `index.css`, which also forces `.reveal` content visible — so
   nothing is ever hidden behind an animation that never runs. Anything new you
   add must survive that same test.
+
+## The schedule has two views
+
+`/schedule` renders either a **grid** (time down, rooms across, tinted by the
+track that room runs that day) or a **list** (cards grouped by time slot). The
+choice lives in `?view=`; with no param the grid is used on `lg` and up and the
+list below, because a horizontally scrolling matrix is miserable on a phone.
+
+The grid only makes sense when whole rooms are visible, so searching or
+filtering by track/topic falls back to the list automatically — `gridUsable` in
+`SchedulePage`.
+
+This works because the seed gives each day a **stable set of 7–8 rooms, each
+with a track for the day**, the way real conferences run. If you change session
+generation to scatter talks across arbitrary rooms again, the grid becomes a
+mostly-empty spreadsheet.
+
+Filters live in a sticky left rail on desktop and collapse behind a Filters
+button on mobile — tests must open it before touching a filter control.
 
 ## Visual hierarchy
 

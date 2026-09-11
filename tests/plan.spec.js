@@ -3,7 +3,7 @@ import { visit, ATTENDEES } from './helpers.js';
 
 test.describe('My Plan', () => {
   test('saving a session from the schedule adds it to the plan', async ({ page }) => {
-    await visit(page, '/schedule', { as: ATTENDEES.marcus });
+    await visit(page, '/schedule?view=list', { as: ATTENDEES.marcus });
     await expect(page.getByTestId('result-count')).not.toHaveText(/Loading/);
 
     const card = page.locator('article').first();
