@@ -18,9 +18,9 @@ this document explains the shape and the parts that carry meaning.
 | `session_speakers` | ~515 | Many-to-many, with a `role` (Speaker / Moderator / Host) |
 | `session_tags` | ~2600 | Many-to-many |
 | `users` | 6 | Attendees. No passwords — there is no auth |
-| `favorites` | ~140 | An attendee's saved plan |
+| `favorites` | ~60 | An attendee's saved plan — a realistic handful per day |
 | `speaker_follows` | ~85 | |
-| `ratings` | ~60 | Stars plus optional comment; drives the reviews list |
+| `ratings` | ~36 | Drawn from sessions the attendee actually booked |
 | `vendors` | 24 | Food and drink, positioned on the venue maps |
 | `sponsors` | 28 | Five tiers, booth numbers, perks |
 | `announcements` | 10 | Two are pinned and surface on the home page |
@@ -103,7 +103,17 @@ Everyone who clones this repo gets byte-identical data. **Never use
 `Math.random()` in the seed** — it breaks screenshot comparisons, test
 fixtures and shared issue reports.
 
-Attendee plans are shaped, not random: each attendee picks at most one session
-per time slot, with a small per-attendee chance of a deliberate double-booking,
-so clash detection has something real to report without every plan looking
-broken.
+Attendee plans are shaped, not random. Nobody attends seven sessions a day, so
+each attendee books the keynote (sometimes) plus **two to four talks** on the
+days they actually show up — leaving most of the grid deliberately empty, the
+way a real schedule looks. Totals land between 6 and 16 sessions across the
+whole conference, varying by persona: Marcus flew in for a couple of specific
+talks, Sofia wants to see everything.
+
+A small per-attendee chance of double-booking one slot keeps clash detection
+honest without making every plan look broken.
+
+Jonas's cross-town traps are planted **before** the organic picks, so the slots
+are already taken when the random filling happens. Otherwise the trap
+degenerates into an ordinary time clash instead of the subtler "these do not
+overlap, but you still cannot make both" case it is meant to be.

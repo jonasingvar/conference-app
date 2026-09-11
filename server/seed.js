@@ -436,12 +436,12 @@ USERS.forEach((u, i) => {
 const users = db.prepare('SELECT * FROM users').all();
 
 /**
- * Favourites — every attendee gets a differently shaped, mostly *sane* plan.
+ * Favourites — a realistic day, not a full timetable.
  *
- * Picking sessions at random produces dozens of overlaps, which is not what a
- * real plan looks like. Instead each attendee picks at most one session per
- * time slot, with an occasional deliberate double-booking so the clash
- * detection has something real to report.
+ * Nobody attends seven sessions a day. You go to the keynote, pick two or
+ * three talks, and spend the rest of the day in the hallway track, the expo,
+ * lunch, or asleep. So each attendee books a handful of slots per day they
+ * actually show up for, leaving most of the grid deliberately empty.
  */
 const fStmt = prep('INSERT OR IGNORE INTO favorites (user_id,session_id,created_at) VALUES (?,?,?)');
 const savedAt = () =>
@@ -450,50 +450,73 @@ const savedAt = () =>
 const slotsByDay = {};
 DAYS.forEach((day) => {
   slotsByDay[day] = db.prepare(
-    'SELECT DISTINCT starts_at FROM sessions WHERE day = ? ORDER BY starts_at',
+    'SELECT DISTINCT starts_at FROM sessions WHERE day = ? AND is_keynote = 0 ORDER BY starts_at',
   ).all(day).map((r) => r.starts_at);
 });
-const sessionsInSlot = db.prepare('SELECT id FROM sessions WHERE day = ? AND starts_at = ?');
+const sessionsInSlot = db.prepare('SELECT id FROM sessions WHERE day = ? AND starts_at = ? AND is_keynote = 0');
+const keynoteOn = db.prepare('SELECT id FROM sessions WHERE day = ? AND is_keynote = 1');
 
-// [days attended, chance of taking any given slot, chance of double-booking a slot]
+// days attended · talks booked per day (excluding the keynote) · chance of
+// double-booking one slot · chance of bothering with that morning's keynote
+// days attended · talks booked per day (excluding the keynote) · chance of
+// double-booking one slot · chance of bothering with that morning's keynote
 const PLAN_SHAPE = [
-  { days: 4, density: 0.80, clash: 0.10 }, // Jonas — packed
-  { days: 3, density: 0.70, clash: 0.06 }, // Amara — speaking, so lighter
-  { days: 2, density: 0.65, clash: 0.00 }, // Kenji — first timer, cautious
-  { days: 4, density: 0.90, clash: 0.14 }, // Sofia — wants to see everything
-  { days: 2, density: 0.45, clash: 0.00 }, // Marcus — here for two things
-  { days: 3, density: 0.72, clash: 0.08 }, // Priya — speaking twice
+  { days: 4, perDay: [2, 3], clash: 0.15, keynote: 0.85 }, // Jonas — here for the whole thing
+  { days: 3, perDay: [1, 2], clash: 0.08, keynote: 0.70 }, // Amara — speaking, so less time
+  { days: 2, perDay: [2, 3], clash: 0.00, keynote: 1.00 }, // Kenji — first ORBIT, does not miss a keynote
+  { days: 4, perDay: [2, 4], clash: 0.15, keynote: 0.90 }, // Sofia — wants to see everything
+  { days: 2, perDay: [2, 3], clash: 0.00, keynote: 0.50 }, // Marcus — flew in for a couple of specific talks
+  { days: 3, perDay: [2, 3], clash: 0.10, keynote: 0.60 }, // Priya — speaking twice
 ];
 
+/*
+ * Plant Jonas's cross-town traps FIRST: an Aurora session immediately followed
+ * by a Foundry session. They do not overlap in time, so simple clash detection
+ * says they are fine — but the shuttle takes 27 minutes. Booking them before
+ * the organic picks below means those slots are already taken, so the trap does
+ * not accidentally turn into an ordinary double-booking.
+ */
+const auroraIds = rooms.filter((r) => r.venue_id === AURORA.id).map((r) => r.id);
+const foundryIds = rooms.filter((r) => r.venue_id === FOUNDRY.id).map((r) => r.id);
+const pairFor = (day, s1, s2) => [
+  db.prepare(`SELECT id FROM sessions WHERE day=? AND starts_at=? AND room_id IN (${auroraIds.join(',')}) LIMIT 1`).get(day, s1),
+  db.prepare(`SELECT id FROM sessions WHERE day=? AND starts_at=? AND room_id IN (${foundryIds.join(',')}) LIMIT 1`).get(day, s2),
+];
+[[DAYS[0], '10:15', '11:30'], [DAYS[3], '09:00', '10:15']].forEach(([d, s1, s2]) => {
+  pairFor(d, s1, s2).forEach((row, n) => {
+    if (row) fStmt.run(users[0].id, row.id, `2026-10-09T11:0${n}:00Z`);
+  });
+});
+
+/** Slots this attendee has already committed to on a given day. */
+const takenSlots = db.prepare(`
+  SELECT DISTINCT s.starts_at FROM favorites f
+  JOIN sessions s ON s.id = f.session_id
+  WHERE f.user_id = ? AND s.day = ?`);
+
 users.forEach((u, i) => {
-  const shape = PLAN_SHAPE[i] ?? { days: 3, density: 0.6, clash: 0.05 };
+  const shape = PLAN_SHAPE[i] ?? { days: 3, perDay: [2, 3], clash: 0.1, keynote: 0.7 };
   DAYS.slice(0, shape.days).forEach((day) => {
-    slotsByDay[day].forEach((slot) => {
-      if (!chance(shape.density)) return;
+    if (chance(shape.keynote)) {
+      const k = keynoteOn.get(day);
+      if (k) fStmt.run(u.id, k.id, savedAt());
+    }
+
+    const busy = new Set(takenSlots.all(u.id, day).map((r) => r.starts_at));
+    const free = slotsByDay[day].filter((slot) => !busy.has(slot));
+    // perDay counts talks, so the keynote must not eat into the budget —
+    // only already-booked *talk* slots (a planted trap) count against it.
+    const bookedTalks = slotsByDay[day].filter((slot) => busy.has(slot)).length;
+    const wanted = Math.max(0, int(shape.perDay[0], shape.perDay[1]) - bookedTalks);
+
+    pickN(free, wanted).forEach((slot) => {
       const candidates = sessionsInSlot.all(day, slot);
       if (!candidates.length) return;
+      // occasionally book two things at once — that is what clash detection is for
       const take = chance(shape.clash) ? 2 : 1;
       pickN(candidates, take).forEach((c) => fStmt.run(u.id, c.id, savedAt()));
     });
   });
-});
-
-/*
- * Give Jonas three cross-town back-to-backs: an Aurora session immediately
- * followed by a Foundry session. They do not overlap in time, so simple clash
- * detection says they are fine — but the shuttle takes 27 minutes.
- */
-const auroraIds = rooms.filter((r) => r.venue_id === AURORA.id).map((r) => r.id);
-const foundryIds = rooms.filter((r) => r.venue_id === FOUNDRY.id).map((r) => r.id);
-const pairFor = (day, s1, s2) => {
-  const a = db.prepare(`SELECT id FROM sessions WHERE day=? AND starts_at=? AND room_id IN (${auroraIds.join(',')}) LIMIT 1`).get(day, s1);
-  const b = db.prepare(`SELECT id FROM sessions WHERE day=? AND starts_at=? AND room_id IN (${foundryIds.join(',')}) LIMIT 1`).get(day, s2);
-  return [a, b];
-};
-[[DAYS[0], '10:15', '11:30'], [DAYS[1], '14:45', '16:00'], [DAYS[3], '09:00', '10:15']].forEach(([d, s1, s2]) => {
-  const [a, b] = pairFor(d, s1, s2);
-  if (a) fStmt.run(users[0].id, a.id, '2026-10-09T11:00:00Z');
-  if (b) fStmt.run(users[0].id, b.id, '2026-10-09T11:01:00Z');
 });
 
 /* speaker follows */
@@ -503,8 +526,14 @@ users.forEach((u, i) => pickN(speakers, [17, 8, 24, 5, 12, 19][i] ?? 10).forEach
 /* ratings */
 const COMMENTS = ['Best session of the day. The incident walkthrough alone was worth the ticket.','Great content, but ran out of time before the Q&A. Would watch a longer version.','Practical and specific. Took four pages of notes.','A bit more vendor pitch than I expected in the last ten minutes.','Finally, someone showing the failure cases instead of the happy path.','Room was far too small for the demand — had to sit on the floor.','Solid intro, but I expected more depth given the Advanced label.','The eval harness they open-sourced is going straight into our stack.','Slides were dense, delivery was excellent.','Honestly the most useful 45 minutes I have spent this year.','Had to leave halfway to make it across to the Foundry. Watching the recording.','Speaker knew the material cold and it showed in the Q&A.'];
 const ratStmt = prep('INSERT OR IGNORE INTO ratings (user_id,session_id,stars,comment,created_at) VALUES (?,?,?,?,?)');
-users.forEach((u) => pickN(sessions, int(7, 16)).forEach((s) =>
-  ratStmt.run(u.id, s.id, pick([2, 3, 4, 4, 5, 5, 5]), chance(0.7) ? pick(COMMENTS) : null, `${s.day}T19:${String(int(10, 59))}:00Z`)));
+// You can only rate a session you went to, so ratings are drawn from the
+// attendee's own plan rather than from the programme at large.
+users.forEach((u) => {
+  const attended = db.prepare('SELECT session_id, day FROM favorites f JOIN sessions s ON s.id = f.session_id WHERE f.user_id = ?').all(u.id);
+  pickN(attended, Math.ceil(attended.length * 0.55)).forEach((a) =>
+    ratStmt.run(u.id, a.session_id, pick([2, 3, 4, 4, 5, 5, 5]),
+      chance(0.7) ? pick(COMMENTS) : null, `${a.day}T19:${String(int(10, 59))}:00Z`));
+});
 
 /* ============================== VENDORS ============================ */
 // [name,cuisine,description,venueKey,building,floor,x,y,open,close,price,rating,dietary,emoji,wait]
