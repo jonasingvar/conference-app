@@ -25,6 +25,7 @@ npm run dev          # seeds the database, then starts API + web on one command
 | `npm run verify -- --ui` | Interactive Playwright runner. |
 | `npm run shot` | Screenshot every main route into `.screenshots/`. Starts the app if it is not running. |
 | `npm run shot -- /schedule --mobile --user=2` | Screenshot one route, mobile viewport, as attendee 2. |
+| `npm run avatars` | Download any missing speaker portraits. They are committed, so you rarely need this. |
 
 ## Stack
 
@@ -123,18 +124,27 @@ it runs.
 
 ## Imagery
 
-There is no photography in this repo and none should be added. Everything visual
-is generated deterministically from a string:
+**No photograph of a real person appears anywhere in this repo, and none should
+be added.** Two systems cover it:
 
-- `GeneratedAvatar` — a portrait per person, hashed from their name.
+**Portraits** live in `public/avatars/` and are served from `/avatars/…`. They
+are StyleGAN output from thispersondoesnotexist.com — every face is synthetic,
+so no real person is depicted and there are no likeness rights. They were
+downloaded once by `scripts/fetch-avatars.mjs`, downscaled to 256px and
+committed, so the app never touches the network at runtime. `speakers.image_url`
+and `users.image_url` point at them; a speaker with no file falls back to the
+generated SVG portrait, so a partial set is never a broken image.
+
+**Everything else is generated deterministically from a string:**
+
+- `GeneratedAvatar` — the SVG portrait fallback, hashed from a name.
 - `GeneratedCover` — key art for sessions, tracks, vendors and sponsors.
   Variants: `orbit` (keynotes, heroes), `mesh` (category tiles), `strata`
   (wide banners), `mark` (logo-like squares).
 - `VenueRouteMap` — the two sites projected from their real lat/lng.
 
 Same input, same output, on every machine — which keeps screenshots and tests
-stable. Speakers also have an `image_url` column: set it and `<Avatar>` uses the
-real photo instead, no code change.
+stable.
 
 ## Visual hierarchy
 
@@ -143,6 +153,13 @@ in rooms of 1,200+ seats get the `feature` treatment in `SessionCard` — cover
 art, a wider span, more of the abstract. The top-rated vendor and the Diamond
 and Platinum sponsors get similar promotion. When you add a new card type, ask
 what makes one instance more important than another and show it.
+
+The speakers page is the clearest example: 180 people are too many for one flat
+grid, so it is tiered — keynote names as photo-forward `headline` cards, people
+with three or more sessions as normal cards, and the long tail as a compact
+`row` list. `SpeakerCard` takes a `variant` for exactly this. Searching or
+filtering collapses the tiers into a single result grid, because at that point
+the user has stated what matters.
 
 Grids that mix feature and normal cards use `grid-flow-row-dense` so the wide
 ones never leave holes.

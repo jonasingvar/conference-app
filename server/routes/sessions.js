@@ -61,12 +61,12 @@ sessionsRouter.get('/:id', (req, res) => {
     JOIN tags tg ON tg.id = st.tag_id WHERE st.session_id = ? ORDER BY tg.kind, tg.name`).all(row.id);
 
   const reviews = db.prepare(`
-    SELECT rt.stars, rt.comment, rt.created_at, u.name, u.initials, u.accent, u.job_title, u.company
+    SELECT rt.stars, rt.comment, rt.created_at, u.name, u.initials, u.accent, u.image_url, u.job_title, u.company
     FROM ratings rt JOIN users u ON u.id = rt.user_id
     WHERE rt.session_id = ? AND rt.comment IS NOT NULL ORDER BY rt.created_at DESC`).all(row.id)
     .map((r) => ({
       stars: r.stars, comment: r.comment, createdAt: r.created_at,
-      author: { name: r.name, initials: r.initials, accent: r.accent, jobTitle: r.job_title, company: r.company },
+      author: { name: r.name, initials: r.initials, accent: r.accent, imageUrl: r.image_url, jobTitle: r.job_title, company: r.company },
     }));
 
   // Other sessions in the same room, same day — useful for "what else is in this room"

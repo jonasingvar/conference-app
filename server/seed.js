@@ -1,4 +1,7 @@
 import { db, migrate, dropAll, DB_PATH } from './db.js';
+import { existsSync, readdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /* ================================================================== *
  *  ORBIT '26 — The Applied AI Conference
@@ -17,6 +20,16 @@ const chance = (p) => rnd() < p;
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const initialsOf = (n) => n.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
 const ACCENTS = ['violet', 'cyan', 'amber', 'rose', 'emerald', 'sky', 'fuchsia', 'lime', 'orange', 'teal'];
+
+/**
+ * Synthetic speaker portraits, if they have been downloaded (`npm run avatars`).
+ * Any speaker without a file falls back to the generated SVG portrait, so a
+ * missing or partial set is never a broken image.
+ */
+const AVATAR_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'avatars');
+const AVATARS = existsSync(AVATAR_DIR)
+  ? new Set(readdirSync(AVATAR_DIR).filter((f) => f.endsWith('.jpg')))
+  : new Set();
 
 console.log('→ Seeding ORBIT ’26 →', DB_PATH);
 dropAll();
@@ -203,6 +216,14 @@ for (let i = 0; i < 178; i++) {
     i < 12 ? 1 : 0,
   );
 }
+// Attach a portrait to every speaker we have a file for.
+db.prepare('SELECT id FROM speakers').all().forEach(({ id }) => {
+  const file = `speaker-${String(id).padStart(3, '0')}.jpg`;
+  if (AVATARS.has(file)) {
+    db.prepare('UPDATE speakers SET image_url = ? WHERE id = ?').run(`/avatars/${file}`, id);
+  }
+});
+
 const speakers = db.prepare('SELECT * FROM speakers').all();
 /** Generated sessions draw from everyone except the two hand-assigned attendees. */
 const ATTENDEE_SPEAKER_NAMES = new Set(SPEAKING_ATTENDEES.map((s) => s.name));
@@ -398,11 +419,20 @@ const USERS = [
   ['Marcus Whitfield', 'marcus@orbitconf.dev', 'VP of Engineering', 'Arcadia Bank', 'he/him', 'Chicago', 'America/Chicago', 'Standard', 'Getting a regulated bank to ship AI without ending up in the news. Mostly succeeding.', 'Governance,Compliance,Red Teaming,Guardrails'],
   ['Priya Venkatesan', 'priya@orbitconf.dev', 'Founding Engineer', 'Waypoint Labs', 'she/her', 'Oakland', 'America/Los_Angeles', 'Speaker', 'Six people, one agent platform, zero sleep. Speaking twice, regrets one.', 'Multi-Agent,Memory Systems,Cost Optimization,Structured Output'],
 ];
-const uStmt = prep('INSERT INTO users (name,email,job_title,company,initials,accent,bio,pronouns,home_city,timezone,ticket_tier,interests,speaker_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)');
+const uStmt = prep('INSERT INTO users (name,email,job_title,company,initials,accent,image_url,bio,pronouns,home_city,timezone,ticket_tier,interests,speaker_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
 const speakerIdFor = (name) => db.prepare('SELECT id FROM speakers WHERE name = ?').get(name)?.id ?? null;
-USERS.forEach((u, i) => uStmt.run(u[0], u[1], u[2], u[3], initialsOf(u[0]),
-  ACCENTS[i * 2 % ACCENTS.length], u[8], u[4], u[5], u[6], u[7], u[9],
-  u[7] === 'Speaker' ? speakerIdFor(u[0]) : null));
+USERS.forEach((u, i) => {
+  const speakerId = u[7] === 'Speaker' ? speakerIdFor(u[0]) : null;
+  // Attendees who are speaking reuse their speaker portrait so the two views agree.
+  const speakerPortrait = speakerId
+    ? db.prepare('SELECT image_url FROM speakers WHERE id = ?').get(speakerId)?.image_url
+    : null;
+  const ownFile = `attendee-${String(i + 1).padStart(3, '0')}.jpg`;
+  const portrait = speakerPortrait ?? (AVATARS.has(ownFile) ? `/avatars/${ownFile}` : null);
+
+  uStmt.run(u[0], u[1], u[2], u[3], initialsOf(u[0]), ACCENTS[i * 2 % ACCENTS.length],
+    portrait, u[8], u[4], u[5], u[6], u[7], u[9], speakerId);
+});
 const users = db.prepare('SELECT * FROM users').all();
 
 /**
@@ -568,6 +598,7 @@ ANN.forEach((a) => aStmt.run(...a));
 /* ============================== SUMMARY ============================ */
 const c = (t) => db.prepare(`SELECT COUNT(*) n FROM ${t}`).get().n;
 console.log(`✓ ${c('venues')} venues · ${c('rooms')} rooms · ${c('tracks')} tracks · ${c('tags')} tags`);
+console.log(`✓ ${db.prepare('SELECT COUNT(*) n FROM speakers WHERE image_url IS NOT NULL').get().n}/${c('speakers')} speakers have portraits`);
 console.log(`✓ ${c('sessions')} sessions · ${c('speakers')} speakers · ${c('session_speakers')} speaking slots · ${c('session_tags')} tag links`);
 console.log(`✓ ${c('vendors')} vendors · ${c('sponsors')} sponsors · ${c('announcements')} announcements`);
 console.log(`✓ ${db.prepare('SELECT COUNT(*) n FROM users WHERE speaker_id IS NOT NULL').get().n} of ${c('users')} are also speaking · ${c('favorites')} favorites · ${c('speaker_follows')} follows · ${c('ratings')} ratings`);

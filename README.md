@@ -43,6 +43,7 @@ are also speaking, which unlocks a speaker view.
 | `npm run verify` | Playwright suite across desktop and mobile |
 | `npm run shot` | Screenshot every route into `.screenshots/` |
 | `npm run db:reset` | Throw the database away and rebuild it |
+| `npm run avatars` | Re-download speaker portraits (already committed) |
 
 ## Stack
 

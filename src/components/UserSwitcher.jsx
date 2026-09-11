@@ -40,7 +40,7 @@ export function UserSwitcher() {
           'hover:border-white/15 hover:bg-overlay focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400',
         )}
       >
-        <Avatar name={currentUser.name} initials={currentUser.initials} accent={currentUser.accent} size="sm" />
+        <Avatar name={currentUser.name} initials={currentUser.initials} accent={currentUser.accent} imageUrl={currentUser.imageUrl} size="sm" />
         <span className="hidden text-xs font-semibold sm:block">{currentUser.name.split(' ')[0]}</span>
         <Icon name="chevronDown" className={cx('size-3.5 text-faint transition-transform', open && 'rotate-180')} />
       </button>
@@ -71,7 +71,7 @@ export function UserSwitcher() {
                       active ? 'bg-violet-500/12' : 'hover:bg-raised',
                     )}
                   >
-                    <Avatar name={u.name} initials={u.initials} accent={u.accent} size="md" />
+                    <Avatar name={u.name} initials={u.initials} accent={u.accent} imageUrl={u.imageUrl} size="md" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         <span className="truncate text-sm font-semibold">{u.name}</span>

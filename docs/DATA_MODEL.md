@@ -77,9 +77,10 @@ venue time, no timezone stored), `duration_mins`, `capacity` and `seats_taken`
 the Venues page. `accessible = 0` means step-free access is not available
 (two rooms at the Foundry).
 
-**`speakers`** — `image_url` is `NULL` for everyone; the UI falls back to a
-deterministic generated SVG portrait (`src/components/GeneratedAvatar.jsx`).
-Drop a real image URL into that column and it is used instead, no code change.
+**`speakers`** — `image_url` points at a committed synthetic portrait in
+`public/avatars/` (`/avatars/speaker-042.jpg`). The faces are StyleGAN output:
+generated, not photographs of real people. Speakers without a file fall back to
+a deterministic generated SVG portrait (`src/components/GeneratedAvatar.jsx`).
 `expertise` and `languages` are comma-separated.
 
 **`users`** — `speaker_id` links an attendee to their speaker profile. When set,

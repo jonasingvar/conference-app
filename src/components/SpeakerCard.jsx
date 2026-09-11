@@ -1,23 +1,92 @@
 import { Link } from 'react-router-dom';
 import { Avatar, Chip, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
+import { GeneratedCover } from './GeneratedCover.jsx';
 
-export function SpeakerCard({ speaker }) {
+/**
+ * Three densities, because 180 speakers cannot all be equally important:
+ *   "headline" — the keynote names, photo-forward with a bio line
+ *   "grid"     — the default card
+ *   "row"      — a compact line for the long tail
+ */
+export function SpeakerCard({ speaker, variant = 'grid' }) {
+  const sessionCount = speaker.sessionCount ?? speaker.sessions?.length ?? 0;
+
+  if (variant === 'headline') {
+    return (
+      <Link
+        to={`/speakers/${speaker.id}`}
+        className="group relative flex flex-col overflow-hidden rounded-xl border border-hairline bg-raised transition-colors hover:border-white/20 hover:bg-overlay/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400"
+      >
+        <div className="relative h-20 overflow-hidden">
+          <GeneratedCover seed={speaker.name} accent={speaker.accent} variant="strata"
+            className="size-full transition-transform duration-500 group-hover:scale-105" />
+          <div className="absolute inset-0 bg-gradient-to-t from-raised via-raised/45 to-transparent" />
+          <span className="absolute right-3 top-3 rounded-full bg-black/55 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
+            Keynote
+          </span>
+        </div>
+
+        <div className="flex flex-1 flex-col px-5 pb-5">
+          <Avatar name={speaker.name} initials={speaker.initials} accent={speaker.accent}
+            imageUrl={speaker.imageUrl} size="lg" className="-mt-9 ring-4 ring-raised" />
+          <h3 className="mt-3 font-display text-lg leading-tight transition-colors group-hover:text-violet-200">
+            {speaker.name}
+          </h3>
+          <p className="mt-0.5 text-xs text-muted">{speaker.jobTitle}</p>
+          <p className="text-xs font-semibold text-faint">{speaker.company}</p>
+          <p className="mt-3 line-clamp-2 text-[12px] leading-relaxed text-muted">{speaker.bio}</p>
+          <div className="mt-auto flex items-center gap-3 pt-4 text-[11px] text-faint">
+            <span className="inline-flex items-center gap-1"><Icon name="mic" className="size-3" />{sessionCount}</span>
+            <span className="inline-flex items-center gap-1"><Icon name="pin" className="size-3" />{speaker.city}</span>
+            {speaker.avgRating > 0 && (
+              <span className="ml-auto inline-flex items-center gap-1">
+                <Icon name="star" filled className="size-3 text-amber-400" />{speaker.avgRating.toFixed(1)}
+              </span>
+            )}
+          </div>
+        </div>
+      </Link>
+    );
+  }
+
+  if (variant === 'row') {
+    return (
+      <Link
+        to={`/speakers/${speaker.id}`}
+        className="group flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400"
+      >
+        <Avatar name={speaker.name} initials={speaker.initials} accent={speaker.accent}
+          imageUrl={speaker.imageUrl} size="md" />
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-semibold group-hover:text-violet-200">{speaker.name}</div>
+          <div className="truncate text-[11px] text-muted">{speaker.jobTitle} · {speaker.company}</div>
+        </div>
+        <div className="hidden shrink-0 items-center gap-3 text-[11px] text-faint sm:flex">
+          <span className="inline-flex items-center gap-1"><Icon name="mic" className="size-3" />{sessionCount}</span>
+          <span className="w-24 truncate text-right">{speaker.city}</span>
+        </div>
+        <Icon name="chevronRight" className="size-4 shrink-0 text-faint opacity-0 transition-opacity group-hover:opacity-100" />
+      </Link>
+    );
+  }
+
   return (
     <Link
       to={`/speakers/${speaker.id}`}
       className={cx(
-        'group relative flex flex-col items-center gap-3 rounded-2xl border border-hairline bg-surface/70 p-5 text-center',
-        'transition-all duration-200 hover:-translate-y-0.5 hover:border-white/15 hover:bg-raised/70 hover:shadow-xl hover:shadow-black/40',
+        'group relative flex flex-col items-center gap-3 rounded-xl border border-hairline bg-raised p-5 text-center',
+        'transition-colors hover:border-white/20 hover:bg-overlay/70',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400',
       )}
     >
       {speaker.featured && (
-        <span className="absolute right-3 top-3 rounded-full bg-violet-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-300">
+        <span className="absolute right-3 top-3 rounded-full bg-violet-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-300">
           Keynote
         </span>
       )}
-      <Avatar name={speaker.name} initials={speaker.initials} accent={speaker.accent} imageUrl={speaker.imageUrl} size="lg" />
+      <Avatar name={speaker.name} initials={speaker.initials} accent={speaker.accent}
+        imageUrl={speaker.imageUrl} size="lg" />
       <div className="min-w-0">
         <h3 className="truncate font-semibold leading-tight transition-colors group-hover:text-violet-200">
           {speaker.name}
@@ -31,14 +100,8 @@ export function SpeakerCard({ speaker }) {
         ))}
       </div>
       <div className="flex items-center gap-3 text-[11px] text-faint">
-        <span className="inline-flex items-center gap-1">
-          <Icon name="mic" className="size-3" />
-          {speaker.sessionCount ?? speaker.sessions?.length ?? 0}
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <Icon name="globe" className="size-3" />
-          {speaker.city}
-        </span>
+        <span className="inline-flex items-center gap-1"><Icon name="mic" className="size-3" />{sessionCount}</span>
+        <span className="inline-flex items-center gap-1"><Icon name="globe" className="size-3" />{speaker.city}</span>
       </div>
     </Link>
   );

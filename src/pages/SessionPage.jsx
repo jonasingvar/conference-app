@@ -213,7 +213,7 @@ export function SessionPage() {
                 {session.reviews.map((r, i) => (
                   <figure key={i} className="rounded-2xl border border-hairline bg-surface/70 p-4">
                     <div className="flex items-center gap-3">
-                      <Avatar name={r.author.name} initials={r.author.initials} accent={r.author.accent} size="sm" />
+                      <Avatar name={r.author.name} initials={r.author.initials} accent={r.author.accent} imageUrl={r.author.imageUrl} size="sm" />
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-medium">{r.author.name}</div>
                         <div className="truncate text-[11px] text-faint">{r.author.jobTitle}, {r.author.company}</div>

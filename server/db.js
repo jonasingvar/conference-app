@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
   company     TEXT,
   initials    TEXT NOT NULL,
   accent      TEXT NOT NULL,
+  image_url   TEXT,
   bio         TEXT,
   pronouns    TEXT,
   home_city   TEXT,
