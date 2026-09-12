@@ -58,7 +58,9 @@ export function SpeakerPage() {
             imageUrl={speaker.imageUrl} size="xl" className="-mt-16 ring-4 ring-surface sm:-mt-24" />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              {speaker.featured && <Chip accent="violet">Keynote speaker</Chip>}
+              {speaker.keynoteCount > 0
+                ? <Chip accent="violet">Keynote speaker</Chip>
+                : speaker.featured && <Chip accent="violet">Featured speaker</Chip>}
               {speaker.firstTime && <Chip accent="emerald">First time at ORBIT</Chip>}
             </div>
             <h1 className="mt-2 font-display text-3xl leading-tight sm:text-4xl" data-testid="speaker-name">

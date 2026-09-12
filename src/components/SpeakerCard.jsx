@@ -26,7 +26,7 @@ export function SpeakerCard({ speaker, variant = 'grid' }) {
             className="size-full transition-transform duration-500 group-hover:scale-105" />
           <div className="absolute inset-0 bg-gradient-to-t from-raised via-raised/45 to-transparent" />
           <span className="absolute right-3 top-3 rounded-full bg-black/55 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
-            Keynote
+            {speaker.keynoteCount > 0 ? 'Keynote' : 'Featured'}
           </span>
         </div>
 
@@ -113,9 +113,9 @@ export function SpeakerCard({ speaker, variant = 'grid' }) {
           <Icon name="check" className="size-2.5" />Following
         </span>
       )}
-      {speaker.featured && (
+      {(speaker.keynoteCount > 0 || speaker.featured) && (
         <span className="absolute right-3 top-3 rounded-full bg-violet-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-300">
-          Keynote
+          {speaker.keynoteCount > 0 ? 'Keynote' : 'Featured'}
         </span>
       )}
       <Avatar name={speaker.name} initials={speaker.initials} accent={speaker.accent}

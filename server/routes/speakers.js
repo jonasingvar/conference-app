@@ -24,15 +24,20 @@ speakersRouter.get('/', (req, res) => {
   }
 
   const rows = db.prepare(`
-    SELECT sp.*, COUNT(ss.session_id) AS session_count
+    SELECT sp.*, COUNT(ss.session_id) AS session_count,
+           SUM(CASE WHEN s.is_keynote = 1 THEN 1 ELSE 0 END) AS keynote_count
     FROM speakers sp
     LEFT JOIN session_speakers ss ON ss.speaker_id = sp.id
+    LEFT JOIN sessions s ON s.id = ss.session_id
     ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
     GROUP BY sp.id
     ORDER BY sp.featured DESC, sp.name
   `).all(...args);
 
-  res.json(rows.map((r) => toSpeaker(r, { sessionCount: r.session_count })));
+  res.json(rows.map((r) => toSpeaker(r, {
+    sessionCount: r.session_count,
+    keynoteCount: r.keynote_count ?? 0,
+  })));
 });
 
 speakersRouter.get('/:id', (req, res) => {
@@ -45,5 +50,9 @@ speakersRouter.get('/:id', (req, res) => {
 
   const followerCount = db.prepare('SELECT COUNT(*) n FROM speaker_follows WHERE speaker_id = ?').get(row.id).n;
 
-  res.json(toSpeaker(row, { sessions, followerCount }));
+  res.json(toSpeaker(row, {
+    sessions,
+    followerCount,
+    keynoteCount: sessions.filter((s) => s.isKeynote).length,
+  }));
 });

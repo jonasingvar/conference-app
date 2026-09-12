@@ -55,14 +55,24 @@ test.describe('Speakers', () => {
     expect(res.ok()).toBeTruthy();
   });
 
-  test('sorting by A–Z reorders the list', async ({ page }) => {
-    const names = async (sort) => {
+  test('sorting changes the order of the list', async ({ page }) => {
+    // Comparing only the first name is not enough — the most-prolific speaker
+    // can also happen to be first alphabetically.
+    const order = async (sort) => {
       await visit(page, `/speakers?q=a&sort=${sort}`);
       const list = page.getByTestId('all-speakers');
       await expect(list).toBeVisible();
-      return list.locator('a').first().innerText();
+      return list.locator('a').allInnerTexts();
     };
-    expect(await names('name')).not.toEqual(await names('sessions'));
+
+    const byName = await order('name');
+    const bySessions = await order('sessions');
+    expect(byName.length).toBeGreaterThan(3);
+    expect(byName).not.toEqual(bySessions);
+    // A–Z really is alphabetical
+    expect(byName.map((n) => n.split('\n')[0])).toEqual(
+      [...byName.map((n) => n.split('\n')[0])].sort((a, b) => a.localeCompare(b)),
+    );
   });
 });
 

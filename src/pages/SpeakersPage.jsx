@@ -242,7 +242,10 @@ export function SpeakersPage() {
           <div className="mb-4 flex items-baseline gap-3">
             <h2 className="font-display text-xl">The headliners</h2>
             <span className="h-px flex-1 bg-hairline" />
-            <span className="text-[11px] text-faint">{plural(headline.length, 'keynote')}</span>
+            <span className="text-[11px] text-faint">
+              {plural(headline.filter((s) => s.keynoteCount > 0).length, 'keynote')}
+              {' · '}{headline.length} featured
+            </span>
           </div>
           <SpeakerSpotlight speakers={headline} />
         </section>

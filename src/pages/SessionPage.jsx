@@ -44,7 +44,7 @@ function TravelNotice({ session }) {
 
 export function SessionPage() {
   const { id } = useParams();
-  const { currentUserId, reservationFor, toggleSeat } = useConference();
+  const { currentUserId, reservationFor, toggleSeat, seatsFor } = useConference();
   const { data: session, loading, error, reload } = useFetch(() => api.getSession(id, currentUserId), [id, currentUserId]);
   useDocumentTitle(session?.title);
 
@@ -62,6 +62,10 @@ export function SessionPage() {
 
   const a = accent(session.track.color);
   const reservation = reservationFor(session.id);
+  const live = seatsFor(session.id);
+  const seatsLeft = live?.seatsLeft ?? session.seats?.seatsLeft ?? session.seatsLeft;
+  const waiting = live?.waitlistCount ?? session.seats?.waitlistCount ?? 0;
+  const isFull = seatsLeft === 0;
   const topicTags = session.tags.filter((t) => t.kind === 'topic');
   const otherTags = session.tags.filter((t) => t.kind !== 'topic');
 
@@ -103,6 +107,16 @@ export function SessionPage() {
               <span>{session.room.name}</span>
               <span className="text-faint">· {session.room.building}, {session.room.floor}</span>
             </span>
+            {/* seat state belongs above the fold — it is what changes the decision */}
+            {isFull ? (
+              <Chip accent="rose" data-testid="header-seats">
+                Full{waiting > 0 && ` · ${waiting} waiting`}
+              </Chip>
+            ) : (
+              <Chip accent={seatsLeft <= 10 ? 'amber' : 'emerald'} data-testid="header-seats">
+                {seatsLeft.toLocaleString()} seats left
+              </Chip>
+            )}
           </div>
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
@@ -114,21 +128,12 @@ export function SessionPage() {
               <Icon name={reservation === 'waitlisted' ? 'clock' : reservation ? 'check' : 'ticket'} className="size-4" />
               {reservation === 'waitlisted' ? 'On the waitlist'
                 : reservation ? 'On my agenda'
+                : isFull ? 'Join the waitlist'
                 : 'Add to my agenda'}
             </Button>
             <Button href={api.sessionCalendarUrl(session.id)}>
               <Icon name="calendar" className="size-3.5" /> Add to calendar
             </Button>
-            {session.slidesUrl && (
-              <Button href={session.slidesUrl} target="_blank" rel="noreferrer">
-                <Icon name="layers" className="size-3.5" /> Slides
-              </Button>
-            )}
-            {session.repoUrl && (
-              <Button href={session.repoUrl} target="_blank" rel="noreferrer">
-                <Icon name="external" className="size-3.5" /> Code
-              </Button>
-            )}
             <Rating value={session.avgRating} count={session.ratingCount} className="ml-auto !text-xs" />
           </div>
         </div>
@@ -136,32 +141,30 @@ export function SessionPage() {
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-8">
-          {session.recordingUrl && (
-            <a
-              href={session.recordingUrl}
-              target="_blank"
-              rel="noreferrer"
+          {session.isRecorded && (
+            <div
               data-testid="video-poster"
-              className="group relative block aspect-video overflow-hidden rounded-xl border border-hairline"
+              className="relative block aspect-video overflow-hidden rounded-xl border border-hairline"
             >
-              <GeneratedCover seed={session.title} accent={session.track.color} variant="orbit"
-                className="size-full transition-transform duration-700 group-hover:scale-105" />
+              <GeneratedCover seed={session.title} accent={session.track.color} variant="orbit" className="size-full" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10" />
 
               <span className="absolute inset-0 grid place-items-center">
-                <span className="grid size-16 place-items-center rounded-full bg-white/95 text-black shadow-2xl transition-transform duration-300 group-hover:scale-110 sm:size-20">
+                <span className="grid size-16 place-items-center rounded-full bg-white/15 text-white/80 ring-1 ring-white/25 backdrop-blur-sm sm:size-20">
                   <Icon name="play" filled className="ml-1 size-6 sm:size-7" />
                 </span>
               </span>
 
               <span className="absolute inset-x-0 bottom-0 flex flex-wrap items-center gap-x-3 gap-y-1 p-4 sm:p-5">
                 <span className="rounded-full bg-rose-500/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-                  Recording
+                  Recorded
                 </span>
-                <span className="text-sm font-semibold text-white">Watch this session</span>
+                <span className="text-sm font-semibold text-white">
+                  Available 24 hours after the session
+                </span>
                 <span className="ml-auto font-mono text-xs text-white/70">{session.durationMins} min</span>
               </span>
-            </a>
+            </div>
           )}
 
           <section>

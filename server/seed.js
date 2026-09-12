@@ -394,9 +394,9 @@ function addSession(opts) {
     opts.format, opts.level, opts.language ?? 'English',
     room.capacity, opts.seats, opts.keynote ? 1 : 0,
     recorded ? 1 : 0, opts.rsvp ? 1 : 0, room.amenities.includes('Livestream') ? 1 : 0,
-    recorded && chance(0.75) ? `https://recordings.orbitconf.dev/s/${usedTitles.size}` : null,
-    chance(0.55) ? `https://slides.orbitconf.dev/s/${usedTitles.size}` : null,
-    chance(0.3) ? `https://github.com/orbitconf/demo-${usedTitles.size}` : null,
+    // No invented URLs. `is_recorded` carries the fact; a link to a domain that
+    // does not resolve is worse than no link.
+    null, null, null,
     0, 0, // ratings are earned during the conference, never seeded ahead of it
   ).lastInsertRowid;
 
@@ -534,7 +534,7 @@ const sessions = db.prepare('SELECT id, day, room_id FROM sessions').all();
 /* ============================== USERS ============================== */
 const USERS = [
   ['Jonas Claesson', 'jonas@orbitconf.dev', 'Principal Engineer', 'Provision', 'he/him', 'Stockholm', 'Europe/Stockholm', 'VIP', 'Runs the platform group. Here for the agent tooling, the eval talks, and the brisket.', 'Agent Design,Evaluation,Code Generation,Observability'],
-  ['Amara Diallo', 'amara@orbitconf.dev', 'Director of Applied AI', 'Meridian Health AI', 'she/her', 'Boston', 'America/New_York', 'Speaker', 'Building clinical decision support that clinicians actually trust. Speaking Tuesday.', 'Governance,Compliance,Human-in-the-Loop,Hallucination'],
+  ['Amara Diallo', 'amara@orbitconf.dev', 'Director of Applied AI', 'Meridian Health AI', 'she/her', 'Boston', 'America/New_York', 'Speaker', 'Building clinical decision support that clinicians actually trust. Speaking three times this week.', 'Governance,Compliance,Human-in-the-Loop,Hallucination'],
   ['Kenji Nakamura', 'kenji@orbitconf.dev', 'Staff ML Engineer', 'Volta Motors', 'he/him', 'Tokyo', 'Asia/Tokyo', 'Standard', 'Perception stack, edge inference, and far too many accelerators. First ORBIT.', 'Quantization,Computer Vision,Edge,Latency'],
   ['Sofia Almeida', 'sofia@orbitconf.dev', 'Head of Developer Experience', 'Cobalt Studio', 'she/her', 'Lisbon', 'Europe/Lisbon', 'VIP', 'Obsessed with the inner loop. Will demo her terminal setup unprompted.', 'Code Generation,Tool Calling,Agent Design,Observability'],
   ['Marcus Whitfield', 'marcus@orbitconf.dev', 'VP of Engineering', 'Arcadia Bank', 'he/him', 'Chicago', 'America/Chicago', 'Standard', 'Getting a regulated bank to ship AI without ending up in the news. Mostly succeeding.', 'Governance,Compliance,Red Teaming,Guardrails'],

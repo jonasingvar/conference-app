@@ -72,3 +72,41 @@ test('the venues page switches venue and shows a live room board', async ({ page
   await venues.nth(1).click();
   await expect(page.locator('[data-testid^="venue-board-"]')).not.toHaveAttribute('data-testid', beforeId);
 });
+
+test.describe('Nothing claims to be true when it is not', () => {
+  test('no session in the future carries a rating', async ({ request }) => {
+    const bootstrap = await (await request.get('http://localhost:3001/api/bootstrap')).json();
+    const today = bootstrap.days[0].date;
+    const sessions = await (await request.get('http://localhost:3001/api/sessions')).json();
+
+    const liars = sessions.filter((s) => s.ratingCount > 0 && s.day > today);
+    expect(liars.map((s) => `${s.day} ${s.title}`)).toEqual([]);
+  });
+
+  test('only speakers with a keynote are badged as keynote speakers', async ({ request }) => {
+    const speakers = await (await request.get('http://localhost:3001/api/speakers')).json();
+    const sessions = await (await request.get('http://localhost:3001/api/sessions')).json();
+    const keynoteSpeakerIds = new Set(
+      sessions.filter((s) => s.isKeynote).flatMap((s) => s.speakers.map((sp) => sp.id)));
+
+    for (const s of speakers.filter((x) => x.keynoteCount > 0)) {
+      expect(keynoteSpeakerIds.has(s.id), `${s.name} claims a keynote`).toBeTruthy();
+    }
+  });
+
+  test('the app never links to a domain we invented', async ({ request }) => {
+    const sessions = await (await request.get('http://localhost:3001/api/sessions')).json();
+    const invented = sessions.filter((s) => s.recordingUrl || s.slidesUrl || s.repoUrl);
+    expect(invented.map((s) => s.title)).toEqual([]);
+
+    const speakers = await (await request.get('http://localhost:3001/api/speakers')).json();
+    // handles are shown as text; the website field must not be rendered as a link
+    expect(speakers.every((s) => typeof s.socials === 'object')).toBeTruthy();
+  });
+
+  test('the footer dates match the seeded conference', async ({ page }) => {
+    const bootstrap = await (await page.request.get('http://localhost:3001/api/bootstrap')).json();
+    await visit(page, '/');
+    await expect(page.getByRole('contentinfo')).toContainText(bootstrap.conference.dates);
+  });
+});

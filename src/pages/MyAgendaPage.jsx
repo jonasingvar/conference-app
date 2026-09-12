@@ -5,6 +5,7 @@ import * as api from '../lib/api.js';
 import { accent } from '../lib/accents.js';
 import { dayLabel, plural, timeRange } from '../lib/format.js';
 import { SessionCard } from '../components/SessionCard.jsx';
+import { NextUpCard } from '../components/NextUpCard.jsx';
 import { Avatar, Button, Chip, EmptyState, ErrorState, SectionHeader, Skeleton, Stat, cx } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
 import { useDocumentTitle } from '../lib/useDocumentTitle.js';
@@ -128,12 +129,20 @@ function ConflictBanner({ day, conflicts }) {
   );
 }
 
-function DayPlan({ day }) {
+function DayPlan({ day, isToday }) {
   const venues = day.venuesVisited;
   return (
-    <section data-testid={`plan-day-${day.date}`}>
+    <section data-testid={`plan-day-${day.date}`} className="scroll-mt-24" id={`day-${day.date}`}>
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
-        <h2 className="font-display text-2xl">{dayLabel(day.date)}</h2>
+        <h2 className="flex items-center gap-2.5 font-display text-2xl">
+          {dayLabel(day.date)}
+          {isToday && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-rose-300">
+              <span className="size-1.5 animate-pulse-dot rounded-full bg-rose-400" />
+              Today
+            </span>
+          )}
+        </h2>
         <div className="flex items-center gap-3 text-xs text-muted">
           <span>{plural(day.sessions.length, 'session')}</span>
           <span className="text-faint">·</span>
@@ -156,7 +165,7 @@ function DayPlan({ day }) {
 }
 
 export function MyAgendaPage() {
-  const { currentUser, reservationFor } = useConference();
+  const { currentUser, reservationFor, clock } = useConference();
   useDocumentTitle(currentUser ? `${currentUser.name.split(' ')[0]}’s agenda` : 'My agenda');
   const { data, loading, error, reload } = useFetch(() => api.getSchedule(currentUser.id), [currentUser.id]);
 
@@ -208,6 +217,8 @@ export function MyAgendaPage() {
         }
       />
 
+      {days.length > 0 && <NextUpCard days={days} />}
+
       {currentUser.isSpeaker && <SpeakingPanel user={currentUser} />}
 
       {error && <ErrorState error={error} onRetry={reload} />}
@@ -232,7 +243,7 @@ export function MyAgendaPage() {
             />
           ) : (
             <div className="space-y-12">
-              {days.map((d) => <DayPlan key={d.date} day={d} />)}
+              {days.map((d) => <DayPlan key={d.date} day={d} isToday={d.date === clock.day} />)}
             </div>
           )}
         </>

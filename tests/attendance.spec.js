@@ -88,22 +88,28 @@ test.describe('Check in and rate', () => {
     const days = await conferenceDays();
     // Check-in state is shared and the projects run concurrently, so each one
     // uses a different attendee and a different day.
+    // Rate a session on day 1 that has genuinely finished — rating something in
+    // the future would leave the database asserting a thing that has not
+    // happened, which a smoke test now forbids.
     const mobile = testInfo.project.name === 'mobile';
     const user = mobile ? ATTENDEES.priya : ATTENDEES.sofia;
-    const day = days[mobile ? 2 : 1];
+    const day = days[0];
 
     // Check-ins persist between runs and there is deliberately no way to undo
     // one, so pick a session this attendee has not already been to.
     const me = await (await request.get(`${API}/users/${user}`)).json();
     const been = new Set(me.checkIns ?? []);
     const all = await (await request.get(`${API}/sessions?day=${day}`)).json();
-    const target = all.find((s) =>
-      !s.isKeynote && s.format !== 'Social' && s.seatsLeft > 2 && !been.has(s.id));
+    const finished = all
+      .filter((s) => !s.isKeynote && s.format !== 'Social' && s.seatsLeft > 2 && !been.has(s.id))
+      .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+    // each project takes a different one, since ratings are shared state
+    const target = mobile ? finished[1] : finished[0];
     test.skip(!target, 'no un-attended session left on this day');
 
     // cannot rate without being there
     const early = await request.put(`${API}/users/${user}/ratings/${target.id}`, {
-      data: { stars: 5, day, time: '23:00' },
+      data: { stars: 5, day, time: '23:59' },
     });
     expect(early.status()).toBe(409);
     expect((await early.json()).rejected).toBe('not-checked-in');
@@ -123,7 +129,7 @@ test.describe('Check in and rate', () => {
     // after it ends, the rating lands and rolls up onto the session
     const before = await (await request.get(`${API}/sessions/${target.id}`)).json();
     const rated = await request.put(`${API}/users/${user}/ratings/${target.id}`, {
-      data: { stars: 5, comment: 'Worth the walk.', day, time: '23:00' },
+      data: { stars: 5, comment: 'Worth the walk.', day, time: '23:59' },
     });
     expect(rated.ok()).toBeTruthy();
 
@@ -135,7 +141,7 @@ test.describe('Check in and rate', () => {
   test('stars must be 1 to 5', async ({ request }) => {
     const days = await conferenceDays();
     const res = await request.put(`${API}/users/${ATTENDEES.jonas}/ratings/1`, {
-      data: { stars: 11, day: days[0], time: '23:00' },
+      data: { stars: 11, day: days[0], time: '23:59' },
     });
     expect(res.status()).toBe(400);
   });

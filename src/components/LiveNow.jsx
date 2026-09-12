@@ -3,7 +3,7 @@ import { useConference, useFetch } from '../lib/store.jsx';
 import * as api from '../lib/api.js';
 import { accent } from '../lib/accents.js';
 import { progressOf, relativeToNow } from '../lib/clock.js';
-import { time as fmtTime } from '../lib/format.js';
+import { plural, time as fmtTime } from '../lib/format.js';
 import { Avatar, Button, Chip, Skeleton, cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
 
@@ -103,7 +103,7 @@ export function LiveNow() {
           </h2>
           <p className="mt-1 text-sm text-muted">
             {inGap
-              ? `The next ${next.length} sessions start at ${fmtTime(data.nextSlot)} — ${relativeToNow(data.nextSlot, clock.time)}.`
+              ? `${plural(next.length, 'session')} starting at ${fmtTime(data.nextSlot)} — ${relativeToNow(data.nextSlot, clock.time)}.`
               : running.length
                 ? `${running.length} sessions in progress across both sites.`
                 : 'Doors open at 07:30. The first keynote is at 08:00.'}
@@ -136,7 +136,7 @@ export function LiveNow() {
                   Up next {relativeToNow(data.nextSlot, clock.time)}
                 </Chip>
                 <span className="text-xs text-muted">
-                  {next.length} sessions start at {fmtTime(data.nextSlot)}
+                  {plural(next.length, 'session')} starting at {fmtTime(data.nextSlot)}
                 </span>
               </div>
               <ul className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
