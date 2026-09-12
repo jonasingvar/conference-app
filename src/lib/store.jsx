@@ -27,6 +27,8 @@ export function ConferenceProvider({ children }) {
   const [reservations, setReservations] = useState(() => new Map());
   // sessionId -> live seat counts, so a reservation updates every view at once
   const [seatCounts, setSeatCounts] = useState(() => new Map());
+  // an overlapping booking the attendee has to resolve
+  const [conflict, setConflict] = useState(null);
   const clock = useConferenceClock(data?.days ?? []);
   const toast = useToast();
 
@@ -92,19 +94,8 @@ export function ConferenceProvider({ children }) {
       if (!state) throw err;
     }
     if (state.rejected === 'overlap') {
-      toast({
-        message: `Clashes with “${state.conflictsWith.title}” at ${state.conflictsWith.startsAt}`,
-        icon: 'alert',
-        duration: 6000,
-        action: {
-          label: 'Swap',
-          onClick: async () => {
-            await api.releaseSeat(currentUserId, state.conflictsWith.id)
-              .then(applySeatState);
-            await api.reserveSeat(currentUserId, sessionId).then(applySeatState);
-          },
-        },
-      });
+      // A choice between two sessions, not an error — hand it to the dialog.
+      setConflict(state);
       return state;
     }
 
@@ -144,6 +135,17 @@ export function ConferenceProvider({ children }) {
     })));
   }, []);
 
+  const resolveConflict = useCallback(async (swap) => {
+    if (!conflict) return;
+    if (swap) {
+      applySeatState(await api.releaseSeat(currentUserId, conflict.conflictsWith.id));
+      const state = await api.reserveSeat(currentUserId, conflict.wanted.id);
+      applySeatState(state);
+      toast({ message: `Swapped to “${conflict.wanted.title}”`, icon: 'check' });
+    }
+    setConflict(null);
+  }, [conflict, currentUserId, applySeatState, toast]);
+
   const value = useMemo(() => {
     const users = data?.users ?? [];
     return {
@@ -167,12 +169,15 @@ export function ConferenceProvider({ children }) {
       onAgenda: (id) => reservations.has(id),
       applySeatState,
       adoptSeatState,
+      conflict,
+      resolveConflict,
       trackBySlug: Object.fromEntries((data?.tracks ?? []).map((t) => [t.slug, t])),
       venueById: Object.fromEntries((data?.venues ?? []).map((v) => [v.id, v])),
       roomById: Object.fromEntries((data?.rooms ?? []).map((r) => [r.id, r])),
     };
   }, [data, error, clock, currentUserId, followingIds, toggleFollow,
-      reservations, seatCounts, reserveSeat, releaseSeat, toggleSeat, applySeatState, adoptSeatState]);
+      reservations, seatCounts, reserveSeat, releaseSeat, toggleSeat, applySeatState, adoptSeatState,
+      conflict, resolveConflict]);
 
   return <ConferenceContext.Provider value={value}>{children}</ConferenceContext.Provider>;
 }

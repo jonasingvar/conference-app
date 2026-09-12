@@ -203,7 +203,7 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
             <span className="font-bold text-amber-300">{seatsLeft} seats left</span>
           ) : null}
           {session.isRecorded && <Icon name="play" className="size-3 text-faint" />}
-          <Rating value={session.avgRating} count={session.ratingCount} showValue={false} />
+          <Rating value={session.avgRating} count={session.ratingCount} />
         </div>
       </div>
 

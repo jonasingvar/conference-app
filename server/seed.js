@@ -68,7 +68,7 @@ const TRAVEL = [
   [AURORA.id, FOUNDRY.id, 'Shuttle', 27, 0, 'Free conference shuttle from Aurora north entrance. Departs every 20 minutes, 07:00–01:00. Queues get long between sessions.'],
   [AURORA.id, FOUNDRY.id, 'Rideshare', 18, 23.5, 'Pickup is on Level 1 west curb. Surge pricing is brutal right after the keynote lets out.'],
   [AURORA.id, FOUNDRY.id, 'Taxi', 19, 31.0, 'Taxi rank outside the Expo Hall. No app required, no surge.'],
-  [AURORA.id, FOUNDRY.id, 'Walk', 96, 0, 'Technically possible. It is Las Vegas in October. Please do not.'],
+  [AURORA.id, FOUNDRY.id, 'Walk', 96, 0, 'Technically possible. It is Las Vegas, on foot, in the heat. Please do not.'],
   [FOUNDRY.id, AURORA.id, 'Shuttle', 29, 0, 'Departs from the Foundry loading yard every 20 minutes. Last shuttle back is 01:15.'],
   [FOUNDRY.id, AURORA.id, 'Rideshare', 18, 23.5, 'Pickup on Ironworks Road. Coverage is thinner out here — expect a 5 minute wait.'],
   [FOUNDRY.id, AURORA.id, 'Taxi', 19, 31.0, 'Call ahead. There is rarely a taxi waiting at the Yards.'],
@@ -122,19 +122,19 @@ const roomById = Object.fromEntries(rooms.map((r) => [r.id, r]));
 
 /* ============================== TRACKS ============================= */
 const TRACKS = [
-  ['Foundation Models', 'violet', 'Pretraining, scaling behaviour, architecture research and the moving frontier of raw model capability.'],
-  ['Agents & Tool Use', 'cyan', 'Autonomous agents, tool calling, planning loops, multi-agent orchestration and the harnesses that hold them together.'],
-  ['RAG & Retrieval', 'emerald', 'Embeddings, vector stores, hybrid search, chunking strategy and actually grounding a generation in your data.'],
-  ['AI Engineering', 'amber', 'Evals, prompt versioning, CI for probabilistic systems, observability and the day-2 realities of LLM applications.'],
-  ['Inference & Hardware', 'orange', 'Serving, quantization, KV caching, accelerators, and the uncomfortable economics of a token.'],
-  ['Responsible AI', 'rose', 'Safety, red teaming, harm evaluation, governance and what the EU AI Act means for your next release.'],
-  ['Multimodal', 'fuchsia', 'Vision, audio, video, documents — and the models that reason across all of them at once.'],
-  ['AI in Production', 'sky', 'War stories from teams running AI at scale, and a full accounting of everything that broke on the way.'],
-  ['Developer Experience', 'lime', 'AI across the SDLC: coding agents, review automation, spec-driven delivery and the new shape of the inner loop.'],
-  ['AI Product & Strategy', 'teal', 'Pricing, adoption curves, org design, and how to decide what is genuinely worth building.'],
+  ['Foundation Models', 'Foundation', 'violet', 'Pretraining, scaling behaviour, architecture research and the moving frontier of raw model capability.'],
+  ['Agents & Tool Use', 'Agents', 'cyan', 'Autonomous agents, tool calling, planning loops, multi-agent orchestration and the harnesses that hold them together.'],
+  ['RAG & Retrieval', 'RAG', 'emerald', 'Embeddings, vector stores, hybrid search, chunking strategy and actually grounding a generation in your data.'],
+  ['AI Engineering', 'Engineering', 'amber', 'Evals, prompt versioning, CI for probabilistic systems, observability and the day-2 realities of LLM applications.'],
+  ['Inference & Hardware', 'Inference', 'orange', 'Serving, quantization, KV caching, accelerators, and the uncomfortable economics of a token.'],
+  ['Responsible AI', 'Responsible', 'rose', 'Safety, red teaming, harm evaluation, governance and what the EU AI Act means for your next release.'],
+  ['Multimodal', 'Multimodal', 'fuchsia', 'Vision, audio, video, documents — and the models that reason across all of them at once.'],
+  ['AI in Production', 'Production', 'sky', 'War stories from teams running AI at scale, and a full accounting of everything that broke on the way.'],
+  ['Developer Experience', 'DevEx', 'lime', 'AI across the SDLC: coding agents, review automation, spec-driven delivery and the new shape of the inner loop.'],
+  ['AI Product & Strategy', 'Product', 'teal', 'Pricing, adoption curves, org design, and how to decide what is genuinely worth building.'],
 ];
-const tStmt = prep('INSERT INTO tracks (name,slug,color,description) VALUES (?,?,?,?)');
-TRACKS.forEach(([n, c, d]) => tStmt.run(n, slug(n), c, d));
+const tStmt = prep('INSERT INTO tracks (name,short_name,slug,color,description) VALUES (?,?,?,?,?)');
+TRACKS.forEach(([n, short, c, d]) => tStmt.run(n, short, slug(n), c, d));
 const tracks = db.prepare('SELECT * FROM tracks').all();
 const trackBy = Object.fromEntries(tracks.map((t) => [t.name, t]));
 
@@ -306,7 +306,11 @@ const makeAbstract = () => `${pick(OPEN)} ${pick(BODY)} ${pick(CLOSE)}`;
  *
  *   ORBIT_START_DATE=2026-11-03 npm run db:seed   # pin it to a known date
  */
-const isoDay = (d) => d.toISOString().slice(0, 10);
+// Local calendar date, not UTC. toISOString() would roll over to tomorrow for
+// anyone west of Greenwich seeding in the evening, so "Day 1 is today" quietly
+// became "Day 1 is tomorrow" after about 5pm Pacific.
+const isoDay = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const addDays = (iso, n) => {
   const d = new Date(`${iso}T12:00:00Z`);
   d.setUTCDate(d.getUTCDate() + n);
@@ -315,6 +319,8 @@ const addDays = (iso, n) => {
 
 const START_DATE = process.env.ORBIT_START_DATE ?? isoDay(new Date());
 const DAYS = [0, 1, 2, 3].map((n) => addDays(START_DATE, n));
+const weekdayOf = (iso) =>
+  new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
 console.log(`  Day 1 is ${DAYS[0]} — set ORBIT_START_DATE to pin it`);
 const SLOTS = [
   ['09:00', '09:45'], ['10:15', '11:00'], ['11:30', '12:15'],
@@ -345,21 +351,30 @@ const usedTitles = new Set();
  * programmes have a long tail — most people speak once or twice, headliners
  * turn up everywhere.
  */
-const buildSpeakerPool = () => {
-  const pool = [];
-  assignable.forEach((sp) => {
-    const appearances = sp.featured ? int(4, 6)
-      : chance(0.42) ? 1
-      : chance(0.62) ? 2
-      : int(3, 4);
-    for (let n = 0; n < appearances; n++) pool.push(sp);
-  });
+const shuffle = (arr) => {
   // Fisher-Yates with the seeded PRNG, so the deal stays deterministic.
-  for (let i = pool.length - 1; i > 0; i--) {
+  for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(rnd() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
+    [arr[i], arr[j]] = [arr[j], arr[i]];
   }
-  return pool;
+  return arr;
+};
+
+const buildSpeakerPool = () => {
+  // Everyone gets dealt once before anyone gets a second slot. A "speaker" with
+  // no sessions is not a speaker, and there are fewer speaking slots than
+  // people, so without this a chunk of the roster ends up on the programme
+  // page having never been booked for anything.
+  const everyone = shuffle([...assignable]);
+
+  const extras = [];
+  assignable.forEach((sp) => {
+    const more = sp.featured ? int(3, 5) : chance(0.55) ? 0 : chance(0.7) ? 1 : int(2, 3);
+    for (let n = 0; n < more; n++) extras.push(sp);
+  });
+
+  // nextSpeaker() pops from the end, so `everyone` must sit last to be dealt first
+  return [...shuffle(extras), ...everyone];
 };
 
 let speakerPool = buildSpeakerPool();
@@ -372,7 +387,6 @@ function addSession(opts) {
   const room = opts.room;
   const dur = mins(opts.end) - mins(opts.start);
   const recorded = opts.recorded ?? (room.amenities.includes('Recorded') || room.amenities.includes('Livestream'));
-  const ratingCount = int(0, 180);
   const id = sStmt.run(
     opts.title, opts.subtitle ?? null, opts.abstract,
     pickN(TAKEAWAY, 3).join('|'), opts.prereq ?? null,
@@ -383,7 +397,7 @@ function addSession(opts) {
     recorded && chance(0.75) ? `https://recordings.orbitconf.dev/s/${usedTitles.size}` : null,
     chance(0.55) ? `https://slides.orbitconf.dev/s/${usedTitles.size}` : null,
     chance(0.3) ? `https://github.com/orbitconf/demo-${usedTitles.size}` : null,
-    ratingCount ? flt(3.4, 4.9, 2) : 0, ratingCount,
+    0, 0, // ratings are earned during the conference, never seeded ahead of it
   ).lastInsertRowid;
 
   const nSpeakers = opts.format === 'Panel' ? int(3, 4) : opts.format === 'Fireside Chat' ? 2 : chance(0.2) ? 2 : 1;
@@ -489,6 +503,31 @@ assignSpeaker('Priya Venkatesan', [
   { day: DAYS[0], startsAt: '14:45' },
   { day: DAYS[2], startsAt: '09:00' },
 ]);
+
+/*
+ * Backfill. Keynotes and the two hand-assigned attendee-speakers replace whoever
+ * was dealt to those sessions, which can leave a speaker with nothing. A speaker
+ * with no sessions is not a speaker — they would show up on the programme having
+ * never been booked. Pair each one onto a talk that currently has a single
+ * speaker, which reads as a co-presented session.
+ */
+const unbooked = db.prepare(`
+  SELECT id FROM speakers sp
+  WHERE NOT EXISTS (SELECT 1 FROM session_speakers ss WHERE ss.speaker_id = sp.id)`).all();
+
+if (unbooked.length) {
+  const soloSessions = db.prepare(`
+    SELECT s.id FROM sessions s
+    JOIN session_speakers ss ON ss.session_id = s.id
+    WHERE s.is_keynote = 0 AND s.format != 'Social'
+    GROUP BY s.id HAVING COUNT(*) = 1`).all();
+
+  unbooked.forEach((sp, i) => {
+    const target = soloSessions[i % soloSessions.length];
+    if (target) ssStmt.run(target.id, sp.id, 'Speaker');
+  });
+  console.log(`  · paired ${unbooked.length} otherwise-unbooked speakers onto co-presented sessions`);
+}
 
 const sessions = db.prepare('SELECT id, day, room_id FROM sessions').all();
 
@@ -648,21 +687,59 @@ fullSessions.slice(0, 5).forEach((sess, i) => {
 
 console.log(`  · ${fullSessions.length} sessions seeded full, with queues on ${Math.min(5, fullSessions.length)} of them`);
 
-/* speaker follows */
+/*
+ * Follows. You follow a handful of people, not a fifth of the roster — and
+ * almost always someone whose talk you already booked, or a headliner you have
+ * heard of. Two to five each.
+ */
 const flStmt = prep('INSERT OR IGNORE INTO speaker_follows (user_id,speaker_id) VALUES (?,?)');
-users.forEach((u, i) => pickN(speakers, [17, 8, 24, 5, 12, 19][i] ?? 10).forEach((s) => flStmt.run(u.id, s.id)));
+const speakersIBooked = db.prepare(`
+  SELECT DISTINCT ss.speaker_id AS id FROM reservations r
+  JOIN session_speakers ss ON ss.session_id = r.session_id
+  WHERE r.user_id = ?`);
+
+users.forEach((u) => {
+  const booked = speakersIBooked.all(u.id);
+  const headliners = speakers.filter((sp) => sp.featured);
+  const wanted = int(2, 5);
+
+  // mostly people you are already going to see, plus the occasional big name
+  const fromBooked = pickN(booked, Math.min(booked.length, Math.max(1, wanted - 1)));
+  const fromHeadliners = pickN(headliners, Math.max(0, wanted - fromBooked.length));
+
+  [...fromBooked, ...fromHeadliners].forEach((sp) => flStmt.run(u.id, sp.id));
+});
 
 /* ratings */
 const COMMENTS = ['Best session of the day. The incident walkthrough alone was worth the ticket.','Great content, but ran out of time before the Q&A. Would watch a longer version.','Practical and specific. Took four pages of notes.','A bit more vendor pitch than I expected in the last ten minutes.','Finally, someone showing the failure cases instead of the happy path.','Room was far too small for the demand — had to sit on the floor.','Solid intro, but I expected more depth given the Advanced label.','The eval harness they open-sourced is going straight into our stack.','Slides were dense, delivery was excellent.','Honestly the most useful 45 minutes I have spent this year.','Had to leave halfway to make it across to the Foundry. Watching the recording.','Speaker knew the material cold and it showed in the Q&A.'];
 const ratStmt = prep('INSERT OR IGNORE INTO ratings (user_id,session_id,stars,comment,created_at) VALUES (?,?,?,?,?)');
 // You can only rate a session you went to, so ratings are drawn from the
 // attendee's own plan rather than from the programme at large.
+/*
+ * Ratings exist only for sessions that have actually finished — which, on Day 1,
+ * means this morning's. Seeding a 4.5 onto a talk three days out was the single
+ * most obvious tell that the data was fake.
+ */
+const nowHHMM = (() => {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+})();
+
 users.forEach((u) => {
-  const attended = db.prepare('SELECT session_id, day FROM reservations r JOIN sessions s ON s.id = r.session_id WHERE r.user_id = ?').all(u.id);
-  pickN(attended, Math.ceil(attended.length * 0.55)).forEach((a) =>
+  const attended = db.prepare(`
+    SELECT r.session_id, s.day FROM reservations r
+    JOIN sessions s ON s.id = r.session_id
+    WHERE r.user_id = ? AND s.day = ? AND s.ends_at <= ?`).all(u.id, DAYS[0], nowHHMM);
+  pickN(attended, Math.ceil(attended.length * 0.7)).forEach((a) =>
     ratStmt.run(u.id, a.session_id, pick([2, 3, 4, 4, 5, 5, 5]),
-      chance(0.7) ? pick(COMMENTS) : null, `${a.day}T19:${String(int(10, 59))}:00Z`));
+      chance(0.7) ? pick(COMMENTS) : null, `${a.day}T${nowHHMM}:00Z`));
 });
+
+// keep the rolled-up columns in step with what we just wrote
+db.prepare(`
+  UPDATE sessions SET
+    avg_rating   = COALESCE((SELECT ROUND(AVG(stars), 2) FROM ratings WHERE session_id = sessions.id), 0),
+    rating_count = (SELECT COUNT(*) FROM ratings WHERE session_id = sessions.id)`).run();
 
 /* ============================== VENDORS ============================ */
 // [name,cuisine,description,venueKey,building,floor,x,y,open,close,price,rating,dietary,emoji,wait]
@@ -740,12 +817,12 @@ SPONSOR_DATA.forEach(([name, tier, blurb, perk, hiring], i) => {
 /* =========================== ANNOUNCEMENTS ========================= */
 const ANN = [
   ['Budget 30 minutes to get to the Foundry', 'The Foundry at Red Rock Yards is 6.2 miles from Aurora. The free shuttle takes about 27 minutes door to door and runs every 20 minutes; a rideshare is roughly 18 minutes. Back-to-back sessions across the two sites are not realistically possible.', 'warning', FOUNDRY.id, `${addDays(DAYS[0], -1)}T15:00:00Z`, 1],
-  ['Wednesday’s keynote is at the Foundry', 'Day 3 opens with “Evaluation Is the New Compiler” in The Blast Furnace, not at Aurora. Shuttles run continuously from 06:30 that morning. Arrive early — the yard entrance backs up.', 'warning', FOUNDRY.id, `${DAYS[2]}T05:00:00Z`, 1],
+  [`${weekdayOf(DAYS[2])}’s keynote is at the Foundry`, 'Day 3 opens with “Evaluation Is the New Compiler” in The Blast Furnace, not at Aurora. Shuttles run continuously from 06:30 that morning. Arrive early — the yard entrance backs up.', 'warning', FOUNDRY.id, `${DAYS[2]}T05:00:00Z`, 1],
   ['Doors open at 07:30 on Day 1', 'Registration is on Level 1 of the Aurora Convention Center, past the north entrance. Badge pickup opens at 07:30. Bring photo ID matching your ticket.', 'info', AURORA.id, `${addDays(DAYS[0], -1)}T16:00:00Z`, 0],
   ['Nebula Main Stage will reach capacity for the opening keynote', 'Overflow viewing with full audio is available in Quasar Hall and Pulsar Theater. Both open 20 minutes before the session starts.', 'warning', AURORA.id, `${DAYS[0]}T13:30:00Z`, 0],
   ['Workshop laptops: set up before you arrive', 'Every hands-on workshop expects Node 22+ and Docker installed locally. The setup guide is linked from each workshop session page. There is not enough conference wifi in Nevada for four hundred people to pull a 4GB image at once.', 'info', null, `${addDays(DAYS[0], -1)}T09:00:00Z`, 0],
   ['The Boiler Room has no phone signal', 'It is a basement inside a steel works. Wifi is wired-backhauled and solid, cellular is not. Tell someone where you are going.', 'info', FOUNDRY.id, `${DAYS[0]}T07:00:00Z`, 0],
-  ['Block party moved to the Smelter yard', 'Wednesday night’s party has moved outdoors to The Smelter. Same time, better sound, bring a jacket — the desert gets cold after dark. Last shuttle back to Aurora is 01:15.', 'success', FOUNDRY.id, `${DAYS[2]}T18:00:00Z`, 0],
+  ['Block party moved to the Smelter yard', `${weekdayOf(DAYS[2])} night’s party has moved outdoors to The Smelter. Same time, better sound, bring a jacket — the desert gets cold after dark. Last shuttle back to Aurora is 01:15.`, 'success', FOUNDRY.id, `${DAYS[2]}T18:00:00Z`, 0],
   ['Recordings go live 24 hours after each session', 'Everything in Nebula, Quasar, Pulsar, Vector, Ironworks and Hangar Seven is recorded. Workshops and roundtables are not. Recordings appear on the session page automatically.', 'info', null, `${DAYS[0]}T08:00:00Z`, 0],
   ['Quiet room available on Level 3', 'Context Window is reserved as a quiet space from 09:00–18:00 daily. No calls, no sessions scheduled, no exceptions.', 'success', AURORA.id, `${DAYS[0]}T07:00:00Z`, 0],
   ['The Cooling Tower is stairs-only', 'The spiral staircase to the Cooling Tower mezzanine is the only access. If you need step-free routing, the same sessions are livestreamed to Ironworks B.', 'warning', FOUNDRY.id, `${DAYS[0]}T06:30:00Z`, 0],

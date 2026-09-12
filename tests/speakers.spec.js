@@ -1,19 +1,46 @@
 import { test, expect } from '@playwright/test';
-import { visit } from './helpers.js';
+import { visit, ATTENDEES } from './helpers.js';
 
 test.describe('Speakers', () => {
   test('the unfiltered page is tiered, not one flat list', async ({ page }) => {
     await visit(page, '/speakers');
     await expect(page.getByTestId('headline-speakers')).toBeVisible();
-    await expect(page.getByTestId('presenting-speakers')).toBeVisible();
     await expect(page.getByTestId('all-speakers')).toBeVisible();
     await expect(page.getByRole('heading', { name: /The headliners/i })).toBeVisible();
+    // the long tail is browsable by letter rather than one endless column
+    await expect(page.getByRole('button', { name: /Jump to [A-Z]/ }).first()).toBeVisible();
   });
 
-  test('searching collapses the tiers into one result grid', async ({ page }) => {
-    await visit(page, '/speakers?q=Diallo');
+  test('every speaker on the programme is actually presenting', async ({ request }) => {
+    const speakers = await (await request.get('http://localhost:3001/api/speakers')).json();
+    const idle = speakers.filter((s) => (s.sessionCount ?? 0) === 0);
+    expect(idle.map((s) => s.name)).toEqual([]);
+  });
+
+  test('following a speaker surfaces them at the top of the list', async ({ page }) => {
+    await visit(page, '/speakers/9', { as: ATTENDEES.marcus });
+    const name = await page.getByTestId('speaker-name').innerText();
+
+    const follow = page.getByTestId('follow-speaker');
+    if ((await follow.getAttribute('aria-pressed')) === 'true') await follow.click();
+    await follow.click();
+    await expect(follow).toHaveAttribute('aria-pressed', 'true');
+
+    await page.goto('/speakers');
+    const following = page.getByTestId('followed-speakers');
+    await expect(following).toBeVisible();
+    await expect(following).toContainText(name);
+
+    // and the Following chip filters down to just them
+    await page.getByTestId('filter-following').click();
+    await expect(page.getByTestId('followed-speakers')).toContainText(name);
     await expect(page.getByTestId('headline-speakers')).toHaveCount(0);
-    await expect(page.getByTestId('speaker-count')).toContainText(/speaker/);
+  });
+
+  test('searching collapses the tiers into one flat result list', async ({ page }) => {
+    await visit(page, '/speakers?q=a&track=agents-tool-use');
+    await expect(page.getByTestId('headline-speakers')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: /Matching speakers/i })).toBeVisible();
   });
 
   test('speakers have real portraits, not just initials', async ({ page }) => {
@@ -29,11 +56,13 @@ test.describe('Speakers', () => {
   });
 
   test('sorting by A–Z reorders the list', async ({ page }) => {
-    await visit(page, '/speakers?q=a&sort=name');
-    const first = await page.locator('h3').first().innerText();
-    await visit(page, '/speakers?q=a&sort=sessions');
-    const other = await page.locator('h3').first().innerText();
-    expect(first).not.toEqual(other);
+    const names = async (sort) => {
+      await visit(page, `/speakers?q=a&sort=${sort}`);
+      const list = page.getByTestId('all-speakers');
+      await expect(list).toBeVisible();
+      return list.locator('a').first().innerText();
+    };
+    expect(await names('name')).not.toEqual(await names('sessions'));
   });
 });
 

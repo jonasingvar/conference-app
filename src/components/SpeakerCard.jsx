@@ -53,6 +53,31 @@ export function SpeakerCard({ speaker, variant = 'grid' }) {
     );
   }
 
+  /**
+   * The long tail. Ninety-odd people, so this is a name index, not a profile
+   * list — title, company and city all truncated to nothing at this width and
+   * only added height. They are one tap away on the profile.
+   */
+  if (variant === 'compact') {
+    return (
+      <Link
+        to={`/speakers/${speaker.id}`}
+        title={`${speaker.name} — ${speaker.jobTitle}, ${speaker.company}`}
+        className="group flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-raised focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400"
+      >
+        <Avatar name={speaker.name} initials={speaker.initials} accent={speaker.accent}
+          imageUrl={speaker.imageUrl} size="xs" ring={false} />
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium group-hover:text-violet-200">
+          {speaker.name}
+        </span>
+        {following && <Icon name="check" className="size-3 shrink-0 text-emerald-400" />}
+        {sessionCount > 1 && (
+          <span className="shrink-0 font-mono text-[10px] text-faint">{sessionCount}</span>
+        )}
+      </Link>
+    );
+  }
+
   if (variant === 'row') {
     return (
       <Link

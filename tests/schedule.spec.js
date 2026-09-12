@@ -5,7 +5,7 @@ test.describe('Schedule', () => {
   test('lists sessions for the selected day', async ({ page }) => {
     await visit(page, '/schedule?view=list');
     await waitForResults(page);
-    await expect(page.getByTestId('result-count')).toContainText(/\d+ sessions on/);
+    await expect(page.getByTestId('result-count')).toContainText(/\d+ sessions/);
     await expect(page.locator('article').first()).toBeVisible();
   });
 

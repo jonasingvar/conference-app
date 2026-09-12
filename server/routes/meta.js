@@ -13,7 +13,8 @@ metaRouter.get('/bootstrap', (req, res) => {
     fromVenueId: t.from_venue_id, toVenueId: t.to_venue_id, mode: t.mode,
     minutes: t.minutes, costUsd: t.cost_usd, note: t.note,
   }));
-  const tracks = db.prepare('SELECT * FROM tracks ORDER BY name').all();
+  const tracks = db.prepare('SELECT * FROM tracks ORDER BY name').all()
+    .map((t) => ({ ...t, shortName: t.short_name }));
   const tags = db.prepare('SELECT * FROM tags ORDER BY kind, name').all();
   const rooms = db.prepare('SELECT * FROM rooms ORDER BY venue_id, level_order, name').all().map(toRoom);
   const users = db.prepare('SELECT * FROM users ORDER BY id').all().map((u) => toUser(u, {

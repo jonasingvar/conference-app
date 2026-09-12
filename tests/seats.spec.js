@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { visit, ATTENDEES } from './helpers.js';
+import { visit, clearAgendaFor, ATTENDEES } from './helpers.js';
 
 const API = 'http://localhost:3001/api';
 
 /**
- * Attendees start with seeded reservations, so a test must not assume a
- * session is un-reserved. Put the panel into a known state first.
+ * Attendees start with seeded reservations, and the overlap guard refuses a
+ * seat that clashes with one — so clearing the whole day is the only reliable
+ * way to get a predictable starting state.
  */
 async function ensureNotReserved(page) {
   const release = page.getByTestId('release-seat');
@@ -50,6 +51,7 @@ async function findPromotionFixture(request) {
 test.describe('Seat reservation', () => {
   test('reserving moves the seat count, and releasing gives it back', async ({ page, request }, testInfo) => {
     const { open } = await findSessions(request, testInfo);
+    await clearAgendaFor(request, ATTENDEES.kenji, open.day);
     await visit(page, `/sessions/${open.id}`, { as: ATTENDEES.kenji });
     await ensureNotReserved(page);
 
@@ -67,6 +69,7 @@ test.describe('Seat reservation', () => {
 
   test('a reservation is server state and survives a reload', async ({ page, request }, testInfo) => {
     const { open } = await findSessions(request, testInfo);
+    await clearAgendaFor(request, ATTENDEES.sofia, open.day);
     await visit(page, `/sessions/${open.id}`, { as: ATTENDEES.sofia });
     await ensureNotReserved(page);
 
@@ -86,6 +89,7 @@ test.describe('Seat reservation', () => {
     const { full } = await findSessions(request, testInfo);
     test.skip(!full, 'no session is at capacity');
 
+    await clearAgendaFor(request, ATTENDEES.kenji, full.day);
     await visit(page, `/sessions/${full.id}`, { as: ATTENDEES.kenji });
     await ensureNotReserved(page);
     await expect(page.getByTestId('seats-left')).toContainText('Full');
@@ -102,6 +106,7 @@ test.describe('Seat reservation', () => {
 
   test('reserving twice does not take two seats', async ({ request }, testInfo) => {
     const { open } = await findSessions(request, testInfo);
+    await clearAgendaFor(request, ATTENDEES.marcus, open.day);
     const url = `${API}/users/${ATTENDEES.marcus}/reservations/${open.id}`;
 
     const first = await (await request.put(url)).json();

@@ -142,6 +142,10 @@ next:
    person, editable. Ratings roll up onto `sessions.avg_rating` immediately.
 4. **Export** → `/api/users/:id/agenda.ics` and `/api/sessions/:id.ics`.
 
+A clash is a **choice, not an error**: the 409 carries both sessions and the UI
+opens `<ConflictDialog>` showing them side by side with Keep / Swap. Do not
+demote that to a toast — a toast disappears while the decision is still open.
+
 `server/lib/seats.js` and `server/lib/attendance.js` hold the rules; both run
 inside transactions. Check-in and rating take the clock from the *client*,
 because conference time is simulated.
@@ -224,6 +228,21 @@ Two rules if you ever regenerate a portrait:
 
 Same input, same output, on every machine — which keeps screenshots and tests
 stable.
+
+## Nothing may claim to be true when it is not
+
+The seed generates a *live* conference, so anything that implies elapsed time
+has to be earned:
+
+- **Ratings and reviews only exist for sessions that have already finished.**
+  Seeding a 4.5 onto a talk three days away was the clearest possible tell that
+  the data was fake, and it poisoned the "highest rated" ranking.
+- **Never hard-code a date, month or weekday.** Day 1 moves with the seed, so
+  the footer, announcements and body copy all derive from `conference.dates`
+  and `days[n]`. A footer reading "Oct 12–15" under a September hero is the
+  fastest way to lose an attendee's trust.
+- **No invented external links.** Speaker socials and sponsor sites show the
+  handle but do not link, because the domains do not exist.
 
 ## Chrome and correctness
 

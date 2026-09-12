@@ -12,7 +12,13 @@ import { db } from '../db.js';
  * person automatically.
  */
 
-const getSession = db.prepare('SELECT id, capacity, seats_taken, day, starts_at, ends_at, title FROM sessions WHERE id = ?');
+const getSession = db.prepare(`
+  SELECT s.id, s.capacity, s.seats_taken, s.day, s.starts_at, s.ends_at, s.title,
+         rm.name AS room_name, v.short_name AS venue_name
+  FROM sessions s
+  JOIN rooms rm ON rm.id = s.room_id
+  JOIN venues v ON v.id = rm.venue_id
+  WHERE s.id = ?`);
 const getReservation = db.prepare('SELECT status, created_at FROM reservations WHERE user_id = ? AND session_id = ?');
 const insertReservation = db.prepare(
   'INSERT INTO reservations (user_id, session_id, status, created_at) VALUES (?, ?, ?, ?)');
@@ -55,9 +61,12 @@ export function seatState(sessionId, userId) {
  * is a seat somebody else wanted.
  */
 const overlapping = db.prepare(`
-  SELECT s.id, s.title, s.starts_at, s.ends_at, r.status
+  SELECT s.id, s.title, s.starts_at, s.ends_at, s.day, r.status,
+         rm.name AS room_name, v.short_name AS venue_name
   FROM reservations r
   JOIN sessions s ON s.id = r.session_id
+  JOIN rooms rm ON rm.id = s.room_id
+  JOIN venues v ON v.id = rm.venue_id
   WHERE r.user_id = ?
     AND r.status = 'confirmed'
     AND s.id != ?
@@ -76,8 +85,14 @@ export const reserveSeat = db.transaction((userId, sessionId) => {
     return {
       ...seatState(sessionId, userId),
       rejected: 'overlap',
+      // Both sides, so the client can present an actual choice rather than an error.
+      wanted: {
+        id: s.id, title: s.title, startsAt: s.starts_at, endsAt: s.ends_at,
+        roomName: s.room_name, venueName: s.venue_name,
+      },
       conflictsWith: {
         id: clash.id, title: clash.title, startsAt: clash.starts_at, endsAt: clash.ends_at,
+        roomName: clash.room_name, venueName: clash.venue_name,
       },
     };
   }

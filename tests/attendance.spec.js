@@ -30,13 +30,20 @@ test.describe('You cannot be in two places at once', () => {
     await page.goto(`/sessions/${slot.sessions[1].id}`);
     await page.getByTestId('reserve-seat').click();
 
-    // refused, with the clash named and a way out
-    const toast = page.getByTestId('toaster');
-    await expect(toast).toContainText(/Clashes with/);
-    await expect(toast.getByRole('button', { name: 'Swap' })).toBeVisible();
-    await expect(page.getByTestId('reserve-seat')).toBeVisible(); // still not booked
+    // refused with a dialog showing both sessions, not a disappearing toast
+    const dialog = page.getByTestId('conflict-dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText('You are already booked at this time');
+    await expect(dialog).toContainText(slot.sessions[0].title);
+    await expect(dialog).toContainText(slot.sessions[1].title);
 
-    await toast.getByRole('button', { name: 'Swap' }).click();
+    // backing out keeps the original booking
+    await dialog.getByTestId('conflict-keep').click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByTestId('reserve-seat')).toBeVisible();
+
+    await page.getByTestId('reserve-seat').click();
+    await page.getByTestId('conflict-dialog').getByTestId('conflict-swap').click();
     await expect(page.getByTestId('reservation-confirmed')).toBeVisible();
 
     await clearAgendaFor(request, ATTENDEES.marcus, day);
@@ -65,12 +72,13 @@ test.describe('You cannot be in two places at once', () => {
 test.describe('Check in and rate', () => {
   test('check-in is closed before the doors open', async ({ request }) => {
     const days = await conferenceDays();
+    const day = days[1];
     const all = await (await request.get(`${API}/sessions?day=${day}`)).json();
     const target = all.find((s) => s.startsAt === '14:45');
     test.skip(!target, 'no afternoon session');
 
     const res = await request.put(`${API}/users/${ATTENDEES.kenji}/checkins/${target.id}`, {
-      data: { day: days[1], time: '09:00' },
+      data: { day, time: '09:00' },
     });
     expect(res.status()).toBe(409);
     expect((await res.json()).rejected).toBe('future');

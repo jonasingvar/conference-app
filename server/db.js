@@ -66,6 +66,8 @@ CREATE TABLE IF NOT EXISTS venue_travel (
 CREATE TABLE IF NOT EXISTS tracks (
   id          INTEGER PRIMARY KEY,
   name        TEXT NOT NULL UNIQUE,
+  -- one or two words, for filter chips where the full name wraps
+  short_name  TEXT NOT NULL,
   slug        TEXT NOT NULL UNIQUE,
   color       TEXT NOT NULL,
   description TEXT

@@ -19,7 +19,7 @@ const VIEWS = [
 ];
 
 export function SchedulePage() {
-  const { days, tracks, venues, formats, levels, tags, reservations } = useConference();
+  const { days, tracks, venues, formats, levels, tags, reservations, clock } = useConference();
   useDocumentTitle('Schedule');
   const [params, setParams] = useSearchParams();
   const [railOpen, setRailOpen] = useState(false);
@@ -138,7 +138,12 @@ export function SchedulePage() {
                     : 'border-hairline bg-raised text-muted hover:bg-overlay hover:text-ink',
                 )}
               >
-                <span className="text-[13px] font-semibold">{d.label} · {shortDay(d.date)}</span>
+                <span className="flex items-center gap-1.5 text-[13px] font-semibold">
+                  {d.label} · {shortDay(d.date)}
+                  {d.date === clock.day && (
+                    <span className="size-1.5 animate-pulse-dot rounded-full bg-rose-400" title="Today" />
+                  )}
+                </span>
                 <span className="font-mono text-[10px] text-faint">{d.sessionCount}</span>
               </button>
             );
@@ -162,7 +167,7 @@ export function SchedulePage() {
                 className={cx('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
                   active ? a.chip : 'border-hairline text-muted hover:text-ink')}>
                 <span className={cx('size-1.5 rounded-full', a.dot)} />
-                {t.name}
+                {t.shortName ?? t.name}
               </button>
             );
           })}
@@ -238,10 +243,22 @@ export function SchedulePage() {
         </aside>
 
         <div className="min-w-0 space-y-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-muted" data-testid="result-count">
-              {loading ? 'Loading…' : `${plural(sessions.length, 'session')} on ${dayLabel(filters.day)}`}
-            </p>
+          {/* The day being shown is the most important fact on this screen. */}
+          <div className="flex flex-wrap items-end justify-between gap-3 border-b border-hairline pb-3">
+            <div className="flex flex-wrap items-baseline gap-3">
+              <h2 className="font-display text-2xl leading-none sm:text-3xl">
+                {dayLabel(filters.day)}
+              </h2>
+              {filters.day === clock.day && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-rose-300">
+                  <span className="size-1.5 animate-pulse-dot rounded-full bg-rose-400" />
+                  Today
+                </span>
+              )}
+              <span className="text-xs text-muted" data-testid="result-count">
+                {loading ? 'Loading…' : plural(sessions.length, 'session')}
+              </span>
+            </div>
             {blocker && !loading && (
               <button
                 type="button"

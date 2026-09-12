@@ -5,13 +5,18 @@ import { SESSION_SELECT, toSpeaker, toSession } from '../lib/query.js';
 export const speakersRouter = Router();
 
 speakersRouter.get('/', (req, res) => {
-  const { q, featured, trackSlug, country, firstTime } = req.query;
+  const { q, featured, trackSlug, country, firstTime, day } = req.query;
   const where = [];
   const args = [];
   if (q) { where.push('(sp.name LIKE ? OR sp.company LIKE ? OR sp.job_title LIKE ? OR sp.expertise LIKE ?)'); args.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`); }
   if (featured === 'true') where.push('sp.featured = 1');
   if (firstTime === 'true') where.push('sp.first_time = 1');
   if (country) { where.push('sp.country = ?'); args.push(country); }
+  if (day) {
+    where.push(`EXISTS (SELECT 1 FROM session_speakers ss JOIN sessions s ON s.id = ss.session_id
+                WHERE ss.speaker_id = sp.id AND s.day = ?)`);
+    args.push(day);
+  }
   if (trackSlug) {
     where.push(`EXISTS (SELECT 1 FROM session_speakers ss JOIN sessions s ON s.id = ss.session_id
                 JOIN tracks t ON t.id = s.track_id WHERE ss.speaker_id = sp.id AND t.slug = ?)`);

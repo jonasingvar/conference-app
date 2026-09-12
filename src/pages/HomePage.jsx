@@ -359,12 +359,12 @@ function FeaturedSpeakers() {
 
 function PopularSessions() {
   const { data, loading } = useFetch(() => api.getSessions({ sort: 'rating' }), []);
-  const top = (data ?? []).filter((s) => !s.isKeynote && s.ratingCount > 60).slice(0, 6);
+  const top = (data ?? []).filter((s) => !s.isKeynote && s.ratingCount > 0).slice(0, 6);
   return (
     <section data-testid="popular-sessions">
       <SectionHeader
-        eyebrow="Highest rated"
-        title="What people are talking about"
+        eyebrow="From sessions that have finished"
+        title="Rated so far"
         action={<Button to="/schedule" size="sm">See all <Icon name="chevronRight" className="size-3.5" /></Button>}
       />
       <div className="mt-6 grid grid-flow-row-dense grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-4">

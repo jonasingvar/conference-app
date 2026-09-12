@@ -64,3 +64,46 @@ export function TabStrip({ tabs, value, onChange, className }) {
     </div>
   );
 }
+
+/**
+ * A row of pill filters. Dropdowns hide their options and cost two clicks;
+ * for small, stable option sets (days, tracks) showing them all is faster and
+ * tells you what exists.
+ */
+export function ChipGroup({ label, value, onChange, options, className }) {
+  return (
+    <div className={cx('flex flex-wrap items-center gap-1.5', className)} role="group" aria-label={label}>
+      {label && (
+        <span className="mr-1 text-[10px] font-bold uppercase tracking-[0.14em] text-faint">{label}</span>
+      )}
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => onChange(o.value)}
+            aria-pressed={active}
+            disabled={o.disabled}
+            title={o.title}
+            data-testid={o.testId}
+            className={cx(
+              'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition-all',
+              active
+                ? o.activeClass ?? 'border-violet-400/50 bg-violet-500/15 text-ink'
+                : 'border-hairline bg-raised text-muted hover:border-white/20 hover:text-ink',
+              o.disabled && 'cursor-not-allowed opacity-40 hover:text-muted',
+            )}
+          >
+            {o.dot && <span className={cx('size-1.5 rounded-full', o.dot)} />}
+            {o.icon && <Icon name={o.icon} className="size-3" />}
+            {o.label}
+            {o.count !== undefined && (
+              <span className="font-mono text-[10px] opacity-55">{o.count}</span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}

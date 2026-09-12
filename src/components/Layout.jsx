@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useConference } from '../lib/store.jsx';
 import { UserSwitcher } from './UserSwitcher.jsx';
 import { RouteChange } from './RouteChange.jsx';
+import { ConflictDialog } from './ConflictDialog.jsx';
 import { Icon } from './Icon.jsx';
 import { cx } from './ui.jsx';
 
@@ -31,7 +32,7 @@ function Logo() {
 }
 
 export function Layout() {
-  const { ready, reservations } = useConference();
+  const { ready, reservations, conflict, resolveConflict, conference } = useConference();
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
 
@@ -44,6 +45,11 @@ export function Layout() {
   return (
     <div className="relative z-10 flex min-h-dvh flex-col">
       <RouteChange />
+      <ConflictDialog
+        conflict={conflict}
+        onSwap={() => resolveConflict(true)}
+        onCancel={() => resolveConflict(false)}
+      />
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-violet-600 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold"
@@ -141,7 +147,7 @@ export function Layout() {
                 The Applied AI Conference. Four days of engineers who actually shipped it.
               </p>
               <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.14em] text-faint">
-                Oct 12–15, 2026 · Las Vegas, NV
+                {conference?.dates} · {conference?.city}
               </p>
             </div>
 
