@@ -44,8 +44,10 @@ export const getAnnouncements = () => api('/announcements');
 export const getUsers = () => api('/users');
 export const getUser = (id) => api(`/users/${id}`);
 export const getSchedule = (userId) => api(`/users/${userId}/schedule`);
+export const getToday = (userId, { day, time }) => api(`/users/${userId}/today${qs({ day, time })}`);
 
-export const reserveSeat = (userId, sessionId) => api(`/users/${userId}/reservations/${sessionId}`, { method: 'PUT' });
+export const reserveSeat = (userId, sessionId, now) =>
+  api(`/users/${userId}/reservations/${sessionId}`, { method: 'PUT', body: JSON.stringify(now ?? {}) });
 export const releaseSeat = (userId, sessionId) => api(`/users/${userId}/reservations/${sessionId}`, { method: 'DELETE' });
 
 export const getAttendance = (userId, sessionId, { day, time }) =>

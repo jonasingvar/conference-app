@@ -75,10 +75,19 @@ const overlapping = db.prepare(`
     AND ? < s.ends_at
   LIMIT 1`);
 
-export const reserveSeat = db.transaction((userId, sessionId) => {
+const toMins = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+
+export const reserveSeat = db.transaction((userId, sessionId, now) => {
   const s = getSession.get(sessionId);
   if (!s) return null;
   if (getReservation.get(userId, sessionId)) return seatState(sessionId, userId); // already holding one
+
+  // You cannot take a seat in something that has already finished. Without this
+  // the app will happily sell you a chair in a talk that ended three days ago.
+  if (now?.day && now?.time) {
+    const over = s.day < now.day || (s.day === now.day && toMins(s.ends_at) <= toMins(now.time));
+    if (over) return { ...seatState(sessionId, userId), rejected: 'ended' };
+  }
 
   const clash = overlapping.get(userId, sessionId, s.day, s.ends_at, s.starts_at);
   if (clash) {

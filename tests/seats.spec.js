@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { visit, clearAgendaFor, ATTENDEES } from './helpers.js';
+import { visit, momentOn, clearAgendaFor, ATTENDEES } from './helpers.js';
 
 const API = 'http://localhost:3001/api';
 
@@ -52,7 +52,7 @@ test.describe('Seat reservation', () => {
   test('reserving moves the seat count, and releasing gives it back', async ({ page, request }, testInfo) => {
     const { open } = await findSessions(request, testInfo);
     await clearAgendaFor(request, ATTENDEES.kenji, open.day);
-    await visit(page, `/sessions/${open.id}`, { as: ATTENDEES.kenji });
+    await visit(page, `/sessions/${open.id}`, { as: ATTENDEES.kenji, at: await momentOn(0, '07:00') });
     await ensureNotReserved(page);
 
     const count = page.getByTestId('seat-count');
@@ -70,7 +70,7 @@ test.describe('Seat reservation', () => {
   test('a reservation is server state and survives a reload', async ({ page, request }, testInfo) => {
     const { open } = await findSessions(request, testInfo);
     await clearAgendaFor(request, ATTENDEES.sofia, open.day);
-    await visit(page, `/sessions/${open.id}`, { as: ATTENDEES.sofia });
+    await visit(page, `/sessions/${open.id}`, { as: ATTENDEES.sofia, at: await momentOn(0, '07:00') });
     await ensureNotReserved(page);
 
     await page.getByTestId('reserve-seat').click();
@@ -90,7 +90,7 @@ test.describe('Seat reservation', () => {
     test.skip(!full, 'no session is at capacity');
 
     await clearAgendaFor(request, ATTENDEES.kenji, full.day);
-    await visit(page, `/sessions/${full.id}`, { as: ATTENDEES.kenji });
+    await visit(page, `/sessions/${full.id}`, { as: ATTENDEES.kenji, at: await momentOn(0, '07:00') });
     await ensureNotReserved(page);
     await expect(page.getByTestId('seats-left')).toContainText('Full');
     await expect(page.getByTestId('reserve-seat')).toContainText(/waitlist/i);
@@ -176,7 +176,7 @@ test.describe('Waitlists', () => {
     const queued = all.find((s) => s.isFull && s.waitlistCount > 0);
     test.skip(!queued, 'no queued session');
 
-    await visit(page, `/sessions/${queued.id}`, { as: ATTENDEES.kenji });
+    await visit(page, `/sessions/${queued.id}`, { as: ATTENDEES.kenji, at: await momentOn(0, '07:00') });
     const release = page.getByTestId('release-seat');
     if (await release.isVisible().catch(() => false)) {
       await release.click();

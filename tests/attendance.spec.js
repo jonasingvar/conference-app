@@ -23,7 +23,7 @@ test.describe('You cannot be in two places at once', () => {
     const slot = await busySlot(request, day);
     test.skip(!slot, 'no slot with two available sessions');
 
-    await visit(page, `/sessions/${slot.sessions[0].id}`, { as: ATTENDEES.marcus });
+    await visit(page, `/sessions/${slot.sessions[0].id}`, { as: ATTENDEES.marcus, at: await momentOn(0, '07:00') });
     await page.getByTestId('reserve-seat').click();
     await expect(page.getByTestId('reservation-confirmed')).toBeVisible();
 

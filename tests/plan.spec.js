@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { visit, ATTENDEES } from './helpers.js';
+import { visit, momentOn, ATTENDEES } from './helpers.js';
 
 test.describe('My Agenda', () => {
   test('adding a session from the schedule puts it on the agenda', async ({ page }) => {
-    await visit(page, '/schedule?view=list', { as: ATTENDEES.marcus });
+    await visit(page, '/schedule?view=list', { as: ATTENDEES.marcus, at: await momentOn(0, '07:00') });
     await expect(page.getByTestId('result-count')).not.toHaveText(/Loading/);
 
     const card = page.locator('article').first();

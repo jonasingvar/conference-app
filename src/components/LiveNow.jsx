@@ -21,7 +21,7 @@ export function LiveBadge({ className, label = 'Live' }) {
   );
 }
 
-function RunningCard({ session, now, upcoming = false }) {
+function RunningCard({ session, now, upcoming = false, yours = false }) {
   const a = accent(session.track.color);
   const progress = upcoming ? 0 : progressOf(session, now);
   const minsLeft = Math.max(0, Math.round((1 - progress) * session.durationMins));
@@ -37,6 +37,11 @@ function RunningCard({ session, now, upcoming = false }) {
           <span className={cx('truncate text-[10px] font-bold uppercase tracking-wider', a.text)}>
             {session.track.name}
           </span>
+          {yours && (
+            <span className="shrink-0 rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-300">
+              Yours
+            </span>
+          )}
           <span className={cx('shrink-0 font-mono text-[11px] font-semibold', upcoming ? 'text-cyan-300' : 'text-rose-300')}>
             {upcoming ? relativeToNow(session.startsAt, now) : `${minsLeft} min left`}
           </span>
@@ -76,7 +81,7 @@ function RunningCard({ session, now, upcoming = false }) {
  * rather than a catalogue.
  */
 export function LiveNow() {
-  const { clock, days } = useConference();
+  const { clock, days, reservationFor } = useConference();
   const { data, loading } = useFetch(
     () => api.getLive({ day: clock.day, time: clock.time }),
     [clock.day, clock.time],
@@ -85,28 +90,58 @@ export function LiveNow() {
   const dayLabel = days.find((d) => d.date === clock.day)?.label ?? 'Day 1';
   const running = data?.happeningNow ?? [];
   const next = data?.upNext ?? [];
-  const inGap = !loading && running.length === 0 && next.length > 0;
+
+  /*
+   * Four honest states, decided by the clock against the day's own bounds —
+   * not by whether an array happens to be empty. Branching on array lengths
+   * produced "the day has not started" at 21:45 and "everyone is changing
+   * rooms" at 07:15.
+   */
+  const mins = (t) => (t ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : null);
+  const nowMins = mins(clock.time);
+  const startsAt = mins(data?.dayStartsAt);
+  const endsAt = mins(data?.dayEndsAt);
+
+  const phase = loading ? 'loading'
+    : startsAt !== null && nowMins < startsAt ? 'before'
+    : endsAt !== null && nowMins >= endsAt ? 'after'
+    : running.length > 0 ? 'running'
+    : next.length > 0 ? 'gap'
+    : 'after';
+
+  const inGap = phase === 'gap';
   const featured = running.length ? running : next;
+  const mine = (id) => reservationFor(id);
 
   return (
     <section data-testid="live-now">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="mb-1.5 flex items-center gap-2">
-            <LiveBadge label={inGap ? 'Between slots' : 'Live'} />
+            <LiveBadge label={
+              phase === 'before' ? 'Not started'
+                : phase === 'after' ? 'Wrapped'
+                : inGap ? 'Between slots'
+                : 'Live'
+            } />
             <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-faint">
               {dayLabel} · {fmtTime(clock.time)}
             </span>
           </div>
           <h2 className="font-display text-2xl leading-tight sm:text-3xl">
-            {inGap ? 'Everyone is changing rooms' : running.length ? 'Happening right now' : 'The day has not started'}
+            {phase === 'before' ? 'Not started yet'
+              : phase === 'after' ? `${dayLabel} is done`
+              : inGap ? 'Everyone is changing rooms'
+              : 'Happening right now'}
           </h2>
           <p className="mt-1 text-sm text-muted">
-            {inGap
-              ? `${plural(next.length, 'session')} starting at ${fmtTime(data.nextSlot)} — ${relativeToNow(data.nextSlot, clock.time)}.`
-              : running.length
-                ? `${running.length} sessions in progress across both sites.`
-                : 'Doors open at 07:30. The first keynote is at 08:00.'}
+            {phase === 'before'
+              ? `Doors are open. The first session is at ${fmtTime(data.dayStartsAt)} — ${relativeToNow(data.dayStartsAt, clock.time)}.`
+              : phase === 'after'
+                ? 'Nothing more on the programme today.'
+                : inGap
+                  ? `${plural(next.length, 'session')} starting at ${fmtTime(data.nextSlot)} — ${relativeToNow(data.nextSlot, clock.time)}.`
+                  : `${plural(running.length, 'session')} in progress across both sites.`}
           </p>
         </div>
         <Button to={`/schedule?day=${clock.day}`} size="sm">
@@ -121,14 +156,14 @@ export function LiveNow() {
       ) : (
         <>
           <div className="stagger hide-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
-            {featured.slice(0, 4).map((s, i) => (
+            {[...featured].sort((a, b) => Number(Boolean(mine(b.id))) - Number(Boolean(mine(a.id)))).slice(0, 4).map((s, i) => (
               <div key={s.id} style={{ '--i': i }} className="flex min-w-[17rem] snap-start sm:min-w-0 sm:flex-1">
-                <RunningCard session={s} now={clock.time} upcoming={inGap} />
+                <RunningCard session={s} now={clock.time} upcoming={inGap || phase === 'before'} yours={Boolean(mine(s.id))} />
               </div>
             ))}
           </div>
 
-          {next.length > 0 && !inGap && (
+          {next.length > 0 && !inGap && phase !== 'after' && (
             <div className="mt-4 rounded-xl border border-hairline bg-surface p-4">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <Chip accent="cyan" className="!py-0.5">

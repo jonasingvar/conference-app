@@ -83,7 +83,7 @@ test.describe('Schedule grid', () => {
     const days = await conferenceDays();
     const day = days[testInfo.project.name === 'mobile' ? 2 : 3];
     await clearAgendaFor(request, ATTENDEES.marcus, day);
-    await visit(page, `/schedule?view=grid&day=${day}`, { as: ATTENDEES.marcus });
+    await visit(page, `/schedule?view=grid&day=${day}`, { as: ATTENDEES.marcus, at: await momentOn(0, '07:00') });
     const count = page.getByTestId('starred-count');
     const before = Number(await count.innerText());
 

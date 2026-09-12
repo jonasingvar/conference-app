@@ -87,11 +87,15 @@ export function ConferenceProvider({ children }) {
   const reserveSeat = useCallback(async (sessionId) => {
     let state;
     try {
-      state = await api.reserveSeat(currentUserId, sessionId);
+      state = await api.reserveSeat(currentUserId, sessionId, clock);
     } catch (err) {
       // 409 means an overlapping seat; the API sends the clash back in the body
       state = err.payload ?? null;
       if (!state) throw err;
+    }
+    if (state.rejected === 'ended') {
+      toast({ message: 'That session has already finished', icon: 'clock' });
+      return state;
     }
     if (state.rejected === 'overlap') {
       // A choice between two sessions, not an error — hand it to the dialog.
@@ -107,7 +111,7 @@ export function ConferenceProvider({ children }) {
       icon: state.status === 'waitlisted' ? 'clock' : 'ticket',
     });
     return state;
-  }, [currentUserId, applySeatState, toast]);
+  }, [currentUserId, applySeatState, toast, clock]);
 
   const releaseSeat = useCallback(async (sessionId) => {
     const state = await api.releaseSeat(currentUserId, sessionId);
@@ -139,12 +143,12 @@ export function ConferenceProvider({ children }) {
     if (!conflict) return;
     if (swap) {
       applySeatState(await api.releaseSeat(currentUserId, conflict.conflictsWith.id));
-      const state = await api.reserveSeat(currentUserId, conflict.wanted.id);
+      const state = await api.reserveSeat(currentUserId, conflict.wanted.id, clock);
       applySeatState(state);
       toast({ message: `Swapped to “${conflict.wanted.title}”`, icon: 'check' });
     }
     setConflict(null);
-  }, [conflict, currentUserId, applySeatState, toast]);
+  }, [conflict, currentUserId, applySeatState, toast, clock]);
 
   const value = useMemo(() => {
     const users = data?.users ?? [];

@@ -113,9 +113,16 @@ metaRouter.get('/live', (req, res) => {
         ORDER BY s.is_keynote DESC, s.avg_rating DESC`).all(day, nextSlot)
     : [];
 
+  // The day's own bounds, so the client can tell "not started yet" from
+  // "between slots" from "that's a wrap" instead of guessing from array lengths.
+  const bounds = db.prepare(
+    'SELECT MIN(starts_at) first, MAX(ends_at) last FROM sessions WHERE day = ?').get(day);
+
   res.json({
     day,
     time,
+    dayStartsAt: bounds?.first ?? null,
+    dayEndsAt: bounds?.last ?? null,
     nextSlot: nextSlot ?? null,
     happeningNow: hydrateSessions(running),
     upNext: hydrateSessions(upcoming),

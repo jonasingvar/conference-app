@@ -229,6 +229,29 @@ Two rules if you ever regenerate a portrait:
 Same input, same output, on every machine — which keeps screenshots and tests
 stable.
 
+## The home page is about *this* attendee, at *this* moment
+
+Everything on `/` is either personal or time-sensitive. It is not a brochure —
+an attendee bought a ticket, so the dates, the session count and the track list
+tell them nothing they did not already know.
+
+- `GET /api/users/:id/today?day=&time=` is the whole payload: what they are in
+  now, what is next, what they are waiting on, what they attended but have not
+  rated, and suggestions for the first slot they have left empty.
+- **Suggestions rank on behaviour, not declaration.** `interests` is what
+  someone ticked at registration; the topic tags on what they have actually
+  booked are what they want. Jonas declares "Agent Design, Evaluation" and
+  books Developer Experience.
+- **Everything is driven by `clock.day`.** The old page rendered `days[0]` —
+  the first day the attendee had anything booked — so on day 3 it presented
+  day 1 as if it were happening.
+- Sections **self-hide when empty** rather than rendering a heading over
+  nothing. Follow `FromSpeakersYouFollow`.
+
+If you add a section here, it has to answer "why is this on the home page and
+not on the page that owns it?" Keynotes, the track list, the venue split and
+featured speakers all failed that test and were removed.
+
 ## Nothing may claim to be true when it is not
 
 The seed generates a *live* conference, so anything that implies elapsed time

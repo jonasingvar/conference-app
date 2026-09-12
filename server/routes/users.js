@@ -62,6 +62,94 @@ usersRouter.get('/:id/agenda.ics', (req, res) => {
   res.type('text/calendar').set('Content-Disposition', 'attachment; filename="orbit-agenda.ics"').send(ics);
 });
 
+/**
+ * GET /api/users/:id/today?day=&time=
+ *
+ * Everything the home page needs about *this* attendee at *this* moment:
+ * what they are in now, what is next, what they are waiting on, and — for the
+ * slots they have left empty — a few suggestions drawn from what they have
+ * actually been booking rather than what they once declared.
+ */
+usersRouter.get('/:id/today', (req, res) => {
+  const userId = Number(req.params.id);
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  if (!user) return res.status(404).json({ error: 'Attendee not found' });
+
+  const { day, time = '00:00' } = req.query;
+  if (!day) return res.status(400).json({ error: 'day is required' });
+  const mins = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+  const now = mins(time);
+
+  const mine = hydrateSessions(db.prepare(`${SESSION_SELECT}
+    JOIN reservations r ON r.session_id = s.id AND r.user_id = ?
+    WHERE s.day = ? ORDER BY s.starts_at`).all(userId, day));
+
+  const status = new Map(
+    db.prepare('SELECT session_id, status FROM reservations WHERE user_id = ?').all(userId)
+      .map((r) => [r.session_id, r.status]));
+  const checkedIn = new Set(
+    db.prepare('SELECT session_id FROM check_ins WHERE user_id = ?').all(userId).map((c) => c.session_id));
+  const rated = new Set(
+    db.prepare('SELECT session_id FROM ratings WHERE user_id = ?').all(userId).map((r) => r.session_id));
+
+  const decorate = (s) => ({
+    ...s,
+    reservation: status.get(s.id) ?? null,
+    checkedIn: checkedIn.has(s.id),
+    rated: rated.has(s.id),
+  });
+
+  const booked = mine.filter((s) => status.get(s.id) === 'confirmed').map(decorate);
+  const current = booked.find((s) => now >= mins(s.startsAt) && now < mins(s.endsAt)) ?? null;
+  const next = booked.find((s) => mins(s.startsAt) > now) ?? null;
+  const finished = booked.filter((s) => now >= mins(s.endsAt));
+
+  // Taste is what you book, not what you ticked at registration.
+  const tasteRows = db.prepare(`
+    SELECT tg.slug, COUNT(*) n FROM reservations r
+    JOIN session_tags st ON st.session_id = r.session_id
+    JOIN tags tg ON tg.id = st.tag_id AND tg.kind = 'topic'
+    WHERE r.user_id = ? GROUP BY tg.slug ORDER BY n DESC LIMIT 8`).all(userId);
+  const taste = new Set(tasteRows.map((t) => t.slug));
+
+  // Slots today that are still ahead and that they have not booked anything in.
+  const allSlots = db.prepare(
+    'SELECT DISTINCT starts_at FROM sessions WHERE day = ? ORDER BY starts_at').all(day)
+    .map((r) => r.starts_at).filter((t) => mins(t) > now);
+  const taken = new Set(booked.map((s) => s.startsAt));
+  const openSlot = allSlots.find((t) => !taken.has(t)) ?? null;
+
+  let suggestions = [];
+  if (openSlot) {
+    const candidates = hydrateSessions(db.prepare(`${SESSION_SELECT}
+      WHERE s.day = ? AND s.starts_at = ? AND s.is_keynote = 0 AND s.format != 'Social'
+        AND s.seats_taken < s.capacity`).all(day, openSlot));
+    suggestions = candidates
+      .map((s) => ({
+        ...s,
+        // how much it looks like the things they already chose
+        affinity: s.tags.filter((t) => t.kind === 'topic' && taste.has(t.slug)).length,
+      }))
+      .sort((a, b) => b.affinity - a.affinity || b.avgRating - a.avgRating)
+      .slice(0, 3);
+  }
+
+  res.json({
+    day,
+    time,
+    current,
+    next,
+    finished,
+    // things needing a decision
+    unrated: finished.filter((s) => s.checkedIn && !s.rated),
+    missedCheckIn: finished.filter((s) => !s.checkedIn),
+    waitlisted: mine.filter((s) => status.get(s.id) === 'waitlisted').map(decorate),
+    openSlot,
+    suggestions,
+    taste: tasteRows.map((t) => t.slug),
+  });
+});
+
 usersRouter.get('/:id/schedule', (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
   if (!user) return res.status(404).json({ error: 'Attendee not found' });
@@ -118,10 +206,11 @@ usersRouter.get('/:id/schedule', (req, res) => {
  * seat state so the client never has to guess.
  */
 usersRouter.put('/:id/reservations/:sessionId', (req, res) => {
-  const state = reserveSeat(Number(req.params.id), Number(req.params.sessionId));
+  const state = reserveSeat(Number(req.params.id), Number(req.params.sessionId),
+    { day: req.body?.day, time: req.body?.time });
   if (!state) return res.status(404).json({ error: 'Session not found' });
-  // 409: you already hold a seat that overlaps this one
-  res.status(state.rejected === 'overlap' ? 409 : 200).json(state);
+  // 409: overlaps a seat you hold, or the session is already over
+  res.status(state.rejected ? 409 : 200).json(state);
 });
 
 /**

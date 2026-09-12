@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { visit, ATTENDEES } from './helpers.js';
+import { visit, momentOn, ATTENDEES } from './helpers.js';
 
 test.describe('Session detail', () => {
   test('shows the full session record', async ({ page }) => {
@@ -11,7 +11,7 @@ test.describe('Session detail', () => {
   });
 
   test('adding from the detail page toggles the button', async ({ page }) => {
-    await visit(page, '/sessions/5', { as: ATTENDEES.kenji });
+    await visit(page, '/sessions/5', { as: ATTENDEES.kenji, at: await momentOn(0, '07:00') });
     const action = page.getByTestId('save-session');
     const before = await action.innerText();
     await action.click();
