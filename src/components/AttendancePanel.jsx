@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useConference, useFetch } from '../lib/store.jsx';
 import * as api from '../lib/api.js';
 import { time as fmtTime } from '../lib/format.js';
@@ -40,7 +40,7 @@ function Stars({ value, onChange, readOnly }) {
 
 export function AttendancePanel({ session }) {
   const { currentUserId, clock, reservationFor } = useConference();
-  const { data, loading, reload } = useFetch(
+  const { data, reload } = useFetch(
     () => api.getAttendance(currentUserId, session.id, clock),
     [currentUserId, session.id, clock.day, clock.time],
   );
@@ -48,12 +48,22 @@ export function AttendancePanel({ session }) {
   const [comment, setComment] = useState('');
   const [busy, setBusy] = useState(false);
 
-  if (loading || !data) return null;
+  // Start the form from the saved rating, so editing moves the stars and a
+  // comment can be cleared. Keyed on the saved values, not the payload, so a
+  // clock-tick refetch does not overwrite what is being typed.
+  const saved = data?.myRating;
+  useEffect(() => {
+    setStars(saved?.stars ?? 0);
+    setComment(saved?.comment ?? '');
+  }, [session.id, saved?.stars, saved?.comment]);
+
+  // The clock refetches this every tick; keep showing the last answer meanwhile.
+  if (!data) return null;
   const holdsSeat = reservationFor(session.id) === 'confirmed';
 
   const submit = async (fn) => {
     setBusy(true);
-    try { await fn(); await reload(); } finally { setBusy(false); }
+    try { await fn(); reload(); } finally { setBusy(false); }
   };
 
   // Before the doors open — nothing to do yet.
@@ -109,16 +119,16 @@ export function AttendancePanel({ session }) {
           </p>
 
           <div className="mt-3">
-            <Stars value={data.myRating?.stars ?? stars} onChange={setStars} />
+            <Stars value={stars} onChange={setStars} />
           </div>
 
-          {(stars > 0 || data.myRating) && (
+          {stars > 0 && (
             <>
               <label className="mt-3 block">
                 <span className="sr-only">Anything worth saying</span>
                 <textarea
                   rows={2}
-                  value={comment || data.myRating?.comment || ''}
+                  value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   placeholder="Anything worth saying? Optional."
                   className="w-full rounded-lg border border-hairline bg-ground/70 px-3 py-2 text-[13px] placeholder:text-faint focus:border-violet-400/60 focus:outline-none"
@@ -128,11 +138,11 @@ export function AttendancePanel({ session }) {
                 variant="primary"
                 size="sm"
                 className="mt-2 w-full"
-                disabled={busy || !(stars || data.myRating)}
+                disabled={busy || !stars}
                 data-testid="submit-rating"
                 onClick={() => submit(() => api.rateSession(currentUserId, session.id, {
-                  stars: stars || data.myRating.stars,
-                  comment: comment || data.myRating?.comment,
+                  stars,
+                  comment,
                   ...clock,
                 }))}
               >

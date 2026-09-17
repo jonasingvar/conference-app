@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react';
 /**
  * The conference clock.
  *
- * ORBIT '26 is in the future, so "now" is simulated: we take the viewer's real
- * time of day and project it onto a conference day. Open the app at 10:40 and
+ * Conference time is simulated: we take the viewer's real time of day and
+ * project it onto a conference day (Day 1 is the day the database was seeded). Open the app at 10:40 and
  * you are standing in the 10:15 slot, watching it run. The clock ticks on its
  * own, so progress bars actually move.
  *
@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react';
  * showing an empty venue at 3am.
  *
  * Overrides, in priority order:
- *   ?at=2026-10-13T14:30   query string — for demos and screenshots
+ *   ?at=YYYY-MM-DDTHH:MM   query string — for demos and screenshots
  *   localStorage orbit:clockAt   — sticky version of the same
  */
 const FALLBACK_TIME = '10:40';
@@ -34,7 +34,7 @@ function readOverride() {
 
 function currentMoment(anchorDay) {
   const override = readOverride();
-  if (override) return { ...override, simulated: true, overridden: true };
+  if (override) return override;
 
   const real = new Date();
   const minutes = real.getHours() * 60 + real.getMinutes();
@@ -43,13 +43,11 @@ function currentMoment(anchorDay) {
   return {
     day: anchorDay,
     time: inHours ? toHHMM(minutes) : FALLBACK_TIME,
-    simulated: true,
-    overridden: false,
   };
 }
 
 /**
- * Ticks every 30s. Returns `{ day, time, simulated, overridden }`.
+ * Ticks every 30s. Returns `{ day, time }`.
  *
  * Depends on the anchor *date string*, not the days array — the array is a new
  * reference on every render before bootstrap resolves, which would restart the

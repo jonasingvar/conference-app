@@ -2,8 +2,7 @@ import { Link } from 'react-router-dom';
 import { useConference, useFetch } from '../lib/store.jsx';
 import { useDocumentTitle } from '../lib/useDocumentTitle.js';
 import * as api from '../lib/api.js';
-import { accent } from '../lib/accents.js';
-import { plural, relativeDate, time as fmtTime } from '../lib/format.js';
+import { plural, relativeDate, shortDay, time as fmtTime } from '../lib/format.js';
 import { SessionCard } from '../components/SessionCard.jsx';
 import { LiveNow } from '../components/LiveNow.jsx';
 import { TodayPanel } from '../components/TodayPanel.jsx';
@@ -64,7 +63,7 @@ function SpeakingStrip() {
   const { data } = useFetch(() => api.getUser(currentUser.id), [currentUser.id]);
   if (!currentUser.isSpeaker || !data?.speakingSessions?.length) return null;
 
-  const upcoming = data.speakingSessions;
+  const sessions = data.speakingSessions;
   return (
     <section className="rounded-2xl border border-violet-500/25 bg-violet-500/[0.06] p-5 sm:p-6"
       data-testid="speaking-strip">
@@ -76,21 +75,21 @@ function SpeakingStrip() {
             <Icon name="mic" className="size-3" /> You are on stage
           </Chip>
           <h2 className="mt-1 font-display text-lg leading-tight">
-            {plural(upcoming.length, 'session')} to deliver
+            {plural(sessions.length, 'session')} on your programme
           </h2>
         </div>
         <Button to="/my-agenda" size="sm" className="ml-auto">Speaker view</Button>
       </div>
 
       <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {upcoming.slice(0, 3).map((s) => {
+        {sessions.slice(0, 3).map((s) => {
           const pct = Math.round(s.fillRate * 100);
           return (
             <li key={s.id}>
               <Link to={`/sessions/${s.id}`}
                 className="block rounded-xl border border-hairline bg-surface p-3 transition-colors hover:border-white/20">
                 <div className="flex items-baseline justify-between gap-2 font-mono text-[11px]">
-                  <span className="text-muted">{s.day.slice(5)} · {s.startsAt}</span>
+                  <span className="text-muted">{shortDay(s.day)} · {fmtTime(s.startsAt)}</span>
                   <span className="text-ink">{s.seatsTaken}/{s.capacity}</span>
                 </div>
                 <p className="mt-1 line-clamp-2 text-[13px] font-semibold leading-snug">{s.title}</p>
@@ -139,7 +138,7 @@ function LatestAnnouncement() {
         <div className="flex flex-wrap items-baseline gap-2">
           <h2 className="text-sm font-semibold">{item.title}</h2>
           <span className="text-[11px] text-faint">
-            {relativeDate(item.postedAt)}
+            {relativeDate(item.postedAt, clock)}
             {item.venueId && ` · ${venueById[item.venueId]?.shortName}`}
           </span>
         </div>
@@ -181,7 +180,9 @@ export function HomePage() {
   useDocumentTitle("ORBIT '26");
 
   return (
-    <div className="space-y-8">
+    // Sections hide themselves when empty; hide their Reveal wrapper too, or
+    // each one leaves a blank gap in the stack.
+    <div className="space-y-8 [&>:empty]:hidden">
       <HeroBar conference={conference} />
       <LiveNow />
       <Reveal><TodayPanel /></Reveal>

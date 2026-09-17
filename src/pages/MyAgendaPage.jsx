@@ -27,14 +27,16 @@ function SpeakingPanel({ user }) {
       <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-violet-400 to-cyan-400" />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Avatar name={data.speaker.name} initials={data.speaker.initials} accent={data.speaker.accent} size="lg" />
+          <Avatar name={data.speaker.name} initials={data.speaker.initials} accent={data.speaker.accent}
+            imageUrl={data.speaker.imageUrl} size="lg" />
           <div>
             <Chip accent="violet" className="mb-1.5">
               <Icon name="mic" className="size-3" /> You are speaking
             </Chip>
             <h2 className="font-display text-2xl leading-tight">Your sessions</h2>
             <p className="text-sm text-muted">
-              {plural(data.speakingSessions.length, 'session')} · speaker rating {data.speaker.avgRating.toFixed(2)}
+              {plural(data.speakingSessions.length, 'session')}
+              {data.speaker.avgRating > 0 && ` · speaker rating ${data.speaker.avgRating.toFixed(2)}`}
             </p>
           </div>
         </div>
@@ -170,9 +172,9 @@ export function MyAgendaPage() {
   const { data, loading, error, reload } = useFetch(() => api.getSchedule(currentUser.id), [currentUser.id]);
 
   /*
-   * The fetched plan is a snapshot. Unstarring a row used to leave it on screen
-   * until a refresh, so the list is filtered through the store's live favourite
-   * set instead — remove a session and its row goes immediately, and Undo in
+   * The fetched agenda is a snapshot. Removing a row used to leave it on screen
+   * until a refresh, so the list is filtered through the store's live
+   * reservations instead — remove a session and its row goes immediately, and Undo in
    * the toast brings it straight back because the data is still here.
    */
   const days = useMemo(() => (data?.days ?? [])

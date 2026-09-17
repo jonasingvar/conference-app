@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { visit, momentOn, ATTENDEES } from './helpers.js';
+import { visit, momentOn, laneFor, bookableFor } from './helpers.js';
 
 test.describe('Session detail', () => {
   test('shows the full session record', async ({ page }) => {
@@ -10,20 +10,20 @@ test.describe('Session detail', () => {
     await expect(detail.getByRole('heading', { name: /Speaker/ })).toBeVisible();
   });
 
-  test('adding from the detail page toggles the button', async ({ page }) => {
-    await visit(page, '/sessions/5', { as: ATTENDEES.kenji, at: await momentOn(0, '07:00') });
-    const action = page.getByTestId('save-session');
-    const before = await action.innerText();
-    await action.click();
+  test('adding from the detail page toggles the button', async ({ page, request }, testInfo) => {
+    // Its own lane, so the click cannot land on a session this attendee is
+    // already booked against — that would open the conflict dialog instead.
+    const lane = await laneFor('session.add', testInfo);
+    const target = (await bookableFor(request, lane.user, lane.day)).find((s) => s.seatsLeft > 3);
+    expect(target, 'nothing this attendee can add').toBeTruthy();
 
-    // either it toggled, or it clashed and a dialog explained why
-    const dialog = page.getByTestId('conflict-dialog');
-    if (await dialog.isVisible().catch(() => false)) {
-      await expect(dialog).toContainText('already booked');
-      await dialog.getByTestId('conflict-keep').click();
-    } else {
-      await expect(action).not.toHaveText(before);
-    }
+    await visit(page, `/sessions/${target.id}`, { as: lane.user, at: await momentOn(0, '07:00') });
+    const action = page.getByTestId('save-session');
+    await expect(action).toHaveText('Add to my agenda');
+    await action.click();
+    await expect(action).toHaveText('On my agenda');
+
+    await request.delete(`http://localhost:3001/api/users/${lane.user}/reservations/${target.id}`);
   });
 
   test('off-site sessions warn about travel time', async ({ page }) => {

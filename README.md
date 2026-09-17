@@ -1,8 +1,8 @@
 # ORBIT '26
 
 The conference companion app for ORBIT '26 — a fictional applied-AI conference
-in Las Vegas, October 12–15 2026. Four days, ~360 sessions, 180 speakers,
-two venues six miles apart.
+in Las Vegas. Four days, ~140 sessions, 110 speakers, two venues six miles
+apart. Day 1 is the day you seed the database.
 
 This is the sample application for a workshop on using AI across the software
 delivery lifecycle: you fork it, turn product requirements into GitHub Issues,
@@ -19,19 +19,19 @@ That seeds a local SQLite database and starts both the API and the web app.
 Open http://localhost:5173.
 
 There is no login. Pick an attendee from the switcher in the top right — each
-one has their own saved plan, followed speakers and interests, and two of them
+one has their own agenda, followed speakers and interests, and two of them
 are also speaking, which unlocks a speaker view.
 
 ## What is in here
 
 | Page | What it does |
 | --- | --- |
-| **Home** | The conference at a glance: keynotes, tracks, your plan, the venue split |
-| **Schedule** | All sessions by day, filterable by track, venue, level, format, topic and free text |
-| **Session** | Full detail: abstract, takeaways, speakers, room, capacity, reviews, what else is on at the same time |
-| **Speakers** | 180 speaker profiles, searchable, with their sessions |
-| **My Plan** | Your saved sessions grouped by day, with clash detection — and your own sessions if you are speaking |
-| **Venues** | Both sites, a stage map, and how long it takes to get between them |
+| **Home** | You, right now: what you are in, what is next, waitlists, sessions to rate, suggestions for your next free slot |
+| **Schedule** | All sessions by day as a room grid or a list, filterable by track, venue, level, format, topic and free text |
+| **Session** | Full detail: abstract, takeaways, speakers, room, seats and waitlist, check-in and rating, feedback, what else is on at the same time |
+| **Speakers** | 110 speaker profiles, searchable, with their sessions |
+| **My Agenda** | The sessions you hold a seat (or a waitlist place) for, grouped by day, with calendar export — and your own sessions if you are speaking |
+| **Venues** | Both sites on a map, what is on in each room, and how long it takes to get between them |
 | **Food** | 24 vendors with wait times, dietary filters and opening hours |
 | **Expo** | Sponsors by tier, booths, perks |
 

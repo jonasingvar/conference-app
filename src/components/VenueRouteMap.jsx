@@ -66,7 +66,7 @@ export function VenueRouteMap({ venues, routes, className }) {
 
         {/* distance marker riding the arc */}
         <g transform={`translate(${midX}, ${midY + 34})`}>
-          <rect x="-62" y="-17" width="124" height="34" rx="17" fill="#14161e" stroke="#333950" />
+          <rect x="-62" y="-17" width="124" height="34" rx="17" fill="var(--color-ground)" stroke="var(--color-hairline)" />
           <text x="0" y="-1" textAnchor="middle" className="fill-white text-[13px] font-bold">6.2 miles</text>
           <text x="0" y="11" textAnchor="middle" className="fill-white/45 text-[10px]">
             {fastest ? `${fastest.minutes} min by ${fastest.mode.toLowerCase()}` : ''}
@@ -80,7 +80,7 @@ export function VenueRouteMap({ venues, routes, className }) {
               <circle r="30" fill={light} opacity="0.12" />
               <circle r="17" fill={light} opacity="0.22" />
               <circle r="8" fill={light} />
-              <circle r="3" fill="#14161e" />
+              <circle r="3" fill="var(--color-ground)" />
               <text y="-44" textAnchor="middle" className="fill-white text-[15px] font-bold">{v.shortName}</text>
               <text y="-28" textAnchor="middle" className="fill-white/45 text-[11px]">
                 {v.roomCount} stages · {v.city.split(',')[0]}

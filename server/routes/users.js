@@ -15,15 +15,10 @@ function speakingSessions(speakerId) {
 
 export const usersRouter = Router();
 
+const userExists = db.prepare('SELECT 1 FROM users WHERE id = ?');
+
 usersRouter.get('/', (req, res) => {
-  const rows = db.prepare('SELECT * FROM users ORDER BY id').all();
-  res.json(rows.map((u) => toUser(u, {
-    reservedCount: db.prepare("SELECT COUNT(*) n FROM reservations WHERE user_id = ? AND status = 'confirmed'").get(u.id).n,
-    followCount: db.prepare('SELECT COUNT(*) n FROM speaker_follows WHERE user_id = ?').get(u.id).n,
-    speakingCount: u.speaker_id
-      ? db.prepare('SELECT COUNT(*) n FROM session_speakers WHERE speaker_id = ?').get(u.speaker_id).n
-      : 0,
-  })));
+  res.json(db.prepare('SELECT * FROM users ORDER BY id').all().map((u) => toUser(u)));
 });
 
 usersRouter.get('/:id', (req, res) => {
@@ -51,10 +46,6 @@ usersRouter.get('/:id', (req, res) => {
   }));
 });
 
-/**
- * GET /api/users/:id/schedule
- * Every session this attendee holds a seat or a waitlist place for.
- */
 /** A subscribable feed of everything this attendee holds a seat for. */
 usersRouter.get('/:id/agenda.ics', (req, res) => {
   const ics = agendaCalendar(Number(req.params.id));
@@ -77,8 +68,7 @@ usersRouter.get('/:id/today', (req, res) => {
 
   const { day, time = '00:00' } = req.query;
   if (!day) return res.status(400).json({ error: 'day is required' });
-  const mins = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
-  const now = mins(time);
+  const now = toMinutes(time);
 
   const mine = hydrateSessions(db.prepare(`${SESSION_SELECT}
     JOIN reservations r ON r.session_id = s.id AND r.user_id = ?
@@ -100,9 +90,9 @@ usersRouter.get('/:id/today', (req, res) => {
   });
 
   const booked = mine.filter((s) => status.get(s.id) === 'confirmed').map(decorate);
-  const current = booked.find((s) => now >= mins(s.startsAt) && now < mins(s.endsAt)) ?? null;
-  const next = booked.find((s) => mins(s.startsAt) > now) ?? null;
-  const finished = booked.filter((s) => now >= mins(s.endsAt));
+  const current = booked.find((s) => now >= toMinutes(s.startsAt) && now < toMinutes(s.endsAt)) ?? null;
+  const next = booked.find((s) => toMinutes(s.startsAt) > now) ?? null;
+  const finished = booked.filter((s) => now >= toMinutes(s.endsAt));
 
   // Taste is what you book, not what you ticked at registration.
   const tasteRows = db.prepare(`
@@ -115,7 +105,7 @@ usersRouter.get('/:id/today', (req, res) => {
   // Slots today that are still ahead and that they have not booked anything in.
   const allSlots = db.prepare(
     'SELECT DISTINCT starts_at FROM sessions WHERE day = ? ORDER BY starts_at').all(day)
-    .map((r) => r.starts_at).filter((t) => mins(t) > now);
+    .map((r) => r.starts_at).filter((t) => toMinutes(t) > now);
   const taken = new Set(booked.map((s) => s.startsAt));
   const openSlot = allSlots.find((t) => !taken.has(t)) ?? null;
 
@@ -142,14 +132,16 @@ usersRouter.get('/:id/today', (req, res) => {
     finished,
     // things needing a decision
     unrated: finished.filter((s) => s.checkedIn && !s.rated),
-    missedCheckIn: finished.filter((s) => !s.checkedIn),
     waitlisted: mine.filter((s) => status.get(s.id) === 'waitlisted').map(decorate),
     openSlot,
     suggestions,
-    taste: tasteRows.map((t) => t.slug),
   });
 });
 
+/**
+ * GET /api/users/:id/schedule
+ * Every session this attendee holds a seat or a waitlist place for.
+ */
 usersRouter.get('/:id/schedule', (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
   if (!user) return res.status(404).json({ error: 'Attendee not found' });
@@ -187,16 +179,12 @@ usersRouter.get('/:id/schedule', (req, res) => {
       conflicts,
       totalMinutes: items.reduce((n, s) => n + s.durationMins, 0),
       venuesVisited: [...new Set(items.map((s) => s.venue.shortName))],
-      reservedCount: items.filter((s) => s.reservation === 'confirmed').length,
     };
   });
 
   res.json({
     user: toUser(user),
     days,
-    totalSessions: sessions.length,
-    totalReserved: sessions.filter((s) => s.reservation === 'confirmed').length,
-    totalWaitlisted: sessions.filter((s) => s.reservation === 'waitlisted').length,
   });
 });
 
@@ -206,6 +194,7 @@ usersRouter.get('/:id/schedule', (req, res) => {
  * seat state so the client never has to guess.
  */
 usersRouter.put('/:id/reservations/:sessionId', (req, res) => {
+  if (!userExists.get(req.params.id)) return res.status(404).json({ error: 'Attendee not found' });
   const state = reserveSeat(Number(req.params.id), Number(req.params.sessionId),
     { day: req.body?.day, time: req.body?.time });
   if (!state) return res.status(404).json({ error: 'Session not found' });
@@ -225,6 +214,7 @@ usersRouter.get('/:id/attendance/:sessionId', (req, res) => {
 });
 
 usersRouter.put('/:id/checkins/:sessionId', (req, res) => {
+  if (!userExists.get(req.params.id)) return res.status(404).json({ error: 'Attendee not found' });
   const state = checkIn(Number(req.params.id), Number(req.params.sessionId),
     { day: req.body?.day, time: req.body?.time });
   if (!state) return res.status(404).json({ error: 'Session not found' });
@@ -255,6 +245,10 @@ usersRouter.get('/:id/reservations/:sessionId', (req, res) => {
 });
 
 usersRouter.put('/:id/follows/:speakerId', (req, res) => {
+  if (!userExists.get(req.params.id)) return res.status(404).json({ error: 'Attendee not found' });
+  if (!db.prepare('SELECT 1 FROM speakers WHERE id = ?').get(req.params.speakerId)) {
+    return res.status(404).json({ error: 'Speaker not found' });
+  }
   db.prepare('INSERT OR IGNORE INTO speaker_follows (user_id, speaker_id) VALUES (?, ?)')
     .run(req.params.id, req.params.speakerId);
   res.json({ following: true, speakerId: Number(req.params.speakerId) });

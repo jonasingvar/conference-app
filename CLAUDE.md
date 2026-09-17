@@ -40,14 +40,19 @@ server/
   db.js              schema (one SQL string), connection, migrate(), dropAll()
   seed.js            all fake data generation; deterministic via a seeded PRNG
   index.js           express app, mounts routers, 404 + error handlers
-  lib/query.js       shared SQL fragments and every snake_case → camelCase mapper
+  lib/
+    query.js         shared SQL fragments and every snake_case → camelCase mapper
+    seats.js         reserve / release / waitlist promotion, overlap guard
+    attendance.js    check-in window and rating rules
+    ical.js          .ics calendar export
   routes/
-    meta.js          /bootstrap, /live, /venues, /vendors, /sponsors, /announcements, /stats
-    sessions.js      /sessions, /sessions/:id
+    meta.js          /bootstrap, /live, /venues, /vendors, /sponsors, /announcements
+    sessions.js      /sessions, /sessions/:id, /sessions/:id.ics
     speakers.js      /speakers, /speakers/:id
-    users.js         /users, /users/:id, /users/:id/schedule, favourites, follows
+    users.js         /users, /users/:id, /today, /schedule, /agenda.ics,
+                     reservations, attendance, check-ins, ratings, follows
 src/
-  main.jsx           entry: Router → ConferenceProvider → App
+  main.jsx           entry: Router → Toaster → ConferenceProvider → App
   App.jsx            route table
   index.css          Tailwind import + design tokens + custom utilities
   lib/
@@ -57,11 +62,15 @@ src/
     accents.js       accent name → fixed Tailwind class strings (+ hex for SVG)
     travel.js        travel-time helpers for the two-venue split
     clock.js         the conference clock: simulated "now", progress, open/closed
-  components/        Layout, SessionCard, SpeakerCard, UserSwitcher, ui.jsx, Icon.jsx,
-                     ScheduleGrid.jsx, SpeakerSpotlight.jsx, LiveNow.jsx,
-                     GeneratedAvatar.jsx, GeneratedCover.jsx, VenueRouteMap.jsx …
+    useDocumentTitle.js, useInView.js, useMediaQuery.js  — small hooks
+  components/        Layout, SessionCard, SpeakerCard, UserSwitcher, ui.jsx,
+                     Icon.jsx, ScheduleGrid, SpeakerSpotlight, LiveNow,
+                     SeatPanel, AttendancePanel, ConflictDialog, Toaster,
+                     VenueBoard, GeneratedAvatar, GeneratedCover, VenueRouteMap …
   pages/             one file per route, named <Thing>Page
-  public/images/     optional hero photography — see that folder's README
+public/
+  avatars/           committed synthetic portraits, served from /avatars/
+  images/            optional hero photography — see that folder's README
 tests/               Playwright specs + helpers.js
 scripts/shot.mjs     screenshot tool
 data/orbit.db        generated, gitignored
@@ -83,8 +92,9 @@ Components import from `api.js`; they never call `fetch` directly.
 const { data, loading, error, reload } = useFetch(() => api.getSessions({ day }), [day]);
 ```
 
-Global data (venues, tracks, tags, rooms, days, attendees, the current user and
-their favourites) is already in `useConference()`. Do not refetch it per page.
+Global data (venues, tracks, tags, rooms, days, attendees, the clock, the current
+user, their reservations and who they follow) is already in `useConference()`.
+Do not refetch it per page.
 
 **Filters live in the URL.** Pages use `useSearchParams` so a filtered view is
 shareable and survives reload. `'all'` means "no filter" and is stripped by
@@ -119,7 +129,8 @@ what this app does.
 
 - `reservations` is the only table. Adding moves `sessions.seats_taken` for
   *everybody*; a full room waitlists you instead; removing a confirmed seat
-  promotes whoever has waited longest. All transactional — `server/lib/seats.js`.
+  promotes whoever has waited longest (skipping anyone who has since taken a seat
+  in that slot). All transactional — `server/lib/seats.js`.
 - The page is **My Agenda** (`/my-agenda`), which is what Whova, Cvent, EventMobi
   and AWS all call it. `/my-plan` redirects.
 - `useConference()` exposes `toggleSeat`, `reservationFor` and `onAgenda`. The
@@ -136,6 +147,7 @@ next:
 1. **Add a session** → takes a seat, or a waitlist place. **You cannot hold two
    seats in overlapping slots** — the API returns 409 with the clashing session,
    and the UI offers a swap. Every real system blocks this rather than warning.
+   Nor can you take a seat in a session that has already ended (also a 409).
 2. **Check in** → opens 15 minutes before the session starts, closes when it
    ends. You cannot check in to something that has not happened.
 3. **Rate it** → only if you checked in, only once it is over. One rating per
@@ -147,19 +159,25 @@ opens `<ConflictDialog>` showing them side by side with Keep / Swap. Do not
 demote that to a toast — a toast disappears while the decision is still open.
 
 `server/lib/seats.js` and `server/lib/attendance.js` hold the rules; both run
-inside transactions. Check-in and rating take the clock from the *client*,
-because conference time is simulated.
+inside transactions. Reserving, check-in and rating take the clock from the
+*client*, because conference time is simulated.
 
 ### Writing tests against this
 
-Seat, check-in and rating state is **real and persists between runs**, and the
-desktop and mobile projects run concurrently. So:
+Seat, check-in and rating state is **real and persists between runs**, and
+everything runs concurrently: the desktop and mobile projects run side by side,
+and `fullyParallel: true` in `playwright.config.js` means tests *within* a
+project, even within one file, run in parallel too. So:
 
-- Give each project a **different attendee or a different day** — never let two
-  projects mutate the same counter.
-- **Clean up after yourself**: `clearAgendaFor(request, userId, day)` in
-  `tests/helpers.js`. A test that books a seat and does not release it will hit
-  the overlap guard on its next run.
+- Give each **test, per project,** its own attendee and day, so no two running
+  tests mutate the same counter or the same attendee's agenda. `tests/helpers.js`
+  keeps this in one table: register a lane in `LANES` and read it with
+  `await laneFor(name, testInfo)`. `bookableFor(request, userId, day)` lists
+  what that attendee can book without tripping the overlap guard.
+- **Clean up after yourself.** A test that books a seat and does not release it
+  will hit the overlap guard on its next run. Release what you booked;
+  `clearAgendaFor(request, userId, day)` wipes a whole day, so use it only on a
+  lane marked `clean`.
 - There is deliberately **no way to undo a check-in**, so pick a session the
   attendee has not been to rather than trying to reset one.
 - Do not use `test.describe.configure({ mode: 'serial' })` with conditional
@@ -169,12 +187,13 @@ desktop and mobile projects run concurrently. So:
 
 **Day 1 is the day you seed.** `npm run db:seed` sets the conference to start
 today unless `ORBIT_START_DATE` says otherwise, so whoever runs it is standing
-in Day 1 with the morning's sessions already finished. Tests must therefore ask
+in Day 1. The seed treats that morning (everything ending by 12:15) as already
+attended: seeded check-ins and ratings exist only there. Tests must therefore ask
 the API for the dates (`conferenceDays()` in `tests/helpers.js`) rather than
 hard-coding them.
 
 "Now" within that day is simulated. `src/lib/clock.js` takes the
-viewer's real time of day and projects it onto a conference day, then ticks every
+viewer's real time of day and projects it onto Day 1, then ticks every
 30 seconds. Open the app at 10:40 and you are standing in the 10:15 slot watching
 it run; outside 08:00–22:30 it clamps to a lively mid-morning moment.
 
@@ -182,9 +201,13 @@ it run; outside 08:00–22:30 it clamps to a lively mid-morning moment.
 in a component. `GET /api/live?day=&time=` returns what is running and what starts
 next.
 
-Pin it for demos and tests with `?at=2026-10-13T14:30`, or the `orbit:clockAt`
-localStorage key. `tests/helpers.js` exports `MID_SESSION` and `BETWEEN_SLOTS`
-and `visit(page, path, { at })` sets it for you — **any test that touches live
+Pin it for demos and tests with `?at=YYYY-MM-DDTHH:MM` (a date from `days`, e.g.
+Day 2 at 14:30), or the same value in the `orbit:clockAt` localStorage key; a
+value without the `T` time part is silently ignored. `npm run shot -- / --at=…`
+takes the same value. In tests, `visit(page, path, { at })` sets it for you, and
+`at` must be a full timestamp: build it with `await momentOn(dayIndex, time)`
+from `tests/helpers.js`, which also exports `MID_SESSION_TIME` ('10:30') and
+`BETWEEN_SLOTS_TIME` ('11:10') as `HH:MM` strings. **Any test that touches live
 state must pin the clock**, otherwise it passes or fails depending on the hour
 it runs.
 
@@ -216,9 +239,9 @@ Two rules if you ever regenerate a portrait:
 **Everything else is generated deterministically from a string:**
 
 - `GeneratedAvatar` — the SVG portrait fallback, hashed from a name.
-- `GeneratedCover` — key art for sessions, tracks, vendors and sponsors.
-  Variants: `orbit` (keynotes, heroes), `mesh` (category tiles), `strata`
-  (wide banners), `mark` (logo-like squares).
+- `GeneratedCover` — key art for sessions, speakers, vendors and sponsors.
+  Variants: `orbit` (keynote cards, session heroes), `mesh` (vendor tiles, the
+  spotlight backdrop), `strata` (wide banners), `mark` (sponsor logos).
 - `VenueRouteMap` — the two sites projected from their real lat/lng. This is the
   *only* map in the app, and it is honest because the coordinates are real.
   There was once a per-venue "floor plan" built from invented `map_x`/`map_y`
@@ -240,8 +263,7 @@ tell them nothing they did not already know.
   rated, and suggestions for the first slot they have left empty.
 - **Suggestions rank on behaviour, not declaration.** `interests` is what
   someone ticked at registration; the topic tags on what they have actually
-  booked are what they want. Jonas declares "Agent Design, Evaluation" and
-  books Developer Experience.
+  booked are what they want, so suggestions rank on those.
 - **Everything is driven by `clock.day`.** The old page rendered `days[0]` —
   the first day the attendee had anything booked — so on day 3 it presented
   day 1 as if it were happening.
@@ -259,13 +281,16 @@ has to be earned:
 
 - **Ratings and reviews only exist for sessions that have already finished.**
   Seeding a 4.5 onto a talk three days away was the clearest possible tell that
-  the data was fake, and it poisoned the "highest rated" ranking.
+  the data was fake, and it poisoned the "highest rated" ranking. The seed only
+  rates Day 1 morning sessions, and only from attendees it checked in, by the
+  same rules as the API; `speakers.avg_rating` is derived from those session
+  ratings, never invented.
 - **Never hard-code a date, month or weekday.** Day 1 moves with the seed, so
   the footer, announcements and body copy all derive from `conference.dates`
   and `days[n]`. A footer reading "Oct 12–15" under a September hero is the
   fastest way to lose an attendee's trust.
-- **No invented external links.** Speaker socials and sponsor sites show the
-  handle but do not link, because the domains do not exist.
+- **No invented external links.** Speaker socials show the handle but do not
+  link, and sponsor websites are not shown, because the domains do not exist.
 
 ## Chrome and correctness
 
@@ -277,16 +302,18 @@ Things that are easy to forget and immediately read as unfinished:
   every navigation. React Router does neither by default — without it you click
   a nav link and land halfway down the next page.
 - **`useToast()`** for anything the user does that would otherwise be silent.
-  Saving a session toasts with an Undo action; the toast stack lives above the
-  store in `main.jsx` so `store.jsx` can reach it.
+  Booking a seat toasts; removing one toasts with an Undo action. The toast
+  stack (`<Toaster>`) wraps the store in `main.jsx` so `store.jsx` can reach it.
 - **Footer links must resolve.** There is a smoke test that walks every footer
   link and fails if one hits the not-found page.
 
 ## Motion
 
-Animation is CSS-driven and lives in `src/index.css`: `ken-burns`, `slide-in`,
-`fade-zoom`, `fill` (autoplay progress), `stagger` (list entrance), `reveal`
-(scroll-triggered), `pop`, `live-ring`, `shimmer`.
+Animation is CSS-driven and lives in `src/index.css` as Tailwind utilities:
+`animate-rise` (dialogs, menus, toasts), `stagger` (list entrance),
+`animate-pulse-dot` (live indicators), `animate-ken-burns`, `animate-slide-in`,
+`animate-fade-zoom` and `animate-fill` (the speaker spotlight and its autoplay
+progress), `reveal` (scroll-triggered) and `animate-marquee` (sponsor logos).
 
 - `<Reveal>` wraps a block so it lifts into view on first scroll, via the
   `useInView` hook.
@@ -303,31 +330,36 @@ track that room runs that day) or a **list** (cards grouped by time slot). The
 choice lives in `?view=`; with no param the grid is used on `lg` and up and the
 list below, because a horizontally scrolling matrix is miserable on a phone.
 
-The grid only makes sense when whole rooms are visible, so searching or
-filtering by track/topic falls back to the list automatically — `gridUsable` in
-`SchedulePage`.
+The grid only makes sense when whole rooms are visible, so a search or a track,
+topic, level or format filter falls back to the list automatically, and the grid
+toggle is disabled with a reason — `BLOCKERS` / `blocker` in `SchedulePage`. A
+venue filter only drops columns, so it keeps the grid.
 
-This works because the seed gives each day a **stable set of 7–8 rooms, each
-with a track for the day**, the way real conferences run. If you change session
-generation to scatter talks across arbitrary rooms again, the grid becomes a
-mostly-empty spreadsheet.
+This works because the seed gives each day a **stable set of five rooms (four at
+Aurora, one at the Foundry), each with a track for the day**, the way real
+conferences run. Keynotes and social events sit outside that set and render as
+full-width bars across the grid. If you change session generation to scatter
+talks across arbitrary rooms again, the grid becomes a mostly-empty spreadsheet.
 
 Filters live in a sticky left rail on desktop and collapse behind a Filters
 button on mobile — tests must open it before touching a filter control.
 
 ## Visual hierarchy
 
-Not every card is equal, and the UI must say so. Sessions that are keynotes or
-in rooms of 1,200+ seats get the `feature` treatment in `SessionCard` — cover
-art, a wider span, more of the abstract. The top-rated vendor and the Diamond
+Not every card is equal, and the UI must say so. Keynotes get the `feature`
+treatment in `SessionCard` — cover art, a wider span, more of the abstract. It
+is keynotes only: it once also fired on every room over 1,200 seats, and when
+most of the list is featured, nothing is. The top-rated vendor and the Diamond
 and Platinum sponsors get similar promotion. When you add a new card type, ask
 what makes one instance more important than another and show it.
 
-The speakers page is the clearest example: 180 people are too many for one flat
-grid, so it is tiered — keynote names as photo-forward `headline` cards, people
-with three or more sessions as normal cards, and the long tail as a compact
-`row` list. `SpeakerCard` takes a `variant` for exactly this. Searching or
-filtering collapses the tiers into a single result grid, because at that point
+The speakers page is the clearest example: 110 people are too many for one flat
+grid, so it is tiered — speakers you follow first as normal `SpeakerCard`s, the
+`featured` headliners in the photo-forward `SpeakerSpotlight` carousel, and
+everyone else as `compact` cards in an A–Z index with a jump bar. `SpeakerCard`
+takes a `variant` (`grid`, the default, or `compact`) for exactly this. Searching
+or filtering hides the spotlight and flattens the rest into a single compact
+result grid (so does any sort other than the default), because at that point
 the user has stated what matters.
 
 Grids that mix feature and normal cards use `grid-flow-row-dense` so the wide
@@ -348,21 +380,22 @@ no horizontal overflow, so responsive regressions fail automatically.
 
 ## Data model in one paragraph
 
-Four days (2026-10-12 → 15), ~360 sessions, 180 speakers, across **two physical
-venues 6.2 miles apart**: the Aurora Convention Center (main) and The Foundry at
-Red Rock Yards. `venue_travel` holds how long it takes to get between them per
-mode. Sessions belong to a track and a room; rooms belong to a venue and carry
-`walk_minutes` plus `map_x`/`map_y` coordinates. Attendees are rows in `users`;
-there is no authentication — the selected attendee lives in `localStorage` under
-`orbit:currentUserId`. Two attendees (Amara, Priya) have `speaker_id` set,
-linking them to a `speakers` row, which is what drives the speaker view on
-My Plan. See `docs/DATA_MODEL.md` for the full schema.
+Four days starting on the day you seed, ~140 sessions, 110 speakers, across
+**two physical venues 6.2 miles apart**: the Aurora Convention Center (main) and
+The Foundry at Red Rock Yards. `venue_travel` holds how long it takes to get
+between them per mode. Sessions belong to a track and a room; rooms belong to a
+venue and carry `walk_minutes`, capacity and accessibility — no map coordinates.
+Attendees are rows in `users`; there is no authentication — the selected
+attendee lives in `localStorage` under `orbit:currentUserId`. Two attendees
+(Amara, Priya) have `speaker_id` set, linking them to a `speakers` row, which is
+what drives the speaking panel on My Agenda and the home page. See
+`docs/DATA_MODEL.md` for the full schema.
 
 ## House rules
 
 - Good engineering, no over-engineering. Match the surrounding code.
 - Prefer editing an existing file over adding a new abstraction layer.
 - Keep `seed.js` deterministic — it seeds its own PRNG so everyone's database is
-  identical. Never use `Math.random()` there.
+  identical apart from the dates. Never use `Math.random()` there.
 - Do not commit `data/orbit.db`, `.screenshots/`, or Playwright artefacts.
 - Do not introduce a state management library, an ORM, or a UI kit.

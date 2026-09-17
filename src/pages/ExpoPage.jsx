@@ -1,8 +1,7 @@
 import { useConference, useFetch } from '../lib/store.jsx';
 import * as api from '../lib/api.js';
 import { plural } from '../lib/format.js';
-import { Button, Chip, ErrorState, SectionHeader, Skeleton, cx } from '../components/ui.jsx';
-import { Icon } from '../components/Icon.jsx';
+import { Chip, ErrorState, SectionHeader, Skeleton, cx } from '../components/ui.jsx';
 import { GeneratedCover } from '../components/GeneratedCover.jsx';
 import { useDocumentTitle } from '../lib/useDocumentTitle.js';
 
@@ -98,7 +97,7 @@ export function ExpoPage() {
               <span className="text-[11px] text-faint">{plural(tierSponsors.length, 'partner')}</span>
             </div>
             <div className={cx('stagger grid gap-3', style.cols)}>
-              {tierSponsors.map((s, i) => (
+              {tierSponsors.map((s) => (
                 <SponsorCard key={s.id} sponsor={s} style={style} venue={venueById[s.venueId]} />
               ))}
             </div>

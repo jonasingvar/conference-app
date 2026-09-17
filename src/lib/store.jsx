@@ -6,7 +6,7 @@ import { useToast } from '../components/Toaster.jsx';
 /**
  * One app-wide context holding:
  *   - the bootstrap payload (venues, tracks, tags, rooms, days, attendees)
- *   - the currently selected attendee and their favourite session ids
+ *   - the currently selected attendee, their reservations and who they follow
  *
  * Page-level data (session lists, speaker detail, …) is fetched per page
  * with the `useFetch` hook below. Only genuinely global state lives here.
@@ -37,28 +37,31 @@ export function ConferenceProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    let active = true;
     localStorage.setItem(STORAGE_KEY, String(currentUserId));
+    // Never let one attendee act on the previous attendee's state.
+    setFollowingIds(new Set());
+    setReservations(new Map());
     api.getUser(currentUserId)
       .then((u) => {
+        if (!active) return;
         setFollowingIds(new Set(u.followedSpeakers.map((s) => s.id)));
         setReservations(new Map((u.reservations ?? []).map((r) => [r.sessionId, r.status])));
       })
-      .catch(() => {
-        setFollowingIds(new Set());
-        setReservations(new Map());
-      });
+      .catch(() => {});
+    return () => { active = false; };
   }, [currentUserId]);
 
   const toggleFollow = useCallback(async (speakerId) => {
     const following = followingIds.has(speakerId);
+    const call = following ? api.unfollowSpeaker : api.followSpeaker;
+    await call(currentUserId, speakerId);
     setFollowingIds((prev) => {
       const next = new Set(prev);
       if (following) next.delete(speakerId);
       else next.add(speakerId);
       return next;
     });
-    const call = following ? api.unfollowSpeaker : api.followSpeaker;
-    await call(currentUserId, speakerId);
     toast({ message: following ? 'Unfollowed' : 'Following — their sessions show in your feed', icon: 'bell' });
   }, [currentUserId, followingIds, toast]);
 
@@ -90,8 +93,8 @@ export function ConferenceProvider({ children }) {
       state = await api.reserveSeat(currentUserId, sessionId, clock);
     } catch (err) {
       // 409 means an overlapping seat; the API sends the clash back in the body
-      state = err.payload ?? null;
-      if (!state) throw err;
+      if (err.status !== 409) throw err;
+      state = err.payload;
     }
     if (state.rejected === 'ended') {
       toast({ message: 'That session has already finished', icon: 'clock' });
@@ -130,22 +133,22 @@ export function ConferenceProvider({ children }) {
     [reservations, reserveSeat, releaseSeat],
   );
 
-  /** Adopt seat state that arrived with a page payload (e.g. session detail). */
-  const adoptSeatState = useCallback((state) => {
-    if (!state) return;
-    setSeatCounts((prev) => (prev.has(state.sessionId) ? prev : new Map(prev).set(state.sessionId, {
-      seatsTaken: state.seatsTaken, seatsLeft: state.seatsLeft, capacity: state.capacity,
-      isFull: state.isFull, waitlistCount: state.waitlistCount,
-    })));
-  }, []);
-
   const resolveConflict = useCallback(async (swap) => {
     if (!conflict) return;
     if (swap) {
-      applySeatState(await api.releaseSeat(currentUserId, conflict.conflictsWith.id));
-      const state = await api.reserveSeat(currentUserId, conflict.wanted.id, clock);
-      applySeatState(state);
-      toast({ message: `Swapped to “${conflict.wanted.title}”`, icon: 'check' });
+      try {
+        applySeatState(await api.releaseSeat(currentUserId, conflict.conflictsWith.id));
+        const state = await api.reserveSeat(currentUserId, conflict.wanted.id, clock);
+        applySeatState(state);
+        toast(state.status === 'waitlisted'
+          ? {
+            message: `Swapped — “${conflict.wanted.title}” is full, so you are ${state.waitlistPosition ? `#${state.waitlistPosition} ` : ''}on the waitlist`,
+            icon: 'clock',
+          }
+          : { message: `Swapped to “${conflict.wanted.title}”`, icon: 'check' });
+      } catch (err) {
+        toast({ message: `Could not swap: ${err.message}`, icon: 'alert' });
+      }
     }
     setConflict(null);
   }, [conflict, currentUserId, applySeatState, toast, clock]);
@@ -171,8 +174,6 @@ export function ConferenceProvider({ children }) {
       releaseSeat,
       toggleSeat,
       onAgenda: (id) => reservations.has(id),
-      applySeatState,
-      adoptSeatState,
       conflict,
       resolveConflict,
       trackBySlug: Object.fromEntries((data?.tracks ?? []).map((t) => [t.slug, t])),
@@ -180,7 +181,7 @@ export function ConferenceProvider({ children }) {
       roomById: Object.fromEntries((data?.rooms ?? []).map((r) => [r.id, r])),
     };
   }, [data, error, clock, currentUserId, followingIds, toggleFollow,
-      reservations, seatCounts, reserveSeat, releaseSeat, toggleSeat, applySeatState, adoptSeatState,
+      reservations, seatCounts, reserveSeat, releaseSeat, toggleSeat,
       conflict, resolveConflict]);
 
   return <ConferenceContext.Provider value={value}>{children}</ConferenceContext.Provider>;

@@ -1,14 +1,13 @@
 import { test, expect } from '@playwright/test';
-import { visit, momentOn, conferenceDays, clearAgendaFor, ATTENDEES } from './helpers.js';
+import { visit, momentOn, conferenceDays, clearAgendaFor, laneFor, bookableFor, ATTENDEES } from './helpers.js';
 
 const API = 'http://localhost:3001/api';
 
-/** A slot on the given day with at least two sessions that have seats. */
-async function busySlot(request, day) {
-  const all = await (await request.get(`${API}/sessions?day=${day}`)).json();
+/** The first slot where this attendee can book at least two sessions with seats. */
+async function busySlot(request, userId, day) {
   const bySlot = {};
-  for (const s of all) {
-    if (s.seatsLeft > 2 && !s.isKeynote && s.format !== 'Social') (bySlot[s.startsAt] ??= []).push(s);
+  for (const s of await bookableFor(request, userId, day)) {
+    if (s.seatsLeft > 2) (bySlot[s.startsAt] ??= []).push(s);
   }
   const entry = Object.entries(bySlot).find(([, v]) => v.length >= 2);
   return entry ? { startsAt: entry[0], sessions: entry[1] } : null;
@@ -16,14 +15,14 @@ async function busySlot(request, day) {
 
 test.describe('You cannot be in two places at once', () => {
   test('a second seat in the same slot is refused, and offers a swap', async ({ page, request }, testInfo) => {
-    const days = await conferenceDays();
-    const day = days[testInfo.project.name === 'mobile' ? 2 : 3];
-    await clearAgendaFor(request, ATTENDEES.marcus, day);
+    // A day the seed leaves empty for this attendee, so it can be cleared outright.
+    const { user, day } = await laneFor('conflict.ui', testInfo);
+    await clearAgendaFor(request, user, day);
 
-    const slot = await busySlot(request, day);
-    test.skip(!slot, 'no slot with two available sessions');
+    const slot = await busySlot(request, user, day);
+    expect(slot, 'no slot with two available sessions').toBeTruthy();
 
-    await visit(page, `/sessions/${slot.sessions[0].id}`, { as: ATTENDEES.marcus, at: await momentOn(0, '07:00') });
+    await visit(page, `/sessions/${slot.sessions[0].id}`, { as: user, at: await momentOn(0, '07:00') });
     await page.getByTestId('reserve-seat').click();
     await expect(page.getByTestId('reservation-confirmed')).toBeVisible();
 
@@ -46,26 +45,26 @@ test.describe('You cannot be in two places at once', () => {
     await page.getByTestId('conflict-dialog').getByTestId('conflict-swap').click();
     await expect(page.getByTestId('reservation-confirmed')).toBeVisible();
 
-    await clearAgendaFor(request, ATTENDEES.marcus, day);
+    await clearAgendaFor(request, user, day);
   });
 
   test('the API refuses it with a 409 and names the conflict', async ({ request }, testInfo) => {
-    const days = await conferenceDays();
-    const day = days[testInfo.project.name === 'mobile' ? 2 : 3];
-    await clearAgendaFor(request, ATTENDEES.kenji, day);
+    // A seeded day: book into a free slot and release only those two.
+    const { user, day } = await laneFor('conflict.api', testInfo);
+    const slot = await busySlot(request, user, day);
+    expect(slot, 'no slot with two available sessions').toBeTruthy();
+    const [first, second] = slot.sessions.map((s) => `${API}/users/${user}/reservations/${s.id}`);
 
-    const slot = await busySlot(request, day);
-    test.skip(!slot, 'no slot with two available sessions');
-
-    await request.put(`${API}/users/${ATTENDEES.kenji}/reservations/${slot.sessions[0].id}`);
-    const res = await request.put(`${API}/users/${ATTENDEES.kenji}/reservations/${slot.sessions[1].id}`);
+    expect((await request.put(first)).ok()).toBeTruthy();
+    const res = await request.put(second);
     expect(res.status()).toBe(409);
 
     const body = await res.json();
     expect(body.rejected).toBe('overlap');
     expect(body.conflictsWith.id).toBe(slot.sessions[0].id);
 
-    await clearAgendaFor(request, ATTENDEES.kenji, day);
+    await request.delete(first);
+    await request.delete(second);
   });
 });
 
@@ -100,11 +99,11 @@ test.describe('Check in and rate', () => {
     const me = await (await request.get(`${API}/users/${user}`)).json();
     const been = new Set(me.checkIns ?? []);
     const all = await (await request.get(`${API}/sessions?day=${day}`)).json();
-    const finished = all
-      .filter((s) => !s.isKeynote && s.format !== 'Social' && s.seatsLeft > 2 && !been.has(s.id))
-      .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-    // each project takes a different one, since ratings are shared state
-    const target = mobile ? finished[1] : finished[0];
+    // Ratings are shared state and the rating count is asserted exactly, so the
+    // projects draw from disjoint sessions (odd ids and even ids).
+    const target = all
+      .filter((s) => !s.isKeynote && s.format !== 'Social' && !been.has(s.id) && s.id % 2 === (mobile ? 1 : 0))
+      .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0];
     test.skip(!target, 'no un-attended session left on this day');
 
     // cannot rate without being there
@@ -134,8 +133,39 @@ test.describe('Check in and rate', () => {
     expect(rated.ok()).toBeTruthy();
 
     const after = await (await request.get(`${API}/sessions/${target.id}`)).json();
-    expect(after.ratingCount).toBeGreaterThan(before.ratingCount - 1);
+    expect(after.ratingCount).toBe(before.ratingCount + 1);
     expect(after.reviews.some((r) => r.comment === 'Worth the walk.')).toBeTruthy();
+  });
+
+  test('editing a rating moves the stars, and the change sticks', async ({ page, request }, testInfo) => {
+    // Each project edits a different attendee's seeded rating, and puts it back.
+    const user = testInfo.project.name === 'mobile' ? ATTENDEES.marcus : ATTENDEES.jonas;
+    const days = await conferenceDays();
+    const me = await (await request.get(`${API}/users/${user}`)).json();
+    const sessionId = me.ratings[0]?.sessionId;
+    expect(sessionId, 'the seed gives this attendee a rating').toBeTruthy();
+    const { myRating: original } = await (await request.get(
+      `${API}/users/${user}/attendance/${sessionId}?day=${days[0]}&time=23:00`)).json();
+    const changed = original.stars === 2 ? 3 : 2;
+    const star = (n) => page.getByTestId('rating-form')
+      .getByRole('radio', { name: `${n} star${n > 1 ? 's' : ''}`, exact: true });
+
+    await visit(page, `/sessions/${sessionId}`, { as: user, at: await momentOn(0, '23:00') });
+    await expect(star(original.stars)).toHaveAttribute('aria-checked', 'true');
+
+    await star(changed).click();
+    await expect(star(changed)).toHaveAttribute('aria-checked', 'true');
+    const saved = page.waitForResponse((r) => r.url().includes('/ratings/') && r.request().method() === 'PUT');
+    await page.getByTestId('submit-rating').click();
+    expect((await saved).ok()).toBeTruthy();
+
+    await page.reload();
+    await expect(star(changed)).toHaveAttribute('aria-checked', 'true');
+    await expect(star(original.stars)).toHaveAttribute('aria-checked', 'false');
+
+    await request.put(`${API}/users/${user}/ratings/${sessionId}`, {
+      data: { stars: original.stars, comment: original.comment, day: days[0], time: '23:00' },
+    });
   });
 
   test('stars must be 1 to 5', async ({ request }) => {

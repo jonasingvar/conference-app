@@ -1,10 +1,11 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useRef, useState } from 'react';
 import { cx } from './ui.jsx';
 import { Icon } from './Icon.jsx';
 
 /**
- * Minimal toast stack. Saving a session used to be silent apart from a colour
- * change on a small star — easy to miss, and no way to undo.
+ * Minimal toast stack. Anything the user does that would otherwise be silent —
+ * adding or removing a session — confirms here, with Undo where it makes sense.
+ * A toast with an action stays up longer so there is time to reach it.
  */
 const ToastContext = createContext(() => {});
 
@@ -18,17 +19,15 @@ export function Toaster({ children }) {
     setToasts((list) => list.filter((t) => t.id !== id));
   }, []);
 
-  const toast = useCallback(({ message, icon = 'check', action, duration = 4000 }) => {
+  const toast = useCallback(({ message, icon = 'check', action, duration = action ? 10000 : 4000 }) => {
     const id = nextId.current++;
     setToasts((list) => [...list.slice(-2), { id, message, icon, action }]);
     setTimeout(() => dismiss(id), duration);
     return id;
   }, [dismiss]);
 
-  const value = useMemo(() => toast, [toast]);
-
   return (
-    <ToastContext.Provider value={value}>
+    <ToastContext.Provider value={toast}>
       {children}
       <div
         className="pointer-events-none fixed inset-x-0 bottom-4 z-[60] flex flex-col items-center gap-2 px-4"

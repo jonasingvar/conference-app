@@ -1,20 +1,13 @@
-import { Link } from 'react-router-dom';
 import { useSearchParams } from 'react-router-dom';
 import { useConference, useFetch } from '../lib/store.jsx';
 import * as api from '../lib/api.js';
 import { accent } from '../lib/accents.js';
-import { plural } from '../lib/format.js';
 import { routesBetween } from '../lib/travel.js';
-import { Button, Chip, SectionHeader, Skeleton, cx } from '../components/ui.jsx';
+import { Chip, SectionHeader, Skeleton, cx } from '../components/ui.jsx';
 import { VenueRouteMap } from '../components/VenueRouteMap.jsx';
 import { VenueBoard } from '../components/VenueBoard.jsx';
 import { Icon } from '../components/Icon.jsx';
 import { useDocumentTitle } from '../lib/useDocumentTitle.js';
-
-const KIND_ICON = {
-  Keynote: 'mic', Theater: 'mic', Breakout: 'users', Workshop: 'layers',
-  Roundtable: 'users', Lightning: 'sparkle', Demo: 'grid', Social: 'food',
-};
 
 function TravelPanel({ venueData }) {
   const { venues, travel, rooms } = useConference();

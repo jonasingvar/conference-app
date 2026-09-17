@@ -1,4 +1,5 @@
 import { db } from '../db.js';
+import { toMinutes } from './query.js';
 
 /**
  * Turning up, and saying what you thought.
@@ -11,8 +12,6 @@ import { db } from '../db.js';
  *  - One rating per person, editable — people change their minds.
  */
 export const CHECK_IN_OPENS_MINS = 15;
-
-const toMinutes = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
 
 const getSession = db.prepare('SELECT id, day, starts_at, ends_at FROM sessions WHERE id = ?');
 const getCheckIn = db.prepare('SELECT checked_in_at FROM check_ins WHERE user_id = ? AND session_id = ?');
@@ -73,6 +72,14 @@ const recompute = db.prepare(`
     rating_count = (SELECT COUNT(*) FROM ratings WHERE session_id = ?)
   WHERE id = ?`);
 
+/** A speaker's rating is the average of the ratings their sessions earned. */
+const recomputeSpeakers = db.prepare(`
+  UPDATE speakers SET avg_rating = COALESCE((
+    SELECT ROUND(AVG(r.stars), 2) FROM ratings r
+    JOIN session_speakers ss ON ss.session_id = r.session_id
+    WHERE ss.speaker_id = speakers.id), 0)
+  WHERE id IN (SELECT speaker_id FROM session_speakers WHERE session_id = ?)`);
+
 export const rateSession = db.transaction((userId, sessionId, { stars, comment }, now) => {
   const state = attendanceState(sessionId, userId, now);
   if (!state) return null;
@@ -87,5 +94,6 @@ export const rateSession = db.transaction((userId, sessionId, { stars, comment }
   `).run({ userId, sessionId, stars, comment: comment || null, at: new Date().toISOString() });
 
   recompute.run(sessionId, sessionId, sessionId);
+  recomputeSpeakers.run(sessionId);
   return attendanceState(sessionId, userId, now);
 });

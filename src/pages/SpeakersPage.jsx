@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useConference, useFetch } from '../lib/store.jsx';
 import { useDocumentTitle } from '../lib/useDocumentTitle.js';
@@ -16,8 +16,6 @@ const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 /** The long tail, grouped alphabetically with a jump bar — 89 rows in one flat column is unusable. */
 function AlphabeticalList({ speakers }) {
-  const containerRef = useRef(null);
-
   const groups = useMemo(() => {
     const map = new Map();
     for (const s of [...speakers].sort((a, b) => a.name.localeCompare(b.name))) {
@@ -33,7 +31,7 @@ function AlphabeticalList({ speakers }) {
   };
 
   return (
-    <div ref={containerRef}>
+    <div>
       <div className="sticky top-16 z-20 -mx-1 mb-3 flex flex-wrap gap-0.5 rounded-xl border border-hairline bg-surface/95 p-1.5 backdrop-blur">
         {LETTERS.map((letter) => {
           const has = groups.has(letter);
@@ -114,14 +112,8 @@ export function SpeakersPage() {
   const narrowed = Boolean(q) || track !== ALL || day !== ALL || view !== ALL;
   const followed = all.filter((s) => followingIds.has(s.id));
   const headline = all.filter((s) => s.featured && !followingIds.has(s.id));
-  const rest = all.filter((s) => !s.featured && !followingIds.has(s.id));
-
-  const CHIPS = [
-    { value: ALL, label: 'Everyone' },
-    { value: 'following', label: `Following${followingIds.size ? ` (${followingIds.size})` : ''}`, icon: 'check' },
-    { value: 'keynotes', label: 'Keynotes', icon: 'mic' },
-    { value: 'first-time', label: 'First-timers', icon: 'sparkle' },
-  ];
+  // Once narrowed, the headliner spotlight is hidden, so featured people belong in the results.
+  const rest = all.filter((s) => (narrowed || !s.featured) && !followingIds.has(s.id));
 
   return (
     <div className="space-y-8">

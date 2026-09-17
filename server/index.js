@@ -31,7 +31,7 @@ app.use('/api', (req, res) => res.status(404).json({ error: `No route for ${req.
 
 app.use((err, req, res, next) => {
   console.error('✗', err);
-  res.status(500).json({ error: err.message });
+  res.status(err.status ?? 500).json({ error: err.message });
 });
 
 app.listen(PORT, () => {

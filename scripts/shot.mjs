@@ -4,7 +4,8 @@
  *
  *   npm run shot                     # every main route, desktop
  *   npm run shot -- /schedule        # one route
- *   npm run shot -- /my-plan --mobile --user=2
+ *   npm run shot -- /my-agenda --mobile --user=2
+ *   npm run shot -- / --at=2026-10-13T14:30   # pin the conference clock
  *   npm run shot -- / --full         # full-page instead of viewport
  */
 import { chromium } from '@playwright/test';
@@ -15,8 +16,9 @@ const args = process.argv.slice(2);
 const flags = new Set(args.filter((a) => a.startsWith('--')));
 const routes = args.filter((a) => !a.startsWith('--'));
 const userId = Number(args.find((a) => a.startsWith('--user='))?.split('=')[1] ?? 1);
+const at = args.find((a) => a.startsWith('--at='))?.split('=')[1];
 
-const DEFAULT_ROUTES = ['/', '/schedule', '/sessions/1', '/speakers', '/speakers/1', '/my-plan', '/venues', '/food', '/expo'];
+const DEFAULT_ROUTES = ['/', '/schedule', '/sessions/1', '/speakers', '/speakers/1', '/my-agenda', '/venues', '/food', '/expo'];
 const targets = routes.length ? routes : DEFAULT_ROUTES;
 const mobile = flags.has('--mobile');
 const fullPage = flags.has('--full');
@@ -46,9 +48,10 @@ const context = await browser.newContext({
   viewport: mobile ? { width: 390, height: 844 } : { width: 1440, height: 950 },
   deviceScaleFactor: 2,
 });
-await context.addInitScript((id) => {
+await context.addInitScript(({ id, at }) => {
   window.localStorage.setItem('orbit:currentUserId', String(id));
-}, userId);
+  if (at) window.localStorage.setItem('orbit:clockAt', at);
+}, { id: userId, at });
 
 const page = await context.newPage();
 const problems = [];

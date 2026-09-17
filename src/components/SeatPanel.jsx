@@ -7,9 +7,9 @@ import { Icon } from './Icon.jsx';
 /**
  * Seat reservation for one session.
  *
- * Starring a session is a bookmark — it says "I am interested". Reserving is a
- * commitment against a finite number of chairs: it moves the seat count for
- * everyone, and when the room is full it puts you on a waitlist instead.
+ * Adding a session to your agenda is the only action, and it is a commitment
+ * against a finite number of chairs: it moves the seat count for everyone, and
+ * when the room is full it puts you on a waitlist instead.
  */
 export function SeatPanel({ session }) {
   const { reservationFor, seatsFor, reserveSeat, releaseSeat } = useConference();

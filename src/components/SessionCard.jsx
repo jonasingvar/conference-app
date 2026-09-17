@@ -106,14 +106,12 @@ export function SessionCard({ session, variant = 'grid', showDay = false }) {
       {feature && (
         <div className="relative h-20 overflow-hidden border-b border-hairline">
           <GeneratedCover seed={session.title} accent={session.track.color}
-            variant={session.isKeynote ? 'orbit' : 'mesh'} className="size-full" />
+            variant="orbit" className="size-full" />
           <div className="absolute inset-0 bg-gradient-to-t from-raised via-raised/35 to-transparent" />
           <div className="absolute bottom-2 left-5 flex items-center gap-2">
-            {session.isKeynote && (
-              <span className="rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
-                Keynote
-              </span>
-            )}
+            <span className="rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-sm">
+              Keynote
+            </span>
             <span className="rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white/85 backdrop-blur-sm">
               {session.room.capacity.toLocaleString()} seats
             </span>

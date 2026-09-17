@@ -45,8 +45,6 @@ CREATE TABLE IF NOT EXISTS venues (
   lat          REAL NOT NULL,
   lng          REAL NOT NULL,
   is_primary   INTEGER NOT NULL DEFAULT 0,
-  map_width    INTEGER NOT NULL DEFAULT 1000,
-  map_height   INTEGER NOT NULL DEFAULT 700,
   wifi_ssid    TEXT,
   opens_at     TEXT NOT NULL DEFAULT '07:00',
   closes_at    TEXT NOT NULL DEFAULT '23:00'
@@ -91,8 +89,6 @@ CREATE TABLE IF NOT EXISTS rooms (
   kind          TEXT NOT NULL DEFAULT 'Breakout',
   -- minutes on foot from that venue's main entrance / registration desk
   walk_minutes  INTEGER NOT NULL DEFAULT 3,
-  map_x         REAL NOT NULL DEFAULT 0,
-  map_y         REAL NOT NULL DEFAULT 0,
   amenities     TEXT NOT NULL DEFAULT '',
   accessible    INTEGER NOT NULL DEFAULT 1
 );
@@ -209,8 +205,6 @@ CREATE TABLE IF NOT EXISTS vendors (
   description TEXT NOT NULL,
   building    TEXT NOT NULL,
   floor       TEXT NOT NULL,
-  map_x       REAL NOT NULL DEFAULT 0,
-  map_y       REAL NOT NULL DEFAULT 0,
   opens_at    TEXT NOT NULL,
   closes_at   TEXT NOT NULL,
   price_tier  TEXT NOT NULL,
