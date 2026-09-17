@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { existsSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import { db, DB_PATH } from './db.js';
 import { metaRouter } from './routes/meta.js';
 import { sessionsRouter } from './routes/sessions.js';
@@ -14,7 +15,7 @@ if (!existsSync(DB_PATH)) {
   process.exit(1);
 }
 
-const app = express();
+export const app = express();
 app.use(cors());
 app.use(express.json());
 
@@ -34,6 +35,10 @@ app.use((err, req, res, next) => {
   res.status(err.status ?? 500).json({ error: err.message });
 });
 
-app.listen(PORT, () => {
-  console.log(`▸ ORBIT API on http://localhost:${PORT}/api`);
-});
+// Started directly (`node server/index.js`) it listens; imported — by a test
+// that wants the app on an ephemeral port — it does not.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  app.listen(PORT, () => {
+    console.log(`▸ ORBIT API on http://localhost:${PORT}/api`);
+  });
+}

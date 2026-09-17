@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { visit, momentOn, laneFor, bookableFor } from './helpers.js';
+import { API, visit, momentOn, laneFor, bookableFor } from './helpers.js';
 
 test.describe('Session detail', () => {
   test('shows the full session record', async ({ page }) => {
@@ -23,7 +23,7 @@ test.describe('Session detail', () => {
     await action.click();
     await expect(action).toHaveText('On my agenda');
 
-    await request.delete(`http://localhost:3001/api/users/${lane.user}/reservations/${target.id}`);
+    await request.delete(`${API}/users/${lane.user}/reservations/${target.id}`);
   });
 
   test('off-site sessions warn about travel time', async ({ page }) => {

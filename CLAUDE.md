@@ -21,6 +21,7 @@ npm run dev          # seeds the database, then starts API + web on one command
 | `npm run dev` | Seed + run everything. The only command you normally need. |
 | `npm run db:seed` | Rebuild `data/orbit.db` from `server/seed.js`. Destructive and deterministic. |
 | `npm run db:reset` | Delete the database file and reseed from scratch. |
+| `npm test` | Unit + API tests, no browser. Under a second — run it after every edit. |
 | `npm run verify` | Reseed, then the Playwright suite, headless. **Run this before calling a ticket done.** |
 | `npm run verify -- --ui` | Interactive Playwright runner. |
 | `npm run shot` | Screenshot every main route into `.screenshots/`. Starts the app if it is not running. |
@@ -383,21 +384,45 @@ ones never leave holes.
 
 ## Verifying a change
 
-A ticket is not done until it is proven in a browser.
+Three layers, fastest first. Run the cheap one constantly; a ticket is not done
+until the browser agrees.
 
-1. `npm run verify` — the whole suite must pass on desktop **and** mobile.
-2. Add a test for what you changed. Specs live in `tests/`, one file per area,
-   and use `visit(page, path, { as: ATTENDEES.kenji })` from `tests/helpers.js`
-   rather than `page.goto` — it sets which attendee is signed in.
-3. `npm run shot -- /your-route` and look at the PNG if the change is visual.
+1. **`npm test`** — `tests/unit/` and `tests/api/`, under a second, no browser.
+   Run it after every edit.
+2. **`npm run verify`** — reseeds, then drives the real app in Chromium on
+   desktop **and** mobile. The gate for "done".
+3. **`npm run shot -- /your-route`** — look at the PNG if the change is visual.
+
+**Where a new test goes:**
+
+- `tests/unit/*.test.js` — a pure function: the check-in window, the clock
+  projection, travel, iCal escaping, a mapper. Import the module and assert.
+  `sandbox-db.js` first if the module reaches the database on import.
+- `tests/api/*.test.js` — a rule that needs the database and the routes: seats,
+  waitlists, promotion, check-in, rating, response shapes, `.ics` output.
+  `startApi()` from `harness.js` seeds a throwaway database, boots the app on a
+  free port and hands you a client. Book and break whatever you like — nothing
+  is shared, so there is no cleanup and no lane to respect.
+- `tests/*.spec.js` — anything that needs a browser: what the attendee sees,
+  navigation, the conflict dialog, responsive behaviour. Use
+  `visit(page, path, { as: ATTENDEES.kenji })` from `tests/helpers.js` rather
+  than `page.goto` — it sets which attendee is signed in.
+
+If a rule can be proven without a browser, prove it without a browser: an agent
+can afford `npm test` after every edit, and cannot afford Playwright.
 
 The smoke suite already asserts every route renders with no console errors and
 no horizontal overflow, so responsive regressions fail automatically.
 
-**CI runs the same command.** `.github/workflows/verify.yml` builds the web app
-and runs `npm run verify` on every push and pull request, so a branch that is
-red locally is red on GitHub. A failed run uploads the Playwright HTML report
-and the traces as an artifact.
+**Nothing is pinned to one machine.** `ORBIT_DB`, `PORT`, `WEB_PORT` and
+`PW_OUTPUT_DIR` pick the database file, the two servers and Playwright's output
+directory, so a second checkout — or a second agent on a second ticket — can run
+its own app and its own suite at the same time without touching yours.
+
+**CI runs the same commands.** `.github/workflows/verify.yml` runs `npm test` in
+one job and the two Playwright projects in two more, all in parallel, on every
+push and pull request. A failed run uploads the HTML report and the traces, and
+every run writes a pass/fail table to the Actions summary.
 
 ## Data model in one paragraph
 

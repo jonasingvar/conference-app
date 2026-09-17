@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { visit, momentOn, laneFor, bookableFor, ATTENDEES } from './helpers.js';
+import { API, visit, momentOn, laneFor, bookableFor, ATTENDEES } from './helpers.js';
 
-const API = 'http://localhost:3001/api';
 
 /**
  * Start from "not reserved" on the open session page. bookableFor() only picks

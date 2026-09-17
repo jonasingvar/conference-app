@@ -13,6 +13,9 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests',
+  // Playwright owns the browser specs; tests/unit and tests/api are node --test
+  // files run by `npm test`, and must not be collected here.
+  testMatch: '**/*.spec.js',
   timeout: 30_000,
   expect: { timeout: 7_000 },
   fullyParallel: true,
@@ -29,8 +32,12 @@ export default defineConfig({
        ['json', { outputFile: 'test-results/results.json' }]]
     : [['list']],
 
+  // A second checkout can run its own suite by setting WEB_PORT, PORT and
+  // ORBIT_DB; nothing here is hard-coded to one machine-wide port or file.
+  outputDir: process.env.PW_OUTPUT_DIR ?? 'test-results',
+
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: `http://localhost:${process.env.WEB_PORT ?? 5173}`,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'off',
@@ -43,7 +50,7 @@ export default defineConfig({
 
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:5173',
+    url: `http://localhost:${process.env.WEB_PORT ?? 5173}`,
     reuseExistingServer: !process.env.CI,
     timeout: 90_000,
     stdout: 'ignore',

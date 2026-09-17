@@ -7,6 +7,12 @@ import { expect } from '@playwright/test';
  * active user, and that choice lives in localStorage under `orbit:currentUserId`.
  */
 
+/**
+ * The API the suite talks to. PORT lets a second checkout run its own server
+ * (with its own ORBIT_DB) without the two suites writing to each other's data.
+ */
+export const API = `http://localhost:${process.env.PORT ?? 3001}/api`;
+
 export const ATTENDEES = {
   jonas: 1,      // VIP, big plan, has cross-town clashes
   amara: 2,      // Speaker — presenting 3 sessions
@@ -23,7 +29,7 @@ export const ATTENDEES = {
 let cachedDays = null;
 export async function conferenceDays() {
   if (!cachedDays) {
-    const res = await fetch('http://localhost:3001/api/bootstrap');
+    const res = await fetch(`${API}/bootstrap`);
     cachedDays = (await res.json()).days.map((d) => d.date);
   }
   return cachedDays;
@@ -71,11 +77,11 @@ export async function waitForResults(page, testId = 'result-count') {
  * before any test that adds a session.
  */
 export async function clearAgendaFor(request, userId, day) {
-  const res = await request.get(`http://localhost:3001/api/users/${userId}/schedule`);
+  const res = await request.get(`${API}/users/${userId}/schedule`);
   const plan = await res.json();
   const onDay = (plan.days ?? []).find((d) => d.date === day);
   for (const session of onDay?.sessions ?? []) {
-    await request.delete(`http://localhost:3001/api/users/${userId}/reservations/${session.id}`);
+    await request.delete(`${API}/users/${userId}/reservations/${session.id}`);
   }
 }
 
@@ -125,7 +131,6 @@ export async function laneFor(name, testInfo) {
  * socials left out. Release what you book and the next run picks the same one.
  */
 export async function bookableFor(request, userId, day) {
-  const API = 'http://localhost:3001/api';
   const me = await (await request.get(`${API}/users/${userId}`)).json();
   const all = await (await request.get(`${API}/sessions`)).json();
   const byId = new Map(all.map((s) => [s.id, s]));

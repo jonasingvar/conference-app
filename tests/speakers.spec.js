@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { visit, ATTENDEES } from './helpers.js';
+import { API, visit, ATTENDEES } from './helpers.js';
 
-const API = 'http://localhost:3001/api';
 
 test.describe('Speakers', () => {
   test('the unfiltered page is tiered, not one flat list', async ({ page }) => {
@@ -14,7 +13,7 @@ test.describe('Speakers', () => {
   });
 
   test('every speaker on the programme is actually presenting', async ({ request }) => {
-    const speakers = await (await request.get('http://localhost:3001/api/speakers')).json();
+    const speakers = await (await request.get(`${API}/speakers`)).json();
     const idle = speakers.filter((s) => (s.sessionCount ?? 0) === 0);
     expect(idle.map((s) => s.name)).toEqual([]);
   });
@@ -125,7 +124,7 @@ test.describe('Headliner spotlight', () => {
   });
 
   test('every speaker name matches the pronouns on their profile', async ({ request }) => {
-    const res = await request.get('http://localhost:3001/api/speakers');
+    const res = await request.get(`${API}/speakers`);
     const speakers = await res.json();
     // Portraits are classified in server/avatar-presentation.json and the seed
     // picks the name + pronouns to match, so these must never disagree.

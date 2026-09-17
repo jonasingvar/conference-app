@@ -18,6 +18,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Unit + API tests: no browser, no server, about a second. Runs beside the
+  # Playwright jobs, so it costs nothing in wall-clock and fails fast when the
+  # rules break.
+  test:
+    name: Unit + API
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: node --test
+        run: npm test
+
   playwright:
     name: Playwright · ${{ matrix.project }}
     runs-on: ubuntu-latest

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { visit, momentOn, conferenceDays, MID_SESSION_TIME, BETWEEN_SLOTS_TIME, ATTENDEES } from './helpers.js';
+import { API, visit, momentOn, conferenceDays, MID_SESSION_TIME, BETWEEN_SLOTS_TIME, ATTENDEES } from './helpers.js';
 
 test.describe('Conference clock', () => {
   test('mid-slot shows what is running, with progress', async ({ page }) => {
@@ -26,7 +26,7 @@ test.describe('Conference clock', () => {
 
   test('the live endpoint agrees with the UI', async ({ request }) => {
     const [day1] = await conferenceDays();
-    const res = await request.get(`http://localhost:3001/api/live?day=${day1}&time=10:30`);
+    const res = await request.get(`${API}/live?day=${day1}&time=10:30`);
     expect(res.ok()).toBeTruthy();
     const body = await res.json();
     expect(body.happeningNow.length).toBeGreaterThan(0);
@@ -63,7 +63,7 @@ test.describe('Following a speaker', () => {
   test('the follow button toggles and persists', async ({ page, request }, testInfo) => {
     // Follows are shared state and the projects run concurrently: one attendee each.
     const user = testInfo.project.name === 'mobile' ? ATTENDEES.kenji : ATTENDEES.marcus;
-    const me = await (await request.get(`http://localhost:3001/api/users/${user}`)).json();
+    const me = await (await request.get(`${API}/users/${user}`)).json();
     const wasFollowing = me.followedSpeakers.some((s) => s.id === 3);
 
     await visit(page, '/speakers/3', { as: user });
@@ -80,6 +80,6 @@ test.describe('Following a speaker', () => {
     await page.reload();
     await expect(page.getByTestId('follow-speaker')).toHaveAttribute('aria-pressed', 'true');
 
-    if (!wasFollowing) await request.delete(`http://localhost:3001/api/users/${user}/follows/3`);
+    if (!wasFollowing) await request.delete(`${API}/users/${user}/follows/3`);
   });
 });

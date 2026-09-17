@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { visit, momentOn, conferenceDays, clearAgendaFor, laneFor, bookableFor, ATTENDEES } from './helpers.js';
+import { API, visit, momentOn, conferenceDays, clearAgendaFor, laneFor, bookableFor, ATTENDEES } from './helpers.js';
 
-const API = 'http://localhost:3001/api';
 
 /** The first slot where this attendee can book at least two sessions with seats. */
 async function busySlot(request, userId, day) {

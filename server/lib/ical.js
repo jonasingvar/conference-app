@@ -12,14 +12,14 @@ import { db } from '../db.js';
  * every 12-24h and ignores REFRESH-INTERVAL entirely, so this is a planning
  * artifact — never the channel for a same-day room change.
  */
-const escape = (v = '') => String(v)
+export const escape = (v) => String(v ?? '')
   .replace(/\\/g, '\\\\')
   .replace(/;/g, '\\;')
   .replace(/,/g, '\\,')
   .replace(/\r?\n/g, '\\n');
 
 /** Fold to 75 octets, continuation lines starting with a single space. */
-function fold(line) {
+export function fold(line) {
   if (Buffer.byteLength(line, 'utf8') <= 75) return line;
   const out = [];
   let current = '';

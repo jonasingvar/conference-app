@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { visit, momentOn, waitForResults, conferenceDays, laneFor, bookableFor } from './helpers.js';
+import { API, visit, momentOn, waitForResults, conferenceDays, laneFor, bookableFor } from './helpers.js';
 
-const API = 'http://localhost:3001/api';
 
 test.describe('Schedule', () => {
   test('lists sessions for the selected day', async ({ page }) => {

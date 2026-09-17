@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { visit, momentOn, laneFor, bookableFor, ATTENDEES } from './helpers.js';
+import { API, visit, momentOn, laneFor, bookableFor, ATTENDEES } from './helpers.js';
 
-const API = 'http://localhost:3001/api';
 
 test.describe('My Agenda', () => {
   test('adding a session from the schedule puts it on the agenda', async ({ page, request }, testInfo) => {

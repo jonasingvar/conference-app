@@ -1,10 +1,18 @@
 import Database from 'better-sqlite3';
 import { mkdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-export const DB_PATH = join(__dirname, '..', 'data', 'orbit.db');
+
+/**
+ * One database file, chosen by the environment. `ORBIT_DB` lets a test suite —
+ * or a second agent working a second ticket — run against its own copy instead
+ * of fighting over this one.
+ */
+export const DB_PATH = process.env.ORBIT_DB
+  ? resolve(process.env.ORBIT_DB)
+  : join(__dirname, '..', 'data', 'orbit.db');
 
 mkdirSync(dirname(DB_PATH), { recursive: true });
 

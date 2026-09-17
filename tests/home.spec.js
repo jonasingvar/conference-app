@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { visit, momentOn, conferenceDays, ATTENDEES } from './helpers.js';
+import { API, visit, momentOn, conferenceDays, ATTENDEES } from './helpers.js';
 
-const API = 'http://localhost:3001/api';
 
 test.describe('Home is about you, and about now', () => {
   test('the day shown is today, not the first day you booked something', async ({ page }) => {
