@@ -378,6 +378,11 @@ A ticket is not done until it is proven in a browser.
 The smoke suite already asserts every route renders with no console errors and
 no horizontal overflow, so responsive regressions fail automatically.
 
+**CI runs the same command.** `.github/workflows/verify.yml` builds the web app
+and runs `npm run verify` on every push and pull request, so a branch that is
+red locally is red on GitHub. A failed run uploads the Playwright HTML report
+and the traces as an artifact.
+
 ## Data model in one paragraph
 
 Four days starting on the day you seed, ~140 sessions, 110 speakers, across

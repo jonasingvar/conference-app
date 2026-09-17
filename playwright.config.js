@@ -19,7 +19,11 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 2 : undefined,
-  reporter: process.env.CI ? [['github'], ['list']] : [['list']],
+  // On CI: inline annotations on the failing line, plus an HTML report the
+  // workflow uploads so a red run can be read without reproducing it.
+  reporter: process.env.CI
+    ? [['github'], ['list'], ['html', { open: 'never' }]]
+    : [['list']],
 
   use: {
     baseURL: 'http://localhost:5173',
