@@ -1,3 +1,6 @@
+
+https://github.com/user-attachments/assets/7f3ea661-2e85-4895-b7b2-63f3d77a1674
+
 # ORBIT '26
 
 The conference companion app for ORBIT '26 — a fictional applied-AI conference
