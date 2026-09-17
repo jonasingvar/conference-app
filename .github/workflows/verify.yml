@@ -37,7 +37,11 @@ jobs:
       - run: npm ci
 
       - name: node --test
-        run: npm test
+        run: npm run test:ci
+
+      - name: Summarise the run
+        if: ${{ !cancelled() }}
+        run: node scripts/ci-summary-node.mjs >> "$GITHUB_STEP_SUMMARY"
 
   playwright:
     name: Playwright · ${{ matrix.project }}
