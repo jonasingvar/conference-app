@@ -18,11 +18,15 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 2 : undefined,
-  // On CI: inline annotations on the failing line, plus an HTML report the
-  // workflow uploads so a red run can be read without reproducing it.
+  // Use every core the runner has; the lane table in tests/helpers.js keeps
+  // parallel tests off each other's data, so more workers is just faster.
+  workers: process.env.CI ? '100%' : undefined,
+  // On CI: inline annotations on the failing line, an HTML report the workflow
+  // uploads so a red run can be read without reproducing it, and a JSON file
+  // the workflow turns into the run summary you see on the Actions page.
   reporter: process.env.CI
-    ? [['github'], ['list'], ['html', { open: 'never' }]]
+    ? [['github'], ['list'], ['html', { open: 'never' }],
+       ['json', { outputFile: 'test-results/results.json' }]]
     : [['list']],
 
   use: {

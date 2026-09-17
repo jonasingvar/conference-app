@@ -1,6 +1,9 @@
-## The same gate as `npm run verify` on a laptop: seed, start the app, drive
-## it in a browser. Both Playwright projects are Chromium, so that is the only
-## browser we install.
+## The same gate as `npm run verify` on a laptop: seed, start the app, drive it
+## in a browser. The two Playwright projects run as separate jobs, so the checks
+## on a pull request say which viewport broke, and each gets its own database
+## rather than sharing one with the other.
+##
+## Both projects are Chromium, so that is the only browser we install.
 name: verify
 
 on:
@@ -15,9 +18,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify:
+  playwright:
+    name: Playwright · ${{ matrix.project }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [desktop, mobile]
 
     steps:
       - uses: actions/checkout@v4
@@ -47,9 +56,16 @@ jobs:
         if: steps.browsers.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      # Playwright starts the app itself (seed + API + Vite) via `npm run dev`.
-      - name: Playwright suite, desktop and mobile
-        run: npm run verify
+      # `npm run verify` seeds the database, then Playwright starts the app
+      # itself (API + Vite) and drives it.
+      - name: Seed, start the app, run the ${{ matrix.project }} suite
+        run: npm run verify -- --project=${{ matrix.project }}
+
+      # Turn the run into a table on the Actions summary page, so a green run
+      # still says how many tests ran and a red one names what failed.
+      - name: Summarise the run
+        if: ${{ !cancelled() }}
+        run: node scripts/ci-summary.mjs "${{ matrix.project }}" >> "$GITHUB_STEP_SUMMARY"
 
       # The HTML report and any failure traces, so a red run can be read
       # without reproducing it locally.
@@ -57,7 +73,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.project }}
           path: |
             playwright-report/
             test-results/
