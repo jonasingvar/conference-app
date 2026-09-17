@@ -6,6 +6,24 @@ import { sessionCalendar } from '../lib/ical.js';
 
 export const sessionsRouter = Router();
 
+const getSession = db.prepare(`${SESSION_SELECT} WHERE s.id = ?`);
+const speakersOn = db.prepare(`
+  SELECT sp.*, ss.role FROM session_speakers ss
+  JOIN speakers sp ON sp.id = ss.speaker_id WHERE ss.session_id = ?`);
+const tagsOn = db.prepare(`
+  SELECT tg.name, tg.slug, tg.kind FROM session_tags st
+  JOIN tags tg ON tg.id = st.tag_id WHERE st.session_id = ? ORDER BY tg.kind, tg.name`);
+const reviewsOn = db.prepare(`
+  SELECT rt.stars, rt.comment, rt.created_at, u.name, u.initials, u.accent, u.image_url, u.job_title, u.company
+  FROM ratings rt JOIN users u ON u.id = rt.user_id
+  WHERE rt.session_id = ? AND rt.comment IS NOT NULL ORDER BY rt.created_at DESC`);
+/** Other sessions in the same room, same day — "what else is in this room". */
+const alsoInRoom = db.prepare(`${SESSION_SELECT}
+  WHERE s.room_id = ? AND s.day = ? AND s.id != ? ORDER BY s.starts_at`);
+/** Same slot, different room — the "what am I giving up" list. */
+const competingWith = db.prepare(`${SESSION_SELECT}
+  WHERE s.day = ? AND s.starts_at = ? AND s.id != ? ORDER BY s.avg_rating DESC LIMIT 6`);
+
 /**
  * GET /api/sessions
  * Filters: day, trackSlug, tagSlug, venueId, roomId, level, format, speakerId, q, reservedBy, followedBy
@@ -64,36 +82,25 @@ sessionsRouter.get('/:id.ics', (req, res) => {
 });
 
 sessionsRouter.get('/:id', (req, res) => {
-  const row = db.prepare(`${SESSION_SELECT} WHERE s.id = ?`).get(req.params.id);
+  const row = getSession.get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Session not found' });
 
-  const speakers = db.prepare(`
-    SELECT sp.*, ss.role FROM session_speakers ss
-    JOIN speakers sp ON sp.id = ss.speaker_id WHERE ss.session_id = ?`).all(row.id)
-    .map((s) => toSpeaker(s, { role: s.role }));
+  const speakers = speakersOn.all(row.id).map((s) => toSpeaker(s, { role: s.role }));
+  const tags = tagsOn.all(row.id);
 
-  const tags = db.prepare(`
-    SELECT tg.name, tg.slug, tg.kind FROM session_tags st
-    JOIN tags tg ON tg.id = st.tag_id WHERE st.session_id = ? ORDER BY tg.kind, tg.name`).all(row.id);
-
-  const reviews = db.prepare(`
-    SELECT rt.stars, rt.comment, rt.created_at, u.name, u.initials, u.accent, u.image_url, u.job_title, u.company
-    FROM ratings rt JOIN users u ON u.id = rt.user_id
-    WHERE rt.session_id = ? AND rt.comment IS NOT NULL ORDER BY rt.created_at DESC`).all(row.id)
+  const reviews = reviewsOn.all(row.id)
     .map((r) => ({
       stars: r.stars, comment: r.comment, createdAt: r.created_at,
       author: { name: r.name, initials: r.initials, accent: r.accent, imageUrl: r.image_url, jobTitle: r.job_title, company: r.company },
     }));
 
-  // Other sessions in the same room, same day — useful for "what else is in this room"
-  const alsoInRoom = db.prepare(`${SESSION_SELECT} WHERE s.room_id = ? AND s.day = ? AND s.id != ? ORDER BY s.starts_at`)
-    .all(row.room_id, row.day, row.id).map((r) => toSession(r));
-
-  // Same slot, different room — the "what am I giving up" list
-  const competing = db.prepare(`${SESSION_SELECT} WHERE s.day = ? AND s.starts_at = ? AND s.id != ? ORDER BY s.avg_rating DESC LIMIT 6`)
-    .all(row.day, row.starts_at, row.id).map((r) => toSession(r));
-
   const seats = seatState(row.id, req.query.userId ? Number(req.query.userId) : null);
 
-  res.json({ ...toSession(row, { speakers, tags }), seats, reviews, alsoInRoom, competing });
+  res.json({
+    ...toSession(row, { speakers, tags }),
+    seats,
+    reviews,
+    alsoInRoom: alsoInRoom.all(row.room_id, row.day, row.id).map((r) => toSession(r)),
+    competing: competingWith.all(row.day, row.starts_at, row.id).map((r) => toSession(r)),
+  });
 });

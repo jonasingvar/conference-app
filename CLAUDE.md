@@ -44,6 +44,7 @@ server/
     query.js         shared SQL fragments and every snake_case → camelCase mapper
     seats.js         reserve / release / waitlist promotion, overlap guard
     attendance.js    check-in window and rating rules
+    agenda.js        the /today payload and the agenda: clashes, totals, suggestions
     ical.js          .ics calendar export
   routes/
     meta.js          /bootstrap, /live, /venues, /vendors, /sponsors, /announcements
@@ -85,6 +86,19 @@ add a column, add it to the mapper — React must never see `snake_case`.
 **Adding an endpoint.** Put the route in the matching `server/routes/*.js`, map
 rows with an existing `toX()` helper, then add one function to `src/lib/api.js`.
 Components import from `api.js`; they never call `fetch` directly.
+
+**Routes stay thin; rules live in `server/lib/`.** A handler reads the request,
+calls one function, and sends the result. Anything with a rule in it — seats and
+the overlap guard, the check-in window, what the home page and the agenda are
+made of — belongs beside `seats.js`, `attendance.js` and `agenda.js`, where it
+can be called and tested without HTTP.
+
+**Prepare statements once, at module scope.** `db.prepare(...)` compiles SQL, so
+a handler that prepares on every request recompiles on every request. Name the
+statement next to the others at the top of the file (`const getUser =
+db.prepare(…)`). The exception is a filter whose SQL genuinely varies with the
+query string — `/sessions`, `/speakers` and `/vendors` build theirs per request,
+and still pass every value as a bound `?`.
 
 **Fetching data in a page.** Use `useFetch` from `src/lib/store.jsx`:
 

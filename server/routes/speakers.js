@@ -4,6 +4,12 @@ import { SESSION_SELECT, toSpeaker, toSession } from '../lib/query.js';
 
 export const speakersRouter = Router();
 
+const getSpeaker = db.prepare('SELECT * FROM speakers WHERE id = ?');
+const sessionsBySpeaker = db.prepare(`${SESSION_SELECT}
+  JOIN session_speakers ss ON ss.session_id = s.id
+  WHERE ss.speaker_id = ? ORDER BY s.day, s.starts_at`);
+const followerCount = db.prepare('SELECT COUNT(*) n FROM speaker_follows WHERE speaker_id = ?');
+
 speakersRouter.get('/', (req, res) => {
   const { q, featured, trackSlug, country, firstTime, day } = req.query;
   const where = [];
@@ -41,18 +47,14 @@ speakersRouter.get('/', (req, res) => {
 });
 
 speakersRouter.get('/:id', (req, res) => {
-  const row = db.prepare('SELECT * FROM speakers WHERE id = ?').get(req.params.id);
+  const row = getSpeaker.get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Speaker not found' });
 
-  const sessions = db.prepare(`${SESSION_SELECT}
-    JOIN session_speakers ss ON ss.session_id = s.id
-    WHERE ss.speaker_id = ? ORDER BY s.day, s.starts_at`).all(row.id).map((r) => toSession(r));
-
-  const followerCount = db.prepare('SELECT COUNT(*) n FROM speaker_follows WHERE speaker_id = ?').get(row.id).n;
+  const sessions = sessionsBySpeaker.all(row.id).map((r) => toSession(r));
 
   res.json(toSpeaker(row, {
     sessions,
-    followerCount,
+    followerCount: followerCount.get(row.id).n,
     keynoteCount: sessions.filter((s) => s.isKeynote).length,
   }));
 });

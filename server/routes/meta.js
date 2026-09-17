@@ -4,28 +4,56 @@ import { SESSION_SELECT, hydrateSessions, toVenue, toRoom, toSponsor, toVendor, 
 
 export const metaRouter = Router();
 
+const allVenues = db.prepare('SELECT * FROM venues ORDER BY is_primary DESC, name');
+const allTravel = db.prepare('SELECT * FROM venue_travel');
+const allTracks = db.prepare('SELECT * FROM tracks ORDER BY name');
+const allTags = db.prepare('SELECT * FROM tags ORDER BY kind, name');
+const allRooms = db.prepare('SELECT * FROM rooms ORDER BY venue_id, level_order, name');
+const allUsers = db.prepare('SELECT * FROM users ORDER BY id');
+const confirmedSeats = db.prepare("SELECT COUNT(*) n FROM reservations WHERE user_id = ? AND status = 'confirmed'");
+const dayCounts = db.prepare('SELECT day, COUNT(*) n FROM sessions GROUP BY day ORDER BY day');
+const allCuisines = db.prepare('SELECT DISTINCT cuisine FROM vendors ORDER BY cuisine');
+const formatCounts = db.prepare('SELECT format, COUNT(*) n FROM sessions GROUP BY format ORDER BY n DESC');
+const levelCounts = db.prepare('SELECT level, COUNT(*) n FROM sessions GROUP BY level');
+
+const venuesByRank = db.prepare('SELECT * FROM venues ORDER BY is_primary DESC');
+const roomsInVenue = db.prepare('SELECT * FROM rooms WHERE venue_id = ? ORDER BY level_order, name');
+const vendorsInVenue = db.prepare('SELECT COUNT(*) n FROM vendors WHERE venue_id = ?');
+const sessionsInVenue = db.prepare(
+  'SELECT COUNT(*) n FROM sessions s JOIN rooms r ON r.id = s.room_id WHERE r.venue_id = ?');
+
+const sponsorsByTier = db.prepare(`SELECT * FROM sponsors ORDER BY
+  CASE tier WHEN 'Diamond' THEN 0 WHEN 'Platinum' THEN 1 WHEN 'Gold' THEN 2 WHEN 'Silver' THEN 3 ELSE 4 END, name`);
+const allAnnouncements = db.prepare('SELECT * FROM announcements ORDER BY pinned DESC, posted_at DESC');
+
+const runningAt = db.prepare(`${SESSION_SELECT}
+  WHERE s.day = ? AND s.starts_at <= ? AND s.ends_at > ?
+  ORDER BY s.is_keynote DESC, s.capacity DESC`);
+const nextSlotAfter = db.prepare('SELECT MIN(starts_at) t FROM sessions WHERE day = ? AND starts_at > ?');
+const startingAt = db.prepare(`${SESSION_SELECT}
+  WHERE s.day = ? AND s.starts_at = ?
+  ORDER BY s.is_keynote DESC, s.avg_rating DESC`);
+const dayBounds = db.prepare('SELECT MIN(starts_at) first, MAX(ends_at) last FROM sessions WHERE day = ?');
+
 /** Everything the app shell needs, in one request. */
 metaRouter.get('/bootstrap', (req, res) => {
-  const venues = db.prepare('SELECT * FROM venues ORDER BY is_primary DESC, name').all().map(toVenue);
-  const travel = db.prepare('SELECT * FROM venue_travel').all().map(toTravel);
-  const tracks = db.prepare('SELECT * FROM tracks ORDER BY name').all().map(toTrack);
-  const tags = db.prepare('SELECT * FROM tags ORDER BY kind, name').all();
-  const rooms = db.prepare('SELECT * FROM rooms ORDER BY venue_id, level_order, name').all().map(toRoom);
-  const reservedCount = db.prepare("SELECT COUNT(*) n FROM reservations WHERE user_id = ? AND status = 'confirmed'");
-  const users = db.prepare('SELECT * FROM users ORDER BY id').all()
-    .map((u) => toUser(u, { reservedCount: reservedCount.get(u.id).n }));
-  const days = db.prepare('SELECT day, COUNT(*) n FROM sessions GROUP BY day ORDER BY day').all()
+  const venues = allVenues.all().map(toVenue);
+  const travel = allTravel.all().map(toTravel);
+  const tracks = allTracks.all().map(toTrack);
+  const tags = allTags.all();
+  const rooms = allRooms.all().map(toRoom);
+  const users = allUsers.all()
+    .map((u) => toUser(u, { reservedCount: confirmedSeats.get(u.id).n }));
+  const days = dayCounts.all()
     .map((d, i) => ({
       date: d.day,
       label: `Day ${i + 1}`,
       weekday: new Date(`${d.day}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' }),
       sessionCount: d.n,
     }));
-  const cuisines = db.prepare('SELECT DISTINCT cuisine FROM vendors ORDER BY cuisine').all().map((c) => c.cuisine);
-  const formats = db.prepare('SELECT format, COUNT(*) n FROM sessions GROUP BY format ORDER BY n DESC').all()
-    .map((f) => ({ name: f.format, count: f.n }));
-  const levels = db.prepare('SELECT level, COUNT(*) n FROM sessions GROUP BY level').all()
-    .map((l) => ({ name: l.level, count: l.n }));
+  const cuisines = allCuisines.all().map((c) => c.cuisine);
+  const formats = formatCounts.all().map((f) => ({ name: f.format, count: f.n }));
+  const levels = levelCounts.all().map((l) => ({ name: l.level, count: l.n }));
 
   const first = days[0]?.date;
   const last = days[days.length - 1]?.date;
@@ -52,13 +80,11 @@ metaRouter.get('/bootstrap', (req, res) => {
 });
 
 metaRouter.get('/venues', (req, res) => {
-  const venues = db.prepare('SELECT * FROM venues ORDER BY is_primary DESC').all().map(toVenue);
-  res.json(venues.map((v) => ({
+  res.json(venuesByRank.all().map(toVenue).map((v) => ({
     ...v,
-    rooms: db.prepare('SELECT * FROM rooms WHERE venue_id = ? ORDER BY level_order, name').all(v.id).map(toRoom),
-    vendorCount: db.prepare('SELECT COUNT(*) n FROM vendors WHERE venue_id = ?').get(v.id).n,
-    sessionCount: db.prepare(
-      'SELECT COUNT(*) n FROM sessions s JOIN rooms r ON r.id = s.room_id WHERE r.venue_id = ?').get(v.id).n,
+    rooms: roomsInVenue.all(v.id).map(toRoom),
+    vendorCount: vendorsInVenue.get(v.id).n,
+    sessionCount: sessionsInVenue.get(v.id).n,
   })));
 });
 
@@ -75,12 +101,11 @@ metaRouter.get('/vendors', (req, res) => {
 });
 
 metaRouter.get('/sponsors', (req, res) => {
-  const order = `CASE tier WHEN 'Diamond' THEN 0 WHEN 'Platinum' THEN 1 WHEN 'Gold' THEN 2 WHEN 'Silver' THEN 3 ELSE 4 END`;
-  res.json(db.prepare(`SELECT * FROM sponsors ORDER BY ${order}, name`).all().map(toSponsor));
+  res.json(sponsorsByTier.all().map(toSponsor));
 });
 
 metaRouter.get('/announcements', (req, res) => {
-  res.json(db.prepare('SELECT * FROM announcements ORDER BY pinned DESC, posted_at DESC').all().map(toAnnouncement));
+  res.json(allAnnouncements.all().map(toAnnouncement));
 });
 
 /**
@@ -91,23 +116,13 @@ metaRouter.get('/live', (req, res) => {
   const { day, time } = req.query;
   if (!day || !time) return res.status(400).json({ error: 'day and time are required' });
 
-  const running = db.prepare(`${SESSION_SELECT}
-    WHERE s.day = ? AND s.starts_at <= ? AND s.ends_at > ?
-    ORDER BY s.is_keynote DESC, s.capacity DESC`).all(day, time, time);
-
-  const nextSlot = db.prepare(
-    'SELECT MIN(starts_at) t FROM sessions WHERE day = ? AND starts_at > ?').get(day, time)?.t;
-
-  const upcoming = nextSlot
-    ? db.prepare(`${SESSION_SELECT}
-        WHERE s.day = ? AND s.starts_at = ?
-        ORDER BY s.is_keynote DESC, s.avg_rating DESC`).all(day, nextSlot)
-    : [];
+  const running = runningAt.all(day, time, time);
+  const nextSlot = nextSlotAfter.get(day, time)?.t;
+  const upcoming = nextSlot ? startingAt.all(day, nextSlot) : [];
 
   // The day's own bounds, so the client can tell "not started yet" from
   // "between slots" from "that's a wrap" instead of guessing from array lengths.
-  const bounds = db.prepare(
-    'SELECT MIN(starts_at) first, MAX(ends_at) last FROM sessions WHERE day = ?').get(day);
+  const bounds = dayBounds.get(day);
 
   res.json({
     day,

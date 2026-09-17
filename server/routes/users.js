@@ -1,48 +1,49 @@
 import { Router } from 'express';
 import { db } from '../db.js';
-import { SESSION_SELECT, hydrateSessions, toUser, toSpeaker, toSession, toMinutes } from '../lib/query.js';
+import { SESSION_SELECT, toUser, toSpeaker, toSession } from '../lib/query.js';
 import { reserveSeat, releaseSeat, seatState } from '../lib/seats.js';
 import { attendanceState, checkIn, rateSession } from '../lib/attendance.js';
+import { todayFor, scheduleFor } from '../lib/agenda.js';
 import { agendaCalendar } from '../lib/ical.js';
-
-/** Sessions this user is presenting, if their account is linked to a speaker. */
-function speakingSessions(speakerId) {
-  if (!speakerId) return [];
-  return db.prepare(`${SESSION_SELECT}
-    JOIN session_speakers ss ON ss.session_id = s.id
-    WHERE ss.speaker_id = ? ORDER BY s.day, s.starts_at`).all(speakerId).map((r) => toSession(r));
-}
 
 export const usersRouter = Router();
 
+const allUsers = db.prepare('SELECT * FROM users ORDER BY id');
+const getUser = db.prepare('SELECT * FROM users WHERE id = ?');
 const userExists = db.prepare('SELECT 1 FROM users WHERE id = ?');
+const speakerExists = db.prepare('SELECT 1 FROM speakers WHERE id = ?');
+const getSpeaker = db.prepare('SELECT * FROM speakers WHERE id = ?');
+const followedSpeakers = db.prepare(`
+  SELECT sp.* FROM speaker_follows sf JOIN speakers sp ON sp.id = sf.speaker_id
+  WHERE sf.user_id = ? ORDER BY sp.name`);
+const presenting = db.prepare(`${SESSION_SELECT}
+  JOIN session_speakers ss ON ss.session_id = s.id
+  WHERE ss.speaker_id = ? ORDER BY s.day, s.starts_at`);
+const myReservations = db.prepare('SELECT session_id, status FROM reservations WHERE user_id = ?');
+const myCheckIns = db.prepare('SELECT session_id FROM check_ins WHERE user_id = ?');
+const myRatings = db.prepare('SELECT session_id, stars FROM ratings WHERE user_id = ?');
+const follow = db.prepare('INSERT OR IGNORE INTO speaker_follows (user_id, speaker_id) VALUES (?, ?)');
+const unfollow = db.prepare('DELETE FROM speaker_follows WHERE user_id = ? AND speaker_id = ?');
+
+/** Sessions this user is presenting, if their account is linked to a speaker. */
+const speakingSessions = (speakerId) =>
+  (speakerId ? presenting.all(speakerId).map((r) => toSession(r)) : []);
 
 usersRouter.get('/', (req, res) => {
-  res.json(db.prepare('SELECT * FROM users ORDER BY id').all().map((u) => toUser(u)));
+  res.json(allUsers.all().map((u) => toUser(u)));
 });
 
 usersRouter.get('/:id', (req, res) => {
-  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+  const row = getUser.get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Attendee not found' });
 
-  const followedSpeakers = db.prepare(`
-    SELECT sp.* FROM speaker_follows sf JOIN speakers sp ON sp.id = sf.speaker_id
-    WHERE sf.user_id = ? ORDER BY sp.name`).all(row.id).map((s) => toSpeaker(s));
-
-  const speaker = row.speaker_id
-    ? toSpeaker(db.prepare('SELECT * FROM speakers WHERE id = ?').get(row.speaker_id))
-    : null;
-
   res.json(toUser(row, {
-    followedSpeakers,
-    speaker,
+    followedSpeakers: followedSpeakers.all(row.id).map((s) => toSpeaker(s)),
+    speaker: row.speaker_id ? toSpeaker(getSpeaker.get(row.speaker_id)) : null,
     speakingSessions: speakingSessions(row.speaker_id),
-    reservations: db.prepare('SELECT session_id, status FROM reservations WHERE user_id = ?').all(row.id)
-      .map((r) => ({ sessionId: r.session_id, status: r.status })),
-    checkIns: db.prepare('SELECT session_id FROM check_ins WHERE user_id = ?').all(row.id)
-      .map((c) => c.session_id),
-    ratings: db.prepare('SELECT session_id, stars FROM ratings WHERE user_id = ?').all(row.id)
-      .map((r) => ({ sessionId: r.session_id, stars: r.stars })),
+    reservations: myReservations.all(row.id).map((r) => ({ sessionId: r.session_id, status: r.status })),
+    checkIns: myCheckIns.all(row.id).map((c) => c.session_id),
+    ratings: myRatings.all(row.id).map((r) => ({ sessionId: r.session_id, stars: r.stars })),
   }));
 });
 
@@ -62,130 +63,23 @@ usersRouter.get('/:id/agenda.ics', (req, res) => {
  * actually been booking rather than what they once declared.
  */
 usersRouter.get('/:id/today', (req, res) => {
-  const userId = Number(req.params.id);
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
-  if (!user) return res.status(404).json({ error: 'Attendee not found' });
-
-  const { day, time = '00:00' } = req.query;
+  if (!userExists.get(req.params.id)) return res.status(404).json({ error: 'Attendee not found' });
+  const { day, time } = req.query;
   if (!day) return res.status(400).json({ error: 'day is required' });
-  const now = toMinutes(time);
 
-  const mine = hydrateSessions(db.prepare(`${SESSION_SELECT}
-    JOIN reservations r ON r.session_id = s.id AND r.user_id = ?
-    WHERE s.day = ? ORDER BY s.starts_at`).all(userId, day));
-
-  const status = new Map(
-    db.prepare('SELECT session_id, status FROM reservations WHERE user_id = ?').all(userId)
-      .map((r) => [r.session_id, r.status]));
-  const checkedIn = new Set(
-    db.prepare('SELECT session_id FROM check_ins WHERE user_id = ?').all(userId).map((c) => c.session_id));
-  const rated = new Set(
-    db.prepare('SELECT session_id FROM ratings WHERE user_id = ?').all(userId).map((r) => r.session_id));
-
-  const decorate = (s) => ({
-    ...s,
-    reservation: status.get(s.id) ?? null,
-    checkedIn: checkedIn.has(s.id),
-    rated: rated.has(s.id),
-  });
-
-  const booked = mine.filter((s) => status.get(s.id) === 'confirmed').map(decorate);
-  const current = booked.find((s) => now >= toMinutes(s.startsAt) && now < toMinutes(s.endsAt)) ?? null;
-  const next = booked.find((s) => toMinutes(s.startsAt) > now) ?? null;
-  const finished = booked.filter((s) => now >= toMinutes(s.endsAt));
-
-  // Taste is what you book, not what you ticked at registration.
-  const tasteRows = db.prepare(`
-    SELECT tg.slug, COUNT(*) n FROM reservations r
-    JOIN session_tags st ON st.session_id = r.session_id
-    JOIN tags tg ON tg.id = st.tag_id AND tg.kind = 'topic'
-    WHERE r.user_id = ? GROUP BY tg.slug ORDER BY n DESC LIMIT 8`).all(userId);
-  const taste = new Set(tasteRows.map((t) => t.slug));
-
-  // Slots today that are still ahead and that they have not booked anything in.
-  const allSlots = db.prepare(
-    'SELECT DISTINCT starts_at FROM sessions WHERE day = ? ORDER BY starts_at').all(day)
-    .map((r) => r.starts_at).filter((t) => toMinutes(t) > now);
-  const taken = new Set(booked.map((s) => s.startsAt));
-  const openSlot = allSlots.find((t) => !taken.has(t)) ?? null;
-
-  let suggestions = [];
-  if (openSlot) {
-    const candidates = hydrateSessions(db.prepare(`${SESSION_SELECT}
-      WHERE s.day = ? AND s.starts_at = ? AND s.is_keynote = 0 AND s.format != 'Social'
-        AND s.seats_taken < s.capacity`).all(day, openSlot));
-    suggestions = candidates
-      .map((s) => ({
-        ...s,
-        // how much it looks like the things they already chose
-        affinity: s.tags.filter((t) => t.kind === 'topic' && taste.has(t.slug)).length,
-      }))
-      .sort((a, b) => b.affinity - a.affinity || b.avgRating - a.avgRating)
-      .slice(0, 3);
-  }
-
-  res.json({
-    day,
-    time,
-    current,
-    next,
-    finished,
-    // things needing a decision
-    unrated: finished.filter((s) => s.checkedIn && !s.rated),
-    waitlisted: mine.filter((s) => status.get(s.id) === 'waitlisted').map(decorate),
-    openSlot,
-    suggestions,
-  });
+  res.json(todayFor(Number(req.params.id), { day, time }));
 });
 
 /**
  * GET /api/users/:id/schedule
- * Every session this attendee holds a seat or a waitlist place for.
+ * Every session this attendee holds a seat or a waitlist place for, grouped by
+ * day, with that day's clashes and totals.
  */
 usersRouter.get('/:id/schedule', (req, res) => {
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+  const user = getUser.get(req.params.id);
   if (!user) return res.status(404).json({ error: 'Attendee not found' });
 
-  const rows = db.prepare(`${SESSION_SELECT}
-    JOIN reservations r ON r.session_id = s.id AND r.user_id = ?
-    ORDER BY s.day, s.starts_at`).all(user.id);
-
-  const seats = new Map(
-    db.prepare('SELECT session_id, status FROM reservations WHERE user_id = ?').all(user.id)
-      .map((r) => [r.session_id, r.status]));
-
-  const sessions = hydrateSessions(rows).map((s) => ({ ...s, reservation: seats.get(s.id) ?? null }));
-
-  const byDay = new Map();
-  for (const s of sessions) {
-    if (!byDay.has(s.day)) byDay.set(s.day, []);
-    byDay.get(s.day).push(s);
-  }
-
-  const days = [...byDay.entries()].map(([date, items]) => {
-    const conflicts = [];
-    for (let i = 0; i < items.length; i++) {
-      for (let j = i + 1; j < items.length; j++) {
-        const a = items[i];
-        const b = items[j];
-        if (toMinutes(a.startsAt) < toMinutes(b.endsAt) && toMinutes(b.startsAt) < toMinutes(a.endsAt)) {
-          conflicts.push({ type: 'overlap', sessionIds: [a.id, b.id] });
-        }
-      }
-    }
-    return {
-      date,
-      sessions: items,
-      conflicts,
-      totalMinutes: items.reduce((n, s) => n + s.durationMins, 0),
-      venuesVisited: [...new Set(items.map((s) => s.venue.shortName))],
-    };
-  });
-
-  res.json({
-    user: toUser(user),
-    days,
-  });
+  res.json({ user: toUser(user), days: scheduleFor(user.id) });
 });
 
 /**
@@ -246,16 +140,14 @@ usersRouter.get('/:id/reservations/:sessionId', (req, res) => {
 
 usersRouter.put('/:id/follows/:speakerId', (req, res) => {
   if (!userExists.get(req.params.id)) return res.status(404).json({ error: 'Attendee not found' });
-  if (!db.prepare('SELECT 1 FROM speakers WHERE id = ?').get(req.params.speakerId)) {
+  if (!speakerExists.get(req.params.speakerId)) {
     return res.status(404).json({ error: 'Speaker not found' });
   }
-  db.prepare('INSERT OR IGNORE INTO speaker_follows (user_id, speaker_id) VALUES (?, ?)')
-    .run(req.params.id, req.params.speakerId);
+  follow.run(req.params.id, req.params.speakerId);
   res.json({ following: true, speakerId: Number(req.params.speakerId) });
 });
 
 usersRouter.delete('/:id/follows/:speakerId', (req, res) => {
-  db.prepare('DELETE FROM speaker_follows WHERE user_id = ? AND speaker_id = ?')
-    .run(req.params.id, req.params.speakerId);
+  unfollow.run(req.params.id, req.params.speakerId);
   res.json({ following: false, speakerId: Number(req.params.speakerId) });
 });
