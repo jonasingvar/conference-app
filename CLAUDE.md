@@ -21,7 +21,7 @@ npm run dev          # seeds the database, then starts API + web on one command
 | `npm run dev` | Seed + run everything. The only command you normally need. |
 | `npm run db:seed` | Rebuild `data/orbit.db` from `server/seed.js`. Destructive and deterministic. |
 | `npm run db:reset` | Delete the database file and reseed from scratch. |
-| `npm run verify` | Playwright suite, headless. **Run this before calling a ticket done.** |
+| `npm run verify` | Reseed, then the Playwright suite, headless. **Run this before calling a ticket done.** |
 | `npm run verify -- --ui` | Interactive Playwright runner. |
 | `npm run shot` | Screenshot every main route into `.screenshots/`. Starts the app if it is not running. |
 | `npm run shot -- /schedule --mobile --user=2` | Screenshot one route, mobile viewport, as attendee 2. |
@@ -164,7 +164,9 @@ inside transactions. Reserving, check-in and rating take the clock from the
 
 ### Writing tests against this
 
-Seat, check-in and rating state is **real and persists between runs**, and
+Seat, check-in and rating state is **real and written to the database**, so
+`npm run verify` reseeds first — every run starts from the same data, and a run
+killed halfway cannot poison the next one. Within a run nothing is reset, and
 everything runs concurrently: the desktop and mobile projects run side by side,
 and `fullyParallel: true` in `playwright.config.js` means tests *within* a
 project, even within one file, run in parallel too. So:
