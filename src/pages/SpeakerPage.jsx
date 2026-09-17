@@ -27,11 +27,13 @@ const handleOf = (key, value) =>
 export function SpeakerPage() {
   const { id } = useParams();
   const { isFollowing, toggleFollow } = useConference();
-  const { data: speaker, loading, error, reload } = useFetch(() => api.getSpeaker(id), [id]);
+  const following = isFollowing(Number(id));
+  // followerCount already includes you if you follow, so refetch when that
+  // changes rather than adding one on the client and counting you twice.
+  const { data: speaker, loading, error, reload } = useFetch(() => api.getSpeaker(id), [id, following]);
   useDocumentTitle(speaker?.name);
-  const following = speaker ? isFollowing(speaker.id) : false;
 
-  if (loading) return <div className="space-y-4"><Skeleton className="h-56" /><Skeleton className="h-64" /></div>;
+  if (loading && !speaker) return <div className="space-y-4"><Skeleton className="h-56" /><Skeleton className="h-64" /></div>;
   if (error) return <ErrorState error={error} onRetry={reload} />;
   if (!speaker) return <EmptyState title="Speaker not found" />;
 
@@ -79,7 +81,7 @@ export function SpeakerPage() {
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <Icon name="users" className="size-3.5 text-faint" />
-                {plural(speaker.followerCount + (following ? 1 : 0), 'follower')}
+                {plural(speaker.followerCount, 'follower')}
               </span>
             </div>
 

@@ -78,3 +78,62 @@ export async function clearAgendaFor(request, userId, day) {
     await request.delete(`http://localhost:3001/api/users/${userId}/reservations/${session.id}`);
   }
 }
+
+/**
+ * Who may book what, in one place.
+ *
+ * Every spec file runs in parallel, every test inside a file runs in parallel
+ * (`fullyParallel`), and the desktop and mobile projects run at the same time.
+ * So each test that writes seat state gets its own lane: an attendee on a day
+ * that no other concurrently running test books for that attendee. The overlap
+ * guard is per attendee, so that is what keeps one test's booking from turning
+ * another's click into a conflict dialog.
+ *
+ * Lanes with a `slot` also count seats exactly, so on top of that they own a
+ * whole time slot on day 3 — no other lane books anything on day 3.
+ *
+ * Read-only fixtures to leave alone: Jonas on day 1 (home page), Jonas and
+ * Kenji on day 2 (the promotion fixture), Marcus on day 4 (must stay empty).
+ * Lanes marked `clean` are days the seed leaves empty for that attendee, so the
+ * test may clear the whole day; everywhere else, release only what you booked.
+ */
+const { jonas, amara, kenji, sofia, marcus, priya } = ATTENDEES;
+const LANES = {
+  'seats.count':      { desktop: { user: jonas, day: 2, slot: '09:00' },  mobile: { user: amara, day: 2, slot: '11:30' } },
+  'seats.reload':     { desktop: { user: sofia, day: 2, slot: '13:30' },  mobile: { user: priya, day: 2, slot: '10:15' } },
+  'seats.twice':      { desktop: { user: jonas, day: 2, slot: '14:45' },  mobile: { user: amara, day: 2, slot: '16:00' } },
+  'seats.waitlist':   { desktop: { user: kenji, day: 0 },                 mobile: { user: sofia, day: 3 } },
+  'seats.queue':      { desktop: { user: marcus, day: 0 },                mobile: { user: priya, day: 0 } },
+  'conflict.ui':      { desktop: { user: kenji, day: 3, clean: true },    mobile: { user: amara, day: 3, clean: true } },
+  'conflict.api':     { desktop: { user: priya, day: 3 },                 mobile: { user: jonas, day: 3 } },
+  'schedule.grid':    { desktop: { user: sofia, day: 1 },                 mobile: { user: marcus, day: 1 } },
+  'agenda.add':       { desktop: { user: amara, day: 1 },                 mobile: { user: priya, day: 1 } },
+  'session.add':      { desktop: { user: sofia, day: 0 },                 mobile: { user: amara, day: 0 } },
+};
+
+/** `await laneFor('seats.count', testInfo)` → `{ user, day: '2026-…', slot }`. */
+export async function laneFor(name, testInfo) {
+  const lane = LANES[name][testInfo.project.name];
+  const days = await conferenceDays();
+  return { ...lane, day: days[lane.day] };
+}
+
+/**
+ * Sessions on `day` this attendee can book without touching their seeded plan
+ * or meeting the overlap guard: they hold nothing — seat or waitlist place — on
+ * the session or anywhere in its slot. Sorted by start time, keynotes and
+ * socials left out. Release what you book and the next run picks the same one.
+ */
+export async function bookableFor(request, userId, day) {
+  const API = 'http://localhost:3001/api';
+  const me = await (await request.get(`${API}/users/${userId}`)).json();
+  const all = await (await request.get(`${API}/sessions`)).json();
+  const byId = new Map(all.map((s) => [s.id, s]));
+  const mine = me.reservations.map((r) => byId.get(r.sessionId)).filter(Boolean);
+  const overlaps = (a, b) => a.day === b.day && a.startsAt < b.endsAt && b.startsAt < a.endsAt;
+
+  return all
+    .filter((s) => s.day === day && !s.isKeynote && s.format !== 'Social')
+    .filter((s) => !mine.some((m) => overlaps(m, s)))
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.id - b.id);
+}

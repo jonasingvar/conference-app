@@ -98,10 +98,21 @@ test.describe('Nothing claims to be true when it is not', () => {
     const sessions = await (await request.get('http://localhost:3001/api/sessions')).json();
     const invented = sessions.filter((s) => s.recordingUrl || s.slidesUrl || s.repoUrl);
     expect(invented.map((s) => s.title)).toEqual([]);
+  });
 
+  test('a speaker profile shows handles as text, not as links to domains that do not exist', async ({ page, request }) => {
     const speakers = await (await request.get('http://localhost:3001/api/speakers')).json();
-    // handles are shown as text; the website field must not be rendered as a link
-    expect(speakers.every((s) => typeof s.socials === 'object')).toBeTruthy();
+    const speaker = speakers.find((s) => s.socials?.website) ?? speakers.find((s) => s.socials?.twitter);
+    expect(speaker, 'no speaker has socials to render').toBeTruthy();
+
+    await visit(page, `/speakers/${speaker.id}`);
+    const detail = page.getByTestId('speaker-detail');
+    await expect(detail).toBeVisible();
+    // the handle is on the page…
+    await expect(detail).toContainText(
+      (speaker.socials.website ?? speaker.socials.twitter).replace(/^https?:\/\//, ''));
+    // …and nothing on it leaves the app
+    await expect(detail.locator('a[href^="http"]')).toHaveCount(0);
   });
 
   test('the footer dates match the seeded conference', async ({ page }) => {

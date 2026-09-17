@@ -5,7 +5,7 @@ import { Icon } from './Icon.jsx';
 
 /**
  * Attendee switcher. There is no auth — the app runs as whichever seeded
- * attendee is selected, and each has their own saved plan and follows.
+ * attendee is selected, and each has their own agenda and follows.
  */
 export function UserSwitcher() {
   const { users = [], currentUser, setCurrentUserId } = useConference();
@@ -53,7 +53,7 @@ export function UserSwitcher() {
           <div className="border-b border-hairline px-4 py-2.5">
             <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-faint">Viewing as</p>
             <p className="mt-0.5 text-[11px] text-muted">
-              Each attendee has their own saved plan, follows and interests.
+              Each attendee has their own agenda, follows and interests.
             </p>
           </div>
           <ul className="max-h-[26rem] overflow-y-auto p-1.5">
@@ -83,7 +83,7 @@ export function UserSwitcher() {
                       </div>
                       <div className="truncate text-[11px] text-muted">{u.jobTitle}</div>
                       <div className="truncate text-[11px] text-faint">
-                        {u.company} · {u.favoriteCount ?? 0} saved
+                        {u.company} · {u.reservedCount ?? 0} on agenda
                       </div>
                     </div>
                     {active && <Icon name="check" className="size-4 shrink-0 text-violet-300" />}

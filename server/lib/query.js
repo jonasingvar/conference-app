@@ -151,14 +151,23 @@ export const toVenue = (row) => ({
   id: row.id, name: row.name, shortName: row.short_name, address: row.address, city: row.city,
   description: row.description, accent: row.accent, emoji: row.emoji,
   lat: row.lat, lng: row.lng, isPrimary: !!row.is_primary,
-  mapWidth: row.map_width, mapHeight: row.map_height,
   wifiSsid: row.wifi_ssid, opensAt: row.opens_at, closesAt: row.closes_at,
+});
+
+export const toTravel = (row) => ({
+  fromVenueId: row.from_venue_id, toVenueId: row.to_venue_id, mode: row.mode,
+  minutes: row.minutes, costUsd: row.cost_usd, note: row.note,
+});
+
+export const toTrack = (row) => ({
+  id: row.id, name: row.name, shortName: row.short_name, slug: row.slug,
+  color: row.color, description: row.description,
 });
 
 export const toRoom = (row) => ({
   id: row.id, venueId: row.venue_id, name: row.name, building: row.building, floor: row.floor,
   levelOrder: row.level_order, capacity: row.capacity, kind: row.kind,
-  walkMinutes: row.walk_minutes, mapX: row.map_x, mapY: row.map_y,
+  walkMinutes: row.walk_minutes,
   amenities: row.amenities ? row.amenities.split(',').filter(Boolean) : [],
   accessible: !!row.accessible,
 });
@@ -166,7 +175,7 @@ export const toRoom = (row) => ({
 export const toVendor = (row) => ({
   id: row.id, venueId: row.venue_id, name: row.name, cuisine: row.cuisine,
   description: row.description, building: row.building, floor: row.floor,
-  mapX: row.map_x, mapY: row.map_y, opensAt: row.opens_at, closesAt: row.closes_at,
+  opensAt: row.opens_at, closesAt: row.closes_at,
   priceTier: row.price_tier, rating: row.rating, reviewCount: row.review_count,
   dietary: row.dietary ? row.dietary.split(',').filter(Boolean) : [],
   emoji: row.emoji, waitMins: row.wait_mins, acceptsMealCredit: !!row.accepts_meal_credit,

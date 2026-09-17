@@ -14,7 +14,7 @@ import { db } from '../db.js';
  */
 const escape = (v = '') => String(v)
   .replace(/\\/g, '\\\\')
-  .replace(/;/g, '\;')
+  .replace(/;/g, '\\;')
   .replace(/,/g, '\\,')
   .replace(/\r?\n/g, '\\n');
 

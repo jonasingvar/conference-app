@@ -12,8 +12,8 @@
     "db:reset": "rm -f data/orbit.db && npm run db:seed",
     "build": "vite build",
     "preview": "vite preview",
-    "verify": "playwright test",
-    "verify:ui": "playwright test --ui",
+    "verify": "npm run db:seed && playwright test",
+    "verify:ui": "npm run db:seed && playwright test --ui",
     "shot": "node scripts/shot.mjs",
     "avatars": "node scripts/fetch-avatars.mjs"
   },

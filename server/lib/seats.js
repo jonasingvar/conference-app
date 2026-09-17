@@ -1,4 +1,5 @@
 import { db } from '../db.js';
+import { toMinutes } from './query.js';
 
 /**
  * Seat inventory.
@@ -24,10 +25,10 @@ const insertReservation = db.prepare(
   'INSERT INTO reservations (user_id, session_id, status, created_at) VALUES (?, ?, ?, ?)');
 const deleteReservation = db.prepare('DELETE FROM reservations WHERE user_id = ? AND session_id = ?');
 const bumpSeats = db.prepare('UPDATE sessions SET seats_taken = MAX(0, seats_taken + ?) WHERE id = ?');
-const nextWaiting = db.prepare(`
+const waitingInOrder = db.prepare(`
   SELECT user_id FROM reservations
   WHERE session_id = ? AND status = 'waitlisted'
-  ORDER BY created_at, user_id LIMIT 1`);
+  ORDER BY created_at, user_id`);
 const promote = db.prepare("UPDATE reservations SET status = 'confirmed' WHERE user_id = ? AND session_id = ?");
 const countWaiting = db.prepare("SELECT COUNT(*) n FROM reservations WHERE session_id = ? AND status = 'waitlisted'");
 const waitlistAhead = db.prepare(`
@@ -75,8 +76,6 @@ const overlapping = db.prepare(`
     AND ? < s.ends_at
   LIMIT 1`);
 
-const toMins = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
-
 export const reserveSeat = db.transaction((userId, sessionId, now) => {
   const s = getSession.get(sessionId);
   if (!s) return null;
@@ -85,7 +84,7 @@ export const reserveSeat = db.transaction((userId, sessionId, now) => {
   // You cannot take a seat in something that has already finished. Without this
   // the app will happily sell you a chair in a talk that ended three days ago.
   if (now?.day && now?.time) {
-    const over = s.day < now.day || (s.day === now.day && toMins(s.ends_at) <= toMins(now.time));
+    const over = s.day < now.day || (s.day === now.day && toMinutes(s.ends_at) <= toMinutes(now.time));
     if (over) return { ...seatState(sessionId, userId), rejected: 'ended' };
   }
 
@@ -122,8 +121,11 @@ export const releaseSeat = db.transaction((userId, sessionId) => {
   let promoted = null;
   if (mine.status === 'confirmed') {
     bumpSeats.run(-1, sessionId);
-    // hand the freed seat to whoever has been waiting longest
-    const next = nextWaiting.get(sessionId);
+    // hand the freed seat to whoever has been waiting longest — skipping anyone
+    // who has since taken a seat in the same slot, or they would hold two
+    const s = getSession.get(sessionId);
+    const next = waitingInOrder.all(sessionId)
+      .find((w) => !overlapping.get(w.user_id, sessionId, s.day, s.ends_at, s.starts_at));
     if (next) {
       promote.run(next.user_id, sessionId);
       bumpSeats.run(1, sessionId);

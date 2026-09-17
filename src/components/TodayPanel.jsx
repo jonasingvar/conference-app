@@ -55,7 +55,8 @@ export function TodayPanel() {
   );
 
   const dayLabel = days.find((d) => d.date === clock.day)?.label ?? 'Today';
-  if (loading) return <Skeleton className="h-44" />;
+  // Only skeleton on the first load — the clock refetches this every minute.
+  if (loading && !data) return <Skeleton className="h-44" />;
   if (!data) return null;
 
   const { current, next, finished, unrated, waitlisted, openSlot, suggestions } = data;

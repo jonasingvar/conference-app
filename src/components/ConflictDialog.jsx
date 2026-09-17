@@ -35,19 +35,26 @@ function SessionChoice({ session, tone, label }) {
 
 export function ConflictDialog({ conflict, onSwap, onCancel, busy }) {
   const ref = useRef(null);
+  // Layout passes fresh handlers on every render; read them through a ref so
+  // the effects below only run when the conflict itself changes.
+  const cancelRef = useRef(onCancel);
+  cancelRef.current = busy ? () => {} : onCancel;
 
+  // Move focus in when the dialog opens, and give it back when it closes.
   useEffect(() => {
     if (!conflict) return;
-    const onKey = (e) => { if (e.key === 'Escape') onCancel(); };
-    document.addEventListener('keydown', onKey);
+    const opener = document.activeElement;
     ref.current?.focus();
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    const onKey = (e) => { if (e.key === 'Escape') cancelRef.current(); };
+    document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prev;
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
     };
-  }, [conflict, onCancel]);
+  }, [conflict]);
 
   if (!conflict) return null;
   const { wanted, conflictsWith } = conflict;
@@ -64,6 +71,7 @@ export function ConflictDialog({ conflict, onSwap, onCancel, busy }) {
         type="button"
         aria-label="Close"
         onClick={onCancel}
+        disabled={busy}
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
       />
 

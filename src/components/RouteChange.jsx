@@ -8,7 +8,7 @@ import { useLocation } from 'react-router-dom';
  * which is also what a screen reader needs on a route change.
  */
 export function RouteChange({ mainId = 'main' }) {
-  const { pathname, search } = useLocation();
+  const { pathname } = useLocation();
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
@@ -18,8 +18,8 @@ export function RouteChange({ mainId = 'main' }) {
       main.focus({ preventScroll: true });
       main.removeAttribute('tabindex');
     }
-    // search is included so filter changes do not yank the page around —
-    // only the pathname resets scroll
+    // Only the pathname resets scroll — search is left out so filter changes
+    // do not yank the page around
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 

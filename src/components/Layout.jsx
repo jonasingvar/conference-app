@@ -34,6 +34,7 @@ function Logo() {
 export function Layout() {
   const { ready, reservations, conflict, resolveConflict, conference } = useConference();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [swapping, setSwapping] = useState(false);
   const location = useLocation();
 
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
@@ -47,8 +48,12 @@ export function Layout() {
       <RouteChange />
       <ConflictDialog
         conflict={conflict}
-        onSwap={() => resolveConflict(true)}
+        onSwap={async () => {
+          setSwapping(true);
+          try { await resolveConflict(true); } finally { setSwapping(false); }
+        }}
         onCancel={() => resolveConflict(false)}
+        busy={swapping}
       />
       <a
         href="#main"

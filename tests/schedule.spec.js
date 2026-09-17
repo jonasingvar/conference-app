@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
-import { visit, waitForResults, conferenceDays, clearAgendaFor, ATTENDEES } from './helpers.js';
+import { visit, momentOn, waitForResults, conferenceDays, laneFor, bookableFor } from './helpers.js';
+
+const API = 'http://localhost:3001/api';
 
 test.describe('Schedule', () => {
   test('lists sessions for the selected day', async ({ page }) => {
@@ -77,18 +79,21 @@ test.describe('Schedule grid', () => {
   });
 
   test('adding from a grid cell updates the agenda count', async ({ page, request }, testInfo) => {
-    // Marcus only attends the first two days, so days 3 and 4 are free of the
-    // overlap guard — and each project takes a different one, because seat
-    // counts are shared server state and the projects run concurrently.
-    const days = await conferenceDays();
-    const day = days[testInfo.project.name === 'mobile' ? 2 : 3];
-    await clearAgendaFor(request, ATTENDEES.marcus, day);
-    await visit(page, `/schedule?view=grid&day=${day}`, { as: ATTENDEES.marcus, at: await momentOn(0, '07:00') });
+    // Seat state is shared and everything runs concurrently, so this books in
+    // its own lane and releases only the session it added.
+    const lane = await laneFor('schedule.grid', testInfo);
+    const target = (await bookableFor(request, lane.user, lane.day)).find((s) => s.seatsLeft > 3);
+    expect(target, 'nothing this attendee can add').toBeTruthy();
+
+    await visit(page, `/schedule?view=grid&day=${lane.day}`, { as: lane.user, at: await momentOn(0, '07:00') });
     const count = page.getByTestId('starred-count');
+    await expect(page.getByTestId('schedule-grid')).toBeVisible();
     const before = Number(await count.innerText());
 
     await page.getByTestId('schedule-grid')
-      .getByRole('button', { name: /Add .* to my agenda/ }).first().click();
-    await expect(count).not.toHaveText(String(before));
+      .getByRole('button', { name: `Add ${target.title} to my agenda`, exact: true }).click();
+    await expect(count).toHaveText(String(before + 1));
+
+    await request.delete(`${API}/users/${lane.user}/reservations/${target.id}`);
   });
 });

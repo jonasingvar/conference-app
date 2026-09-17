@@ -227,14 +227,3 @@ export function Stat({ value, label, accent: accentName = 'violet' }) {
     </div>
   );
 }
-
-/* -------------------------------- VenueTag ------------------------------- */
-export function VenueTag({ venue, className, withIcon = true }) {
-  const a = accent(venue.accent);
-  return (
-    <span className={cx('inline-flex items-center gap-1.5 text-[11px] font-medium', a.text, className)}>
-      {withIcon && <span aria-hidden="true">{venue.emoji}</span>}
-      {venue.shortName ?? venue.short_name}
-    </span>
-  );
-}

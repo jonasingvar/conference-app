@@ -44,7 +44,7 @@ function TravelNotice({ session }) {
 
 export function SessionPage() {
   const { id } = useParams();
-  const { currentUserId, reservationFor, toggleSeat, seatsFor } = useConference();
+  const { currentUserId, reservationFor, toggleSeat, seatsFor, clock } = useConference();
   const { data: session, loading, error, reload } = useFetch(() => api.getSession(id, currentUserId), [id, currentUserId]);
   useDocumentTitle(session?.title);
 
@@ -240,7 +240,7 @@ export function SessionPage() {
                       </div>
                     </div>
                     <blockquote className="mt-3 text-[13px] leading-relaxed text-muted">{r.comment}</blockquote>
-                    <figcaption className="mt-2 text-[11px] text-faint">{relativeDate(r.createdAt)}</figcaption>
+                    <figcaption className="mt-2 text-[11px] text-faint">{relativeDate(r.createdAt, clock)}</figcaption>
                   </figure>
                 ))}
               </div>
@@ -281,7 +281,12 @@ export function SessionPage() {
                 </div>
               )}
               {!session.room.accessible && (
-                <p className="mt-2.5 text-[11px] text-amber-300">⚠ Not step-free. See the venue page for alternatives.</p>
+                <p className="mt-2.5 text-[11px] text-amber-300">
+                  ⚠ Not step-free.{' '}
+                  <Link to="/accessibility" className="underline underline-offset-2 hover:text-amber-200">
+                    See step-free alternatives
+                  </Link>
+                </p>
               )}
             </div>
 

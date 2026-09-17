@@ -102,7 +102,7 @@ export function LiveNow() {
   const startsAt = mins(data?.dayStartsAt);
   const endsAt = mins(data?.dayEndsAt);
 
-  const phase = loading ? 'loading'
+  const phase = loading && !data ? 'loading'
     : startsAt !== null && nowMins < startsAt ? 'before'
     : endsAt !== null && nowMins >= endsAt ? 'after'
     : running.length > 0 ? 'running'
@@ -149,7 +149,7 @@ export function LiveNow() {
         </Button>
       </div>
 
-      {loading ? (
+      {loading && !data ? (
         <div className="flex gap-3">
           {Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-40 flex-1" />)}
         </div>

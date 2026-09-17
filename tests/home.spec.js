@@ -5,7 +5,6 @@ const API = 'http://localhost:3001/api';
 
 test.describe('Home is about you, and about now', () => {
   test('the day shown is today, not the first day you booked something', async ({ page }) => {
-    const days = await conferenceDays();
     // Kenji only attends the first two days; on day 3 the page must not
     // present day 1 as if it were happening.
     await visit(page, '/', { as: ATTENDEES.kenji, at: await momentOn(2, '14:00') });
@@ -17,7 +16,7 @@ test.describe('Home is about you, and about now', () => {
   });
 
   test('an attendee with nothing booked today gets a way in, not an empty grid', async ({ page }) => {
-    const days = await conferenceDays();
+    // Marcus flew in for two days, so day 4 is empty for him — and no seat test books it.
     await visit(page, '/', { as: ATTENDEES.marcus, at: await momentOn(3, '10:00') });
 
     const empty = page.getByTestId('today-empty');
@@ -48,28 +47,48 @@ test.describe('Home is about you, and about now', () => {
     await expect(strip).toContainText('Yours');
   });
 
-  test('a cross-town gap is called out, with what actually fits', async ({ page }) => {
-    const days = await conferenceDays();
-    // Jonas has planted cross-venue back-to-backs
-    await visit(page, '/', { as: ATTENDEES.jonas, at: await momentOn(0, '11:10') });
+  test('a cross-town gap is called out, with what actually fits', async ({ page, request }) => {
+    // Jonas has cross-venue back-to-backs. Find the one the free shuttle cannot
+    // make rather than guessing at a time — but insist there is one, because a
+    // warning that only sometimes renders is a test that asserts nothing.
+    const { travel } = await (await request.get(`${API}/bootstrap`)).json();
+    const plan = await (await request.get(`${API}/users/${ATTENDEES.jonas}/schedule`)).json();
+    const mins = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+    const shuttle = (a, b) => travel.find((t) =>
+      t.fromVenueId === a.venue.id && t.toVenueId === b.venue.id && t.costUsd === 0 && t.mode !== 'Walk');
+
+    const pair = (plan.days ?? [])
+      .flatMap((d) => d.sessions.filter((s) => s.reservation === 'confirmed'))
+      .flatMap((s, i, booked) => (booked[i + 1] ? [[s, booked[i + 1]]] : []))
+      .find(([a, b]) => {
+        const free = a.day === b.day && a.venue.id !== b.venue.id ? shuttle(a, b) : null;
+        return free && mins(b.startsAt) - mins(a.endsAt) < free.minutes + b.room.walkMinutes;
+      });
+    expect(pair, 'Jonas should have a cross-town gap the shuttle cannot make').toBeTruthy();
+    const [from, to] = pair;
+
+    await visit(page, '/', { as: ATTENDEES.jonas, at: `${from.day}T${from.endsAt}` });
 
     const warning = page.getByTestId('travel-warning');
-    if (await warning.count()) {
-      await expect(warning).toContainText(/shuttle|cannot make/i);
-      await expect(warning).toContainText(/min/);
-    }
+    await expect(warning).toBeVisible();
+    await expect(warning).toContainText(/shuttle|cannot make/i);
+    await expect(warning).toContainText(`${to.room.walkMinutes} min walk`);
   });
 
-  test('no announcement appears before it was posted', async ({ page }) => {
+  test('no announcement appears before it was posted', async ({ page, request }) => {
     const days = await conferenceDays();
-    const all = await (await page.request.get(`${API}/announcements`)).json();
+    const all = await (await request.get(`${API}/announcements`)).json();
+    const cutoff = `${days[0]}T09:00:00Z`;
+    const posted = all.filter((a) => a.postedAt <= cutoff);
+    const future = all.filter((a) => a.postedAt > cutoff);
+    expect(posted.length, 'nothing is posted before 09:00 on day 1').toBeGreaterThan(0);
+    expect(future.length, 'nothing is posted after 09:00 on day 1').toBeGreaterThan(0);
 
     await visit(page, '/', { at: await momentOn(0, '09:00') });
     const strip = page.getByTestId('announcements');
-    if (await strip.count() === 0) return;
+    await expect(strip).toBeVisible();
 
     const shown = await strip.innerText();
-    const future = all.filter((a) => a.postedAt > `${days[0]}T09:00:00Z`);
     for (const a of future) {
       expect(shown, `"${a.title}" was posted later than the clock`).not.toContain(a.title);
     }

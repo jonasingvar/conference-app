@@ -25,7 +25,7 @@ export function SchedulePage() {
   const [railOpen, setRailOpen] = useState(false);
 
   const filters = {
-    day: params.get('day') ?? days[0]?.date,
+    day: params.get('day') ?? (days.some((d) => d.date === clock.day) ? clock.day : days[0]?.date),
     track: params.get('track') ?? ALL,
     venue: params.get('venue') ?? ALL,
     level: params.get('level') ?? ALL,
@@ -60,7 +60,12 @@ export function SchedulePage() {
 
   const sessions = data ?? [];
   const activeKeys = ['track', 'venue', 'level', 'format', 'tag', 'q'].filter((k) => filters[k] && filters[k] !== ALL);
-  const clearAll = () => setParams(new URLSearchParams({ day: filters.day, view }));
+  // Keep a view the user chose, never the list a filter forced.
+  const clearAll = () => {
+    const next = new URLSearchParams({ day: filters.day });
+    if (params.get('view')) next.set('view', params.get('view'));
+    setParams(next);
+  };
 
   /*
    * The grid is a whole-day view: rooms across, time down. A venue filter just

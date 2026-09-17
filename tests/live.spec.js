@@ -60,12 +60,16 @@ test.describe('Food', () => {
 });
 
 test.describe('Following a speaker', () => {
-  test('the follow button toggles and persists', async ({ page }) => {
-    await visit(page, '/speakers/3', { as: ATTENDEES.marcus });
+  test('the follow button toggles and persists', async ({ page, request }, testInfo) => {
+    // Follows are shared state and the projects run concurrently: one attendee each.
+    const user = testInfo.project.name === 'mobile' ? ATTENDEES.kenji : ATTENDEES.marcus;
+    const me = await (await request.get(`http://localhost:3001/api/users/${user}`)).json();
+    const wasFollowing = me.followedSpeakers.some((s) => s.id === 3);
+
+    await visit(page, '/speakers/3', { as: user });
     const follow = page.getByTestId('follow-speaker');
     await expect(follow).toBeVisible();
 
-    const wasFollowing = (await follow.getAttribute('aria-pressed')) === 'true';
     if (wasFollowing) await follow.click();
     await expect(follow).toHaveAttribute('aria-pressed', 'false');
 
@@ -75,5 +79,7 @@ test.describe('Following a speaker', () => {
 
     await page.reload();
     await expect(page.getByTestId('follow-speaker')).toHaveAttribute('aria-pressed', 'true');
+
+    if (!wasFollowing) await request.delete(`http://localhost:3001/api/users/${user}/follows/3`);
   });
 });

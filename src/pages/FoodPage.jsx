@@ -198,7 +198,7 @@ export function FoodPage() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 9 }, (_, i) => <Skeleton key={i} className="h-72" />)}
         </div>
-      ) : vendors.length === 0 ? (
+      ) : !error && vendors.length === 0 ? (
         <EmptyState
           icon="food"
           title="Nothing matches"

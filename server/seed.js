@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 /* ================================================================== *
  *  ORBIT '26 — The Applied AI Conference
- *  Las Vegas, NV · October 12–15, 2026
+ *  Las Vegas, NV · four days, starting the day you seed
  *  Two sites: the Aurora Convention Center, and the Foundry at
  *  Red Rock Yards, 6.2 miles west. There is a shuttle. It is slow.
  * ================================================================== */
@@ -78,44 +78,44 @@ const vtStmt = prep('INSERT INTO venue_travel (from_venue_id,to_venue_id,mode,mi
 TRAVEL.forEach((t) => vtStmt.run(...t));
 
 /* =============================== ROOMS ============================= */
-// [name, building, floor, levelOrder, capacity, kind, walkMins, mapX, mapY, amenities]
+// [name, building, floor, levelOrder, capacity, kind, walkMins, amenities]
 const AURORA_ROOMS = [
-  ['Nebula Main Stage', 'Main Hall', 'Level 1', 1, 4200, 'Keynote', 4, 500, 180, 'Livestream,Hearing loop,Overflow seating,Live captions'],
-  ['Quasar Hall', 'Main Hall', 'Level 1', 1, 1800, 'Keynote', 5, 240, 150, 'Livestream,Hearing loop,Live captions'],
-  ['Pulsar Theater', 'Main Hall', 'Level 1', 1, 1200, 'Theater', 6, 760, 150, 'Livestream,Tiered seating'],
-  ['Vector Hall A', 'Main Hall', 'Level 2', 2, 650, 'Breakout', 7, 220, 330, 'Recorded,Power at every seat'],
-  ['Vector Hall B', 'Main Hall', 'Level 2', 2, 650, 'Breakout', 7, 400, 330, 'Recorded,Power at every seat'],
-  ['Vector Hall C', 'Main Hall', 'Level 2', 2, 480, 'Breakout', 8, 580, 330, 'Recorded'],
-  ['Tensor 201', 'Main Hall', 'Level 2', 2, 320, 'Breakout', 9, 760, 330, 'Whiteboards'],
-  ['Tensor 202', 'Main Hall', 'Level 2', 2, 320, 'Breakout', 9, 860, 330, 'Whiteboards'],
-  ['Tensor 203', 'Main Hall', 'Level 2', 2, 280, 'Breakout', 10, 760, 420, 'Whiteboards'],
-  ['Tensor 204', 'Main Hall', 'Level 2', 2, 280, 'Breakout', 10, 860, 420, ''],
-  ['Gradient Studio', 'Main Hall', 'Level 3', 3, 180, 'Workshop', 11, 260, 520, 'Power at every seat,Wired network,Whiteboards'],
-  ['Latent Lab', 'Main Hall', 'Level 3', 3, 140, 'Workshop', 12, 400, 520, 'Power at every seat,Wired network'],
-  ['The Attention Room', 'Main Hall', 'Level 3', 3, 160, 'Workshop', 12, 540, 520, 'Power at every seat'],
-  ['Context Window', 'Main Hall', 'Level 3', 3, 90, 'Roundtable', 13, 680, 520, 'Quiet space,Round tables'],
-  ['Expo Stage North', 'Expo Hall', 'Level 1', 1, 250, 'Lightning', 9, 140, 620, 'Open plan,Standing room'],
-  ['Expo Stage South', 'Expo Hall', 'Level 1', 1, 250, 'Lightning', 10, 380, 620, 'Open plan,Standing room'],
-  ['The Sandbox', 'Expo Hall', 'Level 1', 1, 300, 'Demo', 11, 620, 620, 'Demo pods,Open plan'],
-  ['Neon Lounge', 'Skyline Tower', 'Level 24', 24, 120, 'Roundtable', 16, 880, 560, 'City view,Round tables,Bar service'],
-  ['Desert Terrace', 'Skyline Tower', 'Rooftop', 25, 400, 'Social', 18, 880, 660, 'Outdoor,Bar service,City view'],
+  ['Nebula Main Stage', 'Main Hall', 'Level 1', 1, 4200, 'Keynote', 4, 'Livestream,Hearing loop,Overflow seating,Live captions'],
+  ['Quasar Hall', 'Main Hall', 'Level 1', 1, 1800, 'Keynote', 5, 'Livestream,Hearing loop,Live captions'],
+  ['Pulsar Theater', 'Main Hall', 'Level 1', 1, 1200, 'Theater', 6, 'Livestream,Tiered seating'],
+  ['Vector Hall A', 'Main Hall', 'Level 2', 2, 650, 'Breakout', 7, 'Recorded,Power at every seat'],
+  ['Vector Hall B', 'Main Hall', 'Level 2', 2, 650, 'Breakout', 7, 'Recorded,Power at every seat'],
+  ['Vector Hall C', 'Main Hall', 'Level 2', 2, 480, 'Breakout', 8, 'Recorded'],
+  ['Tensor 201', 'Main Hall', 'Level 2', 2, 320, 'Breakout', 9, 'Whiteboards'],
+  ['Tensor 202', 'Main Hall', 'Level 2', 2, 320, 'Breakout', 9, 'Whiteboards'],
+  ['Tensor 203', 'Main Hall', 'Level 2', 2, 280, 'Breakout', 10, 'Whiteboards'],
+  ['Tensor 204', 'Main Hall', 'Level 2', 2, 280, 'Breakout', 10, ''],
+  ['Gradient Studio', 'Main Hall', 'Level 3', 3, 180, 'Workshop', 11, 'Power at every seat,Wired network,Whiteboards'],
+  ['Latent Lab', 'Main Hall', 'Level 3', 3, 140, 'Workshop', 12, 'Power at every seat,Wired network'],
+  ['The Attention Room', 'Main Hall', 'Level 3', 3, 160, 'Workshop', 12, 'Power at every seat'],
+  ['Context Window', 'Main Hall', 'Level 3', 3, 90, 'Roundtable', 13, 'Quiet space,Round tables'],
+  ['Expo Stage North', 'Expo Hall', 'Level 1', 1, 250, 'Lightning', 9, 'Open plan,Standing room'],
+  ['Expo Stage South', 'Expo Hall', 'Level 1', 1, 250, 'Lightning', 10, 'Open plan,Standing room'],
+  ['The Sandbox', 'Expo Hall', 'Level 1', 1, 300, 'Demo', 11, 'Demo pods,Open plan'],
+  ['Neon Lounge', 'Skyline Tower', 'Level 24', 24, 120, 'Roundtable', 16, 'City view,Round tables,Bar service'],
+  ['Desert Terrace', 'Skyline Tower', 'Rooftop', 25, 400, 'Social', 18, 'Outdoor,Bar service,City view'],
 ];
 const FOUNDRY_ROOMS = [
-  ['The Blast Furnace', 'Foundry Main', 'Ground', 1, 1400, 'Keynote', 5, 480, 200, 'Livestream,Industrial acoustics,Live captions'],
-  ['Hangar Seven', 'Foundry Main', 'Ground', 1, 900, 'Theater', 7, 200, 200, 'Recorded,Hangar doors open'],
-  ['The Cooling Tower', 'Foundry Main', 'Mezzanine', 2, 380, 'Breakout', 9, 760, 200, 'Recorded,Spiral stairs only'],
-  ['Ironworks A', 'Foundry Main', 'Ground', 1, 420, 'Breakout', 8, 200, 380, 'Recorded,Power at every seat'],
-  ['Ironworks B', 'Foundry Main', 'Ground', 1, 420, 'Breakout', 8, 380, 380, 'Recorded,Power at every seat'],
-  ['The Boiler Room', 'Foundry Main', 'Basement', 0, 200, 'Workshop', 11, 560, 380, 'Power at every seat,Wired network,No phone signal'],
-  ['The Crucible', 'Foundry Main', 'Mezzanine', 2, 160, 'Workshop', 12, 760, 380, 'Power at every seat,Whiteboards'],
-  ['Loading Dock 3', 'Yard', 'Ground', 1, 260, 'Demo', 13, 200, 560, 'Outdoor cover,Hardware benches,Power tools'],
-  ['Cargo Bay', 'Yard', 'Ground', 1, 340, 'Breakout', 14, 440, 560, 'Recorded,Hardware benches'],
-  ['The Smelter', 'Yard', 'Ground', 1, 700, 'Social', 15, 700, 560, 'Outdoor,Bar service,Live music'],
+  ['The Blast Furnace', 'Foundry Main', 'Ground', 1, 1400, 'Keynote', 5, 'Livestream,Industrial acoustics,Live captions'],
+  ['Hangar Seven', 'Foundry Main', 'Ground', 1, 900, 'Theater', 7, 'Recorded,Hangar doors open'],
+  ['The Cooling Tower', 'Foundry Main', 'Mezzanine', 2, 380, 'Breakout', 9, 'Recorded,Spiral stairs only'],
+  ['Ironworks A', 'Foundry Main', 'Ground', 1, 420, 'Breakout', 8, 'Recorded,Power at every seat'],
+  ['Ironworks B', 'Foundry Main', 'Ground', 1, 420, 'Breakout', 8, 'Recorded,Power at every seat'],
+  ['The Boiler Room', 'Foundry Main', 'Basement', 0, 200, 'Workshop', 11, 'Power at every seat,Wired network,No phone signal'],
+  ['The Crucible', 'Foundry Main', 'Mezzanine', 2, 160, 'Workshop', 12, 'Power at every seat,Whiteboards'],
+  ['Loading Dock 3', 'Yard', 'Ground', 1, 260, 'Demo', 13, 'Outdoor cover,Hardware benches,Power tools'],
+  ['Cargo Bay', 'Yard', 'Ground', 1, 340, 'Breakout', 14, 'Recorded,Hardware benches'],
+  ['The Smelter', 'Yard', 'Ground', 1, 700, 'Social', 15, 'Outdoor,Bar service,Live music'],
 ];
-const rStmt = prep(`INSERT INTO rooms (venue_id,name,building,floor,level_order,capacity,kind,walk_minutes,map_x,map_y,amenities,accessible)
-  VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`);
-AURORA_ROOMS.forEach((r) => rStmt.run(AURORA.id, r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], 1));
-FOUNDRY_ROOMS.forEach((r) => rStmt.run(FOUNDRY.id, r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9],
+const rStmt = prep(`INSERT INTO rooms (venue_id,name,building,floor,level_order,capacity,kind,walk_minutes,amenities,accessible)
+  VALUES (?,?,?,?,?,?,?,?,?,?)`);
+AURORA_ROOMS.forEach((r) => rStmt.run(AURORA.id, r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], 1));
+FOUNDRY_ROOMS.forEach((r) => rStmt.run(FOUNDRY.id, r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7],
   ['The Cooling Tower', 'The Boiler Room'].includes(r[0]) ? 0 : 1));
 const rooms = db.prepare('SELECT * FROM rooms').all();
 const roomById = Object.fromEntries(rooms.map((r) => [r.id, r]));
@@ -183,7 +183,7 @@ const SPEAKING_ATTENDEES = [
     bio: 'Amara leads the team putting clinical decision support in front of doctors who are, correctly, sceptical of it. Ten years in regulated ML, four of them spent learning that an audit trail is a product feature. Believes most AI governance is just engineering discipline with a lawyer in the room.',
     city: 'Boston', country: 'United States', languages: 'English,French',
     expertise: 'Governance,Compliance,Human-in-the-Loop,Hallucination',
-    yearsExp: 14, talksGiven: 23, rating: 4.72, accent: 'rose',
+    yearsExp: 14, talksGiven: 23, accent: 'rose',
     twitter: '@amaradiallo', github: 'amaradiallo', linkedin: 'in/amaradiallo', website: 'https://amaradiallo.dev',
   },
   {
@@ -191,14 +191,14 @@ const SPEAKING_ATTENDEES = [
     bio: 'Priya is six people into building an agent platform that large companies trust with their audit logs. Previously spent five years on infrastructure at a company that shall remain a logo on a slide. Ships on Fridays, and will defend it.',
     city: 'Oakland', country: 'United States', languages: 'English,Tamil',
     expertise: 'Multi-Agent,Memory Systems,Cost Optimization,Structured Output',
-    yearsExp: 11, talksGiven: 9, rating: 4.55, accent: 'cyan',
+    yearsExp: 11, talksGiven: 9, accent: 'cyan',
     twitter: '@priyavenkat', github: 'priyavenkat', linkedin: 'in/priyavenkatesan', website: null,
   },
 ];
 SPEAKING_ATTENDEES.forEach((s) => {
   seen.add(s.name);
   spStmt.run(s.name, s.pronouns, s.jobTitle, s.company, s.bio, initialsOf(s.name), s.accent, null,
-    s.city, s.country, s.languages, s.expertise, s.yearsExp, s.talksGiven, s.rating, 0,
+    s.city, s.country, s.languages, s.expertise, s.yearsExp, s.talksGiven, 0, 0,
     s.twitter, s.github, s.linkedin, s.website, 1);
 });
 
@@ -227,7 +227,7 @@ for (let i = 0; i < 108; i++) {
     city, country,
     ['English', ...(chance(0.45) ? pickN(LANGS.filter((l) => l !== 'English'), int(1, 2)) : [])].join(','),
     pickN(tagsByKind('topic'), int(2, 4)).map((t) => t.name).join(','),
-    yearsExp, firstTime ? 0 : int(1, Math.max(2, yearsExp * 3)), firstTime ? 0 : flt(3.9, 4.9, 2),
+    yearsExp, firstTime ? 0 : int(1, Math.max(2, yearsExp * 3)), 0, // avg_rating is earned — see ratings below
     firstTime ? 1 : 0,
     chance(0.7) ? `@${h}` : null,
     chance(0.6) ? h : null,
@@ -412,7 +412,7 @@ function addSession(opts) {
 
 DAYS.forEach((day, dayIdx) => {
   const [kt, ka, ktrack] = KEYNOTES[dayIdx];
-  const kRoom = dayIdx === 2 ? blastFurnace : mainStage; // Wednesday's keynote is across town. On purpose.
+  const kRoom = dayIdx === 2 ? blastFurnace : mainStage; // Day 3's keynote is across town. On purpose.
   const kid = addSession({
     title: kt, subtitle: `Day ${dayIdx + 1} opening keynote`, abstract: ka, track: trackBy[ktrack],
     room: kRoom, day, start: '08:00', end: '08:45', format: 'Keynote', level: 'All Levels',
@@ -469,7 +469,7 @@ const smelter = rooms.find((r) => r.name === 'The Smelter');
 [
   ['Opening Night Reception', terrace, DAYS[0], '19:00', '22:00', 'Drinks, small plates and a view of the Strip. Badge required, plus-ones welcome.'],
   ['Speakers & First-Timers Mixer', terrace, DAYS[1], '18:30', '20:30', 'Deliberately low-key. If this is your first ORBIT, start here — every speaker wearing an orange lanyard has volunteered to be interrupted.'],
-  ['The Foundry Block Party', smelter, DAYS[2], '19:00', '01:00', 'Live music in the yard, food trucks, and the hardware demos left running all night. Last shuttle back to Aurora is 01:15.'],
+  ['The Foundry Block Party', smelter, DAYS[2], '19:00', '23:30', 'Live music in the yard, food trucks, and the hardware demos left running late. The yard stays open after it wraps; last shuttle back to Aurora is 01:15.'],
   ['Closing Party', terrace, DAYS[3], '18:30', '23:00', 'The one where everyone swaps notes on what they are actually going to build. Cocktails and a very serious taco situation.'],
 ].forEach(([title, room, day, start, end, abstract]) => {
   addSession({
@@ -590,14 +590,14 @@ const sessionsInSlot = db.prepare('SELECT id FROM sessions WHERE day = ? AND sta
 const keynoteOn = db.prepare('SELECT id FROM sessions WHERE day = ? AND is_keynote = 1');
 
 // days attended · talks booked per day (excluding the keynote) · chance of
-// double-booking one slot · chance of bothering with that morning's keynote
+// bothering with that morning's keynote
 const PLAN_SHAPE = [
-  { days: 4, perDay: [2, 3], clash: 0.15, keynote: 0.85 }, // Jonas — here for the whole thing
-  { days: 3, perDay: [1, 2], clash: 0.08, keynote: 0.70 }, // Amara — speaking, so less time
-  { days: 2, perDay: [2, 3], clash: 0.00, keynote: 1.00 }, // Kenji — first ORBIT, does not miss a keynote
-  { days: 4, perDay: [2, 4], clash: 0.15, keynote: 0.90 }, // Sofia — wants to see everything
-  { days: 2, perDay: [2, 3], clash: 0.00, keynote: 0.50 }, // Marcus — flew in for a couple of specific talks
-  { days: 3, perDay: [2, 3], clash: 0.10, keynote: 0.60 }, // Priya — speaking twice
+  { days: 4, perDay: [2, 3], keynote: 0.85 }, // Jonas — here for the whole thing
+  { days: 3, perDay: [1, 2], keynote: 0.70 }, // Amara — speaking, so less time
+  { days: 2, perDay: [2, 3], keynote: 1.00 }, // Kenji — first ORBIT, does not miss a keynote
+  { days: 4, perDay: [2, 4], keynote: 0.90 }, // Sofia — wants to see everything
+  { days: 2, perDay: [2, 3], keynote: 0.50 }, // Marcus — flew in for a couple of specific talks
+  { days: 3, perDay: [2, 3], keynote: 0.60 }, // Priya — speaking twice
 ];
 
 /*
@@ -625,7 +625,7 @@ const takenSlots = db.prepare(`
   WHERE r.user_id = ? AND s.day = ?`);
 
 users.forEach((u, i) => {
-  const shape = PLAN_SHAPE[i] ?? { days: 3, perDay: [2, 3], clash: 0.1, keynote: 0.7 };
+  const shape = PLAN_SHAPE[i] ?? { days: 3, perDay: [2, 3], keynote: 0.7 };
   DAYS.slice(0, shape.days).forEach((day) => {
     if (chance(shape.keynote)) {
       const k = keynoteOn.get(day);
@@ -640,10 +640,8 @@ users.forEach((u, i) => {
 
     pickN(free, wanted).forEach((slot) => {
       const candidates = sessionsInSlot.all(day, slot);
-      if (!candidates.length) return;
-      // occasionally book two things at once — that is what clash detection is for
-      const take = chance(shape.clash) ? 2 : 1;
-      pickN(candidates, take).forEach((c) => bookSeat(u.id, c.id, savedAt()));
+      // one seat per slot — the API refuses overlapping seats, so the seed does too
+      if (candidates.length) bookSeat(u.id, pick(candidates).id, savedAt());
     });
   });
 });
@@ -666,7 +664,9 @@ fullSessions.forEach((sess) => {
 });
 
 // A handful more sit just under the line, so "3 seats left" is reachable too.
-popular.slice(fullSessions.length, fullSessions.length + 8).forEach((sess) => {
+// Never one that already has a queue — nobody waits while seats are free.
+const hasQueue = prep("SELECT 1 FROM reservations WHERE session_id = ? AND status = 'waitlisted'");
+popular.slice(fullSessions.length).filter((sess) => !hasQueue.get(sess.id)).slice(0, 8).forEach((sess) => {
   db.prepare('UPDATE sessions SET seats_taken = ? WHERE id = ?')
     .run(Math.max(0, sess.capacity - int(1, 4)), sess.id);
 });
@@ -674,18 +674,35 @@ popular.slice(fullSessions.length, fullSessions.length + 8).forEach((sess) => {
 /*
  * Queues on the sold-out ones. Other attendees are already waiting, so the
  * position you get is rarely #1 — and the promotion path has someone to
- * promote. Jonas holds a confirmed seat on the first, which is the fixture the
- * promotion test relies on.
+ * promote. Jonas holds a confirmed seat on the first one that fits his plan,
+ * which is the fixture the promotion test relies on — so he is never queued
+ * on that one, and nobody queues for a slot they already hold a seat in.
  */
 const waitStmt = prep("INSERT OR IGNORE INTO reservations (user_id,session_id,status,created_at) VALUES (?,?,'waitlisted',?)");
-fullSessions.slice(0, 5).forEach((sess, i) => {
-  pickN(users, int(1, 3)).forEach((u, n) => {
+const seatClash = prep(`
+  SELECT 1 FROM reservations r JOIN sessions s ON s.id = r.session_id
+  JOIN sessions w ON w.id = ?
+  WHERE r.user_id = ? AND r.status = 'confirmed' AND s.id != w.id
+    AND s.day = w.day AND s.starts_at < w.ends_at AND w.starts_at < s.ends_at`);
+const statusOf = prep('SELECT status FROM reservations WHERE user_id = ? AND session_id = ?');
+// The test clears every other attendee off the fixture and queues one of them,
+// so nobody else may hold a confirmed seat on it (removing it would free a seat)
+// or in the same slot (they could not queue for it).
+const otherHolder = prep("SELECT 1 FROM reservations WHERE session_id = ? AND user_id != ? AND status = 'confirmed'");
+const promotionFixture = fullSessions.find((sess) =>
+  statusOf.get(users[0].id, sess.id)?.status !== 'waitlisted'
+  && !seatClash.get(sess.id, users[0].id) && !otherHolder.get(sess.id, users[0].id)
+  && users.slice(1).every((u) => !seatClash.get(sess.id, u.id)));
+if (promotionFixture) resStmt.run(users[0].id, promotionFixture.id, 'confirmed', savedAt());
+const queued = [...new Set([...fullSessions.slice(0, 5), promotionFixture].filter(Boolean))];
+queued.forEach((sess) => {
+  const waiting = users.filter((u) => !(sess === promotionFixture && u.id === users[0].id) && !seatClash.get(sess.id, u.id));
+  pickN(waiting, int(1, 3)).forEach((u, n) => {
     waitStmt.run(u.id, sess.id, `${addDays(DAYS[0], -2)}T${String(9 + n).padStart(2, '0')}:${String(int(10, 59))}:00Z`);
   });
-  if (i === 0) resStmt.run(users[0].id, sess.id, 'confirmed', savedAt());
 });
 
-console.log(`  · ${fullSessions.length} sessions seeded full, with queues on ${Math.min(5, fullSessions.length)} of them`);
+console.log(`  · ${fullSessions.length} sessions seeded full, with queues on ${queued.length} of them`);
 
 /*
  * Follows. You follow a handful of people, not a fifth of the roster — and
@@ -713,26 +730,29 @@ users.forEach((u) => {
 /* ratings */
 const COMMENTS = ['Best session of the day. The incident walkthrough alone was worth the ticket.','Great content, but ran out of time before the Q&A. Would watch a longer version.','Practical and specific. Took four pages of notes.','A bit more vendor pitch than I expected in the last ten minutes.','Finally, someone showing the failure cases instead of the happy path.','Room was far too small for the demand — had to sit on the floor.','Solid intro, but I expected more depth given the Advanced label.','The eval harness they open-sourced is going straight into our stack.','Slides were dense, delivery was excellent.','Honestly the most useful 45 minutes I have spent this year.','Had to leave halfway to make it across to the Foundry. Watching the recording.','Speaker knew the material cold and it showed in the Q&A.'];
 const ratStmt = prep('INSERT OR IGNORE INTO ratings (user_id,session_id,stars,comment,created_at) VALUES (?,?,?,?,?)');
-// You can only rate a session you went to, so ratings are drawn from the
-// attendee's own plan rather than from the programme at large.
+const ciStmt = prep('INSERT OR IGNORE INTO check_ins (user_id,session_id,checked_in_at) VALUES (?,?,?)');
 /*
  * Ratings exist only for sessions that have actually finished — which, on Day 1,
  * means this morning's. Seeding a 4.5 onto a talk three days out was the single
  * most obvious tell that the data was fake.
+ *
+ * "This morning" is a fixed cutoff, not the wall clock, so the seed stays
+ * deterministic. The same rules as the API apply: you held a confirmed seat,
+ * you checked in, and only then do you get to rate it. Not everyone gets round
+ * to rating, which leaves the home page something to ask about.
  */
-const nowHHMM = (() => {
-  const d = new Date();
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-})();
+const MORNING_ENDS = '12:15';
 
 users.forEach((u) => {
   const attended = db.prepare(`
-    SELECT r.session_id, s.day FROM reservations r
+    SELECT r.session_id, s.day, s.starts_at, s.ends_at FROM reservations r
     JOIN sessions s ON s.id = r.session_id
-    WHERE r.user_id = ? AND s.day = ? AND s.ends_at <= ?`).all(u.id, DAYS[0], nowHHMM);
+    WHERE r.user_id = ? AND r.status = 'confirmed' AND s.day = ? AND s.ends_at <= ?
+    ORDER BY s.starts_at`).all(u.id, DAYS[0], MORNING_ENDS);
+  attended.forEach((a) => ciStmt.run(u.id, a.session_id, `${a.day}T${a.starts_at}:00Z`));
   pickN(attended, Math.ceil(attended.length * 0.7)).forEach((a) =>
     ratStmt.run(u.id, a.session_id, pick([2, 3, 4, 4, 5, 5, 5]),
-      chance(0.7) ? pick(COMMENTS) : null, `${a.day}T${nowHHMM}:00Z`));
+      chance(0.7) ? pick(COMMENTS) : null, `${a.day}T${a.ends_at}:00Z`));
 });
 
 // keep the rolled-up columns in step with what we just wrote
@@ -741,39 +761,46 @@ db.prepare(`
     avg_rating   = COALESCE((SELECT ROUND(AVG(stars), 2) FROM ratings WHERE session_id = sessions.id), 0),
     rating_count = (SELECT COUNT(*) FROM ratings WHERE session_id = sessions.id)`).run();
 
+// A speaker's rating is what attendees gave their sessions here — nothing else.
+db.prepare(`
+  UPDATE speakers SET avg_rating = COALESCE((
+    SELECT ROUND(AVG(rt.stars), 2) FROM ratings rt
+    JOIN session_speakers ss ON ss.session_id = rt.session_id
+    WHERE ss.speaker_id = speakers.id), 0)`).run();
+
 /* ============================== VENDORS ============================ */
-// [name,cuisine,description,venueKey,building,floor,x,y,open,close,price,rating,dietary,emoji,wait]
+// [name,cuisine,description,venueKey,building,floor,open,close,price,rating,dietary,emoji,wait]
 const VENDOR_DATA = [
-  ['Gradient Grounds','Coffee','Third-wave espresso bar with a rotating single-origin program and cold brew on nitro.','A','Main Hall','Level 1',320,240,'06:30','18:00','$',4.8,'vegan,gluten-free','☕',6],
-  ['The Inference Engine','Coffee','Cold brew, matcha, and an alarming amount of caffeine per square meter.','A','Main Hall','Level 2',640,400,'07:00','17:00','$',4.6,'vegan','⚡',9],
-  ['Taco Latente','Mexican','Street tacos, al pastor off the trompo, and a salsa flight that ranks itself.','A','Expo Hall','Level 1',260,660,'11:00','20:00','$$',4.7,'gluten-free,vegetarian','🌮',14],
-  ['Ramen Overflow','Japanese','Tonkotsu, shoyu, and a vegan miso broth that converts skeptics.','A','Main Hall','Level 1',680,240,'11:30','21:00','$$',4.9,'vegan,vegetarian','🍜',22],
-  ['Prompt & Proper','Sandwiches','Pressed sandwiches, sharp pickles, and a soup that changes daily.','A','Main Hall','Level 2',500,400,'10:30','16:00','$$',4.3,'vegetarian','🥪',8],
-  ['Vector Fields','Salads','Build-your-own bowls with far too many toppings and an honest vinaigrette.','A','Main Hall','Level 1',420,240,'10:00','17:00','$$',4.2,'vegan,gluten-free,vegetarian','🥗',5],
-  ['Base Case Bagels','Bakery','New York-style bagels, house cream cheese, lox flown in daily.','A','Main Hall','Level 1',180,240,'06:00','13:00','$',4.6,'vegetarian','🥯',7],
-  ['Tokenized','Bubble Tea','Brown sugar boba, fruit teas, and a sugar scale that runs from 0 to regret.','A','Expo Hall','Level 1',480,660,'10:00','19:00','$',4.5,'vegetarian','🧋',12],
-  ['Hallucination Station','Desserts','Soft serve, cookie flights, and a doughnut wall that is mostly a photo op.','A','Expo Hall','Level 1',700,660,'12:00','19:00','$',4.4,'vegetarian','🍩',10],
-  ['Batch Normalized','Juice Bar','Cold-pressed juice, smoothies, and shots you will pretend to enjoy.','A','Main Hall','Level 3',340,580,'07:00','16:00','$$',4.1,'vegan,gluten-free','🥤',4],
-  ['Chunk & Overlap','Poke','Poke bowls, sashimi-grade fish, and a spicy mayo they refuse to explain.','A','Expo Hall','Level 1',120,700,'11:00','18:00','$$',4.5,'gluten-free','🐟',11],
-  ['Context Café','Breakfast','All-day breakfast, proper hash browns, bottomless filter coffee.','A','Main Hall','Level 2',780,440,'06:30','15:00','$$',4.4,'vegetarian','🍳',9],
-  ['The Long Context','Steakhouse','Proper sit-down dinner service. Reservations strongly recommended.','A','Skyline Tower','Level 24',900,600,'17:00','23:00','$$$$',4.9,'gluten-free','🥩',0],
-  ['Embedding Espresso','Coffee','Tiny bar, four seats, extremely serious about extraction.','A','Skyline Tower','Level 24',920,520,'07:00','15:00','$$',4.9,'vegan','☕',13],
-  ['Attention Is All You Eat','Tapas','Small plates, a big wine list, designed for sharing between sessions.','A','Skyline Tower','Level 24',840,600,'12:00','23:00','$$$',4.8,'vegetarian,gluten-free','🍤',14],
-  ['Rate Limited','Bar','Cocktails, local beer, and a zero-proof list that is genuinely good.','A','Skyline Tower','Rooftop',900,680,'16:00','01:00','$$$',4.7,'vegan','🍸',17],
-  ['Silicon Smokehouse','BBQ','Central Texas brisket, twelve-hour pork, and cornbread worth the queue.','F','Yard','Ground',320,620,'11:00','20:00','$$$',4.8,'gluten-free','🍖',31],
-  ['Fine-Tuned Pizza','Pizza','Neapolitan, 90 seconds in a wood oven. The white pie is the actual order.','F','Foundry Main','Ground',620,300,'11:00','22:00','$$',4.6,'vegetarian','🍕',18],
-  ['Null Pointer Noodles','Thai','Pad thai, khao soi, and a green curry with genuine heat.','F','Foundry Main','Ground',380,300,'11:00','21:00','$$',4.4,'vegan,vegetarian,gluten-free','🍲',15],
-  ['Weights & Biscuits','Southern','Fried chicken biscuits, gravy, and a hot honey that earns its name.','F','Yard','Ground',560,620,'07:00','14:00','$$',4.8,'vegetarian','🍗',20],
-  ['The Fallback Handler','Burgers','Smash burgers, seasoned fries, and a veggie patty people order on purpose.','F','Yard','Ground',760,620,'11:00','22:00','$$',4.5,'vegetarian','🍔',21],
-  ['Stochastic Parrots','Wings','Twelve sauces, a heat ladder, and a wall of shame.','F','Yard','Ground',180,620,'11:00','21:00','$$',4.3,'gluten-free','🔥',19],
-  ['The Greenhouse','Mediterranean','Mezze, falafel, warm pita, and a garlic sauce that ends conversations.','F','Foundry Main','Mezzanine',820,300,'11:00','22:00','$$',4.7,'vegan,vegetarian','🫒',16],
-  ['Cold Start Coffee','Coffee','The only coffee at the Foundry. They know it. It is still good.','F','Foundry Main','Ground',480,140,'07:30','18:00','$$',4.5,'vegan','☕',24],
+  ['Gradient Grounds','Coffee','Third-wave espresso bar with a rotating single-origin program and cold brew on nitro.','A','Main Hall','Level 1','06:30','18:00','$',4.8,'vegan,gluten-free','☕',6],
+  ['The Inference Engine','Coffee','Cold brew, matcha, and an alarming amount of caffeine per square meter.','A','Main Hall','Level 2','07:00','17:00','$',4.6,'vegan','⚡',9],
+  ['Taco Latente','Mexican','Street tacos, al pastor off the trompo, and a salsa flight that ranks itself.','A','Expo Hall','Level 1','11:00','20:00','$$',4.7,'gluten-free,vegetarian','🌮',14],
+  ['Ramen Overflow','Japanese','Tonkotsu, shoyu, and a vegan miso broth that converts skeptics.','A','Main Hall','Level 1','11:30','21:00','$$',4.9,'vegan,vegetarian','🍜',22],
+  ['Prompt & Proper','Sandwiches','Pressed sandwiches, sharp pickles, and a soup that changes daily.','A','Main Hall','Level 2','10:30','16:00','$$',4.3,'vegetarian','🥪',8],
+  ['Vector Fields','Salads','Build-your-own bowls with far too many toppings and an honest vinaigrette.','A','Main Hall','Level 1','10:00','17:00','$$',4.2,'vegan,gluten-free,vegetarian','🥗',5],
+  ['Base Case Bagels','Bakery','New York-style bagels, house cream cheese, lox flown in daily.','A','Main Hall','Level 1','06:00','13:00','$',4.6,'vegetarian','🥯',7],
+  ['Tokenized','Bubble Tea','Brown sugar boba, fruit teas, and a sugar scale that runs from 0 to regret.','A','Expo Hall','Level 1','10:00','19:00','$',4.5,'vegetarian','🧋',12],
+  ['Hallucination Station','Desserts','Soft serve, cookie flights, and a doughnut wall that is mostly a photo op.','A','Expo Hall','Level 1','12:00','19:00','$',4.4,'vegetarian','🍩',10],
+  ['Batch Normalized','Juice Bar','Cold-pressed juice, smoothies, and shots you will pretend to enjoy.','A','Main Hall','Level 3','07:00','16:00','$$',4.1,'vegan,gluten-free','🥤',4],
+  ['Chunk & Overlap','Poke','Poke bowls, sashimi-grade fish, and a spicy mayo they refuse to explain.','A','Expo Hall','Level 1','11:00','18:00','$$',4.5,'gluten-free','🐟',11],
+  ['Context Café','Breakfast','All-day breakfast, proper hash browns, bottomless filter coffee.','A','Main Hall','Level 2','06:30','15:00','$$',4.4,'vegetarian','🍳',9],
+  ['The Long Context','Steakhouse','Proper sit-down dinner service. Reservations strongly recommended.','A','Skyline Tower','Level 24','17:00','23:00','$$$$',4.9,'gluten-free','🥩',0],
+  ['Embedding Espresso','Coffee','Tiny bar, four seats, extremely serious about extraction.','A','Skyline Tower','Level 24','07:00','15:00','$$',4.9,'vegan','☕',13],
+  ['Attention Is All You Eat','Tapas','Small plates, a big wine list, designed for sharing between sessions.','A','Skyline Tower','Level 24','12:00','23:00','$$$',4.8,'vegetarian,gluten-free','🍤',14],
+  ['Rate Limited','Bar','Cocktails, local beer, and a zero-proof list that is genuinely good.','A','Skyline Tower','Rooftop','16:00','01:00','$$$',4.7,'vegan','🍸',17],
+  ['Silicon Smokehouse','BBQ','Central Texas brisket, twelve-hour pork, and cornbread worth the queue.','F','Yard','Ground','11:00','20:00','$$$',4.8,'gluten-free','🍖',31],
+  ['Fine-Tuned Pizza','Pizza','Neapolitan, 90 seconds in a wood oven. The white pie is the actual order.','F','Foundry Main','Ground','11:00','22:00','$$',4.6,'vegetarian','🍕',18],
+  ['Null Pointer Noodles','Thai','Pad thai, khao soi, and a green curry with genuine heat.','F','Foundry Main','Ground','11:00','21:00','$$',4.4,'vegan,vegetarian,gluten-free','🍲',15],
+  ['Weights & Biscuits','Southern','Fried chicken biscuits, gravy, and a hot honey that earns its name.','F','Yard','Ground','07:00','14:00','$$',4.8,'vegetarian','🍗',20],
+  ['The Fallback Handler','Burgers','Smash burgers, seasoned fries, and a veggie patty people order on purpose.','F','Yard','Ground','11:00','22:00','$$',4.5,'vegetarian','🍔',21],
+  ['Stochastic Parrots','Wings','Twelve sauces, a heat ladder, and a wall of shame.','F','Yard','Ground','11:00','21:00','$$',4.3,'gluten-free','🔥',19],
+  ['The Greenhouse','Mediterranean','Mezze, falafel, warm pita, and a garlic sauce that ends conversations.','F','Foundry Main','Mezzanine','11:00','22:00','$$',4.7,'vegan,vegetarian','🫒',16],
+  ['Cold Start Coffee','Coffee','The only coffee at the Foundry. They know it. It is still good.','F','Foundry Main','Ground','07:30','18:00','$$',4.5,'vegan','☕',24],
 ];
-const venStmt = prep(`INSERT INTO vendors (venue_id,name,cuisine,description,building,floor,map_x,map_y,opens_at,closes_at,price_tier,rating,review_count,dietary,emoji,wait_mins,accepts_meal_credit)
-  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+const venStmt = prep(`INSERT INTO vendors (venue_id,name,cuisine,description,building,floor,opens_at,closes_at,price_tier,rating,review_count,dietary,emoji,wait_mins,accepts_meal_credit)
+  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
 VENDOR_DATA.forEach((v) => venStmt.run(
-  v[3] === 'A' ? AURORA.id : FOUNDRY.id, v[0], v[1], v[2], v[4], v[5], v[6], v[7], v[8], v[9], v[10], v[11],
-  int(40, 900), v[12], v[13], v[14], chance(0.75) ? 1 : 0));
+  v[3] === 'A' ? AURORA.id : FOUNDRY.id, v[0], v[1], v[2], v[4], v[5], v[6], v[7], v[8], v[9],
+  int(40, 900), v[10], v[11], v[12], chance(0.75) ? 1 : 0));
 
 /* ============================== SPONSORS =========================== */
 const SPONSOR_DATA = [

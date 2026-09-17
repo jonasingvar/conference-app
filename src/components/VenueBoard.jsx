@@ -62,6 +62,7 @@ export function VenueBoard({ venue, day }) {
           const a = shown ? accent(shown.track.color) : accent('violet');
           const live = seatsFor(shown?.id);
           const seatsLeft = live?.seatsLeft ?? shown?.seatsLeft ?? 0;
+          const waitlistCount = live?.waitlistCount ?? shown?.waitlistCount ?? 0;
           const isFull = shown ? seatsLeft === 0 : false;
           const mine = shown ? reservationFor(shown.id) : null;
 
@@ -106,7 +107,7 @@ export function VenueBoard({ venue, day }) {
                   </p>
                   <div className="mt-2 flex items-center gap-2 text-[11px]">
                     {isFull
-                      ? <span className="font-bold text-rose-300">Full{shown.waitlistCount > 0 && ` · ${shown.waitlistCount} waiting`}</span>
+                      ? <span className="font-bold text-rose-300">Full{waitlistCount > 0 && ` · ${waitlistCount} waiting`}</span>
                       : <span className={cx('font-semibold', seatsLeft <= 10 ? 'text-amber-300' : 'text-muted')}>
                           {seatsLeft.toLocaleString()} seats left
                         </span>}
@@ -115,11 +116,11 @@ export function VenueBoard({ venue, day }) {
                         {mine === 'waitlisted' ? 'Waitlisted' : 'On my agenda'}
                       </Chip>
                     )}
-                    <span className="ml-auto text-faint">{sorted.length} today</span>
+                    <span className="ml-auto text-faint">{sorted.length} {isToday ? 'today' : 'this day'}</span>
                   </div>
                 </Link>
               ) : (
-                <p className="mt-3 pl-2 text-[12px] text-faint">Nothing left here today.</p>
+                <p className="mt-3 pl-2 text-[12px] text-faint">{isToday ? 'Nothing left here today.' : 'Nothing on here this day.'}</p>
               )}
             </div>
           );
@@ -129,7 +130,7 @@ export function VenueBoard({ venue, day }) {
       {idle.length > 0 && (
         <p className="text-[11px] text-faint">
           <Icon name="info" className="mr-1 inline size-3" />
-          {idle.length} more {idle.length === 1 ? 'stage is' : 'stages are'} dark today: {idle.map((b) => b.room.name).join(', ')}.
+          {idle.length} more {idle.length === 1 ? 'stage is' : 'stages are'} dark {isToday ? 'today' : 'this day'}: {idle.map((b) => b.room.name).join(', ')}.
         </p>
       )}
     </div>

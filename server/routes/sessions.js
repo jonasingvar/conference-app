@@ -8,7 +8,7 @@ export const sessionsRouter = Router();
 
 /**
  * GET /api/sessions
- * Filters: day, trackSlug, tagSlug, venueId, roomId, level, format, speakerId, q, reservedBy
+ * Filters: day, trackSlug, tagSlug, venueId, roomId, level, format, speakerId, q, reservedBy, followedBy
  * Sort:    time (default) | rating | popularity
  */
 sessionsRouter.get('/', (req, res) => {

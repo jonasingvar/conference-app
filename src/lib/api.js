@@ -30,7 +30,6 @@ const qs = (params = {}) => {
 };
 
 export const getBootstrap = () => api('/bootstrap');
-export const getStats = () => api('/stats');
 export const getLive = ({ day, time }) => api(`/live${qs({ day, time })}`);
 export const getSessions = (filters) => api(`/sessions${qs(filters)}`);
 export const getSession = (id, userId) => api(`/sessions/${id}${qs({ userId })}`);
@@ -41,7 +40,6 @@ export const getVenues = () => api('/venues');
 export const getVendors = (filters) => api(`/vendors${qs(filters)}`);
 export const getSponsors = () => api('/sponsors');
 export const getAnnouncements = () => api('/announcements');
-export const getUsers = () => api('/users');
 export const getUser = (id) => api(`/users/${id}`);
 export const getSchedule = (userId) => api(`/users/${userId}/schedule`);
 export const getToday = (userId, { day, time }) => api(`/users/${userId}/today${qs({ day, time })}`);
