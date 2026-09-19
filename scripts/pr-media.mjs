@@ -1,8 +1,12 @@
 /**
  * Put a screenshot (or a GIF) where a pull request body can show it.
  *
- *   node scripts/pr-media.mjs .screenshots/my-agenda.png 42
- *   → ![my-agenda](https://github.com/OWNER/REPO/raw/pr-media/pr-42-my-agenda.png)
+ *   node scripts/pr-media.mjs 42 .screenshots/before.png .screenshots/after.png
+ *   → ![before](https://github.com/OWNER/REPO/raw/pr-media/pr-42-before.png)
+ *   → ![after](https://github.com/OWNER/REPO/raw/pr-media/pr-42-after.png)
+ *
+ * Several files in one call, because the agent pays per step and a before and
+ * an after are one thought, not two.
  *
  * A reviewer looking at a UI change wants to see the UI. GitHub only renders
  * an image it is hosting, and the web upload that normally provides that is a
@@ -26,14 +30,16 @@ import { basename, extname } from 'node:path';
 
 const BRANCH = 'pr-media';
 
-const [file, issue] = process.argv.slice(2);
-if (!file || !issue) {
-  console.error('usage: pr-media.mjs <file> <issue-number>');
+const [issue, ...files] = process.argv.slice(2);
+if (!issue || !files.length) {
+  console.error('usage: pr-media.mjs <issue-number> <file> [file...]');
   process.exit(1);
 }
-if (!existsSync(file)) {
-  console.error(`no such file: ${file}`);
-  process.exit(1);
+for (const f of files) {
+  if (!existsSync(f)) {
+    console.error(`no such file: ${f}`);
+    process.exit(1);
+  }
 }
 
 const gh = (args, input) =>
@@ -60,27 +66,29 @@ function ensureBranch() {
   }
 }
 
-const name = `pr-${issue}-${basename(file, extname(file))}${extname(file)}`;
-const content = readFileSync(file).toString('base64');
-
 ensureBranch();
 
-// Replacing an existing file needs its blob sha, so a re-run of the same
-// ticket updates the image rather than failing.
-let sha = null;
-try {
-  sha = gh(['api', `repos/${repo}/contents/${name}?ref=${BRANCH}`, '--jq', '.sha']);
-} catch { /* first upload for this ticket */ }
+for (const file of files) {
+  const label = basename(file, extname(file));
+  const name = `pr-${issue}-${label}${extname(file)}`;
 
-const args = [
-  'api', '--method', 'PUT', `repos/${repo}/contents/${name}`,
-  '-f', `message=Media for #${issue}`,
-  '-f', `branch=${BRANCH}`,
-  '--field', 'content=@-',
-  '--jq', '.content.path',
-];
-if (sha) args.splice(-2, 0, '-f', `sha=${sha}`);
+  // Replacing an existing file needs its blob sha, so a re-run of the same
+  // ticket updates the image rather than failing.
+  let sha = null;
+  try {
+    sha = gh(['api', `repos/${repo}/contents/${name}?ref=${BRANCH}`, '--jq', '.sha']);
+  } catch { /* first upload of this one */ }
 
-gh(args, content);
+  const args = [
+    'api', '--method', 'PUT', `repos/${repo}/contents/${name}`,
+    '-f', `message=Media for #${issue}`,
+    '-f', `branch=${BRANCH}`,
+    '--field', 'content=@-',
+    '--jq', '.content.path',
+  ];
+  if (sha) args.splice(-2, 0, '-f', `sha=${sha}`);
 
-console.log(`![${basename(file, extname(file))}](https://github.com/${repo}/raw/${BRANCH}/${name})`);
+  gh(args, readFileSync(file).toString('base64'));
+
+  console.log(`![${label}](https://github.com/${repo}/raw/${BRANCH}/${name})`);
+}

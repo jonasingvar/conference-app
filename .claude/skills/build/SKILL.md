@@ -106,11 +106,26 @@ looks unrelated". If you cannot get it green, go to step 9.
 Ready for review, not a draft: you only get here green, and review tooling
 skips drafts.
 
-If you took a screenshot, host it and put it in the body — a reviewer looking
-at a UI change should see the UI, not read a description of it:
+Show the change if it is visible. A reviewer looking at a UI change should
+see the UI, not read a description of it:
 
 ```bash
-node scripts/pr-media.mjs .screenshots/<name>.png <n>   # prints the markdown
+node scripts/pr-media.mjs <n> .screenshots/<name>.png   # prints the markdown
+```
+
+For a change to an interaction rather than a view, screenshot **both states**
+and show them side by side. Your proof spec is already driving the browser
+through exactly that sequence, so take them there rather than paying for
+another run:
+
+```js
+await page.screenshot({ path: '.screenshots/before.png' });
+await page.getByRole('button', { name: 'Add' }).click();
+await page.screenshot({ path: '.screenshots/after.png' });
+```
+
+```bash
+node scripts/pr-media.mjs <n> .screenshots/before.png .screenshots/after.png
 ```
 
 ```bash
@@ -135,7 +150,12 @@ Closes #<n>
 ### Changed
 - `<file>` — <what, in a few words>
 
-<the line pr-media.mjs printed, if there is a screenshot>
+<the line pr-media.mjs printed, for a single screenshot — or, for a
+before-and-after, a two-column table so they sit side by side:>
+
+| Before | After |
+| --- | --- |
+| <![before](…)> | <![after](…)> |
 
 ### Proof
 | Check | Result |
