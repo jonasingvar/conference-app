@@ -48,10 +48,15 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['Pixel 7'] } },
   ],
 
+  // Reusing whatever is already on the port is a convenience when you are the
+  // only thing running. Under a lane it is a trap: a second worktree that lands
+  // on a taken WEB_PORT would attach to the *first* worktree's dev server and
+  // run this branch's specs against that branch's code — and pass. So a claimed
+  // lane insists on starting its own app, and a collision fails loudly.
   webServer: {
     command: 'npm run dev',
     url: `http://localhost:${process.env.WEB_PORT ?? 5173}`,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !process.env.CI && !process.env.ORBIT_LANE,
     timeout: 90_000,
     stdout: 'ignore',
     stderr: 'pipe',
