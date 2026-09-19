@@ -170,24 +170,43 @@ gh pr create --draft --base main --title "<the issue's title>" --body-file /tmp/
 ```
 
 The body carries the evidence, because a reviewer should not have to re-run
-anything to believe you:
+anything to believe you. Keep it **short and scannable** — it is read in a
+narrow column beside the diff, so a wall of prose is a wall. Use this shape
+and resist adding to it:
 
 ```markdown
 Closes #<n>
 
-## What changed
-<two or three sentences, in terms of what an attendee now sees>
+<One sentence. What an attendee sees now that they did not before.>
 
-## How it is proved
-- `<test name>` — failed before the change, passes now
-- `npm test` — 159 passed
-- `npm run verify` — 153 passed, desktop and mobile
+### Changed
+- <file or area> — <what, in a few words>
+- <one line per change, three or four at most>
 
-## Anything a reviewer should look at closely
-<or "nothing" — but say so deliberately>
+### Proof
+| Check | Result |
+| --- | --- |
+| `<the test that proves the ticket>` | red before, green after |
+| `npm test` | 161 passed |
+| `npm run verify` | 155 passed · desktop + mobile |
+
+<details>
+<summary>Worth a closer look</summary>
+
+<Only if something genuinely needs a decision from the reviewer — a trade-off
+you made, a criterion you could not test, something in the ticket that turned
+out to be wrong. Two short paragraphs at most. Omit the whole block if there
+is nothing.>
+</details>
 ```
 
-Attach the screenshot if the change was visual.
+Three rules for the body, all of them about the reader:
+
+- **A sentence, not a summary of your session.** Nobody wants the narrative.
+- **The table is the point.** It is the bit a reviewer actually checks, and a
+  table stays readable in a narrow column where paragraphs do not.
+- **`<details>` for anything long.** A reviewer who wants it opens it; one who
+  does not is not scrolling past it to reach the diff.
 
 Then swap `ai-working` for `ready-for-human`. You are done.
 
