@@ -157,8 +157,11 @@ get it green, go to step 9.
 
 ## 8. Open the draft pull request
 
-Push the branch and open it **as a draft** — a human marks it ready, which is
-what keeps every change going through review.
+Open it **ready for review**, not as a draft. You only get here with a green
+gate, so it is ready by definition — and a draft is worse than it looks:
+review tooling skips drafts, reviewers are not requested, and it sits outside
+everyone's review queue. The rail that matters is that a human merges it, not
+that a human un-drafts it first.
 
 Write the body to a file and pass it, rather than reaching for `--fill`:
 the evidence below is the point of the pull request, and `--fill` would
@@ -166,7 +169,7 @@ replace it with your commit message.
 
 ```bash
 git push -u origin HEAD
-gh pr create --draft --base main --title "<the issue's title>" --body-file /tmp/pr-body.md
+gh pr create --base main --title "<the issue's title>" --body-file /tmp/pr-body.md
 ```
 
 The body carries the evidence, because a reviewer should not have to re-run
