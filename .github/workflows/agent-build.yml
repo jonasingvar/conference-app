@@ -1,0 +1,62 @@
+## Label an issue `ready-for-ai` and it becomes a verified draft pull request.
+## Nobody opens a terminal.
+##
+## The runner is the isolation — it is a fresh machine per run, so there are no
+## ports to allocate and no worktree to make. `scripts/lane.mjs` is for a laptop
+## running several agents at once; here the agent has the whole machine.
+##
+## Needs two things set up once:
+##   - the Claude GitHub App installed on the repository
+##   - an ANTHROPIC_API_KEY repository secret
+name: Agent · build
+
+on:
+  issues:
+    types: [labeled]
+
+# One agent per ticket. Relabelling while a run is in flight must not start a
+# second agent on the same issue.
+concurrency:
+  group: agent-build-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # `labeled` fires for every label, so the filter is what makes this a
+    # dispatch rather than a nuisance.
+    if: github.event.label.name == 'ready-for-ai'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    permissions:
+      contents: write        # push the branch
+      pull-requests: write   # open the draft PR
+      issues: write          # move the label, comment progress
+      id-token: write        # the action's GitHub App authentication
+      actions: read          # read CI results, so a red run can be understood
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # The agent branches off origin/main, so it needs more than a
+          # single-commit checkout.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # `/build` gates itself on `npm run verify`, which drives a real browser.
+      # Without this the agent cannot prove anything and will stop.
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # The same skill a laptop runs. One file to maintain, one to explain.
+          prompt: "/build ${{ github.event.issue.number }}"
+          claude_args: "--model claude-opus-5 --max-turns 120"
