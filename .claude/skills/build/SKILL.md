@@ -128,9 +128,19 @@ await page.screenshot({ path: '.screenshots/after.png' });
 node scripts/pr-media.mjs <n> .screenshots/before.png .screenshots/after.png
 ```
 
-Five images is the limit and the script enforces it. Two is usually right;
-five is a flow worth walking through. More than that and a reviewer scrolls
-past the lot.
+How many is a judgement call, and the test is that **every image shows
+something the one before it did not**:
+
+- **None** — nothing an attendee can see changed. A refactor, an endpoint, a
+  rule with no visible surface. A screenshot that does not show the change is
+  worse than none, because it implies you checked something you did not.
+- **One** — a view changed. Show the view.
+- **Two** — an interaction changed. The state before, and the state after.
+- **Up to five** — a flow worth walking through, one image per step that
+  looks different.
+
+Five is the hard limit and `pr-media.mjs` enforces it per pull request, but
+it is a backstop, not a target.
 
 ```bash
 ```

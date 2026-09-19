@@ -34,6 +34,9 @@ const BRANCH = 'pr-media';
  * Five is the most a reviewer will actually look at. Past that they scroll
  * past the lot and the evidence stops being evidence, so this refuses rather
  * than letting a run quietly bury the diff under screenshots.
+ *
+ * The limit is per pull request, not per call — it counts what this ticket
+ * already has on the branch, so five calls of one do not slip past it.
  */
 const MAX = 5;
 
@@ -42,10 +45,7 @@ if (!issue || !files.length) {
   console.error('usage: pr-media.mjs <issue-number> <file> [file...]');
   process.exit(1);
 }
-if (files.length > MAX) {
-  console.error(`${files.length} files — at most ${MAX}. Pick the ones that show the change.`);
-  process.exit(1);
-}
+
 for (const f of files) {
   if (!existsSync(f)) {
     console.error(`no such file: ${f}`);
@@ -78,6 +78,29 @@ function ensureBranch() {
 }
 
 ensureBranch();
+
+/** What this ticket already has up there, so the cap holds across calls. */
+function alreadyOnBranch() {
+  try {
+    const listed = gh(['api', `repos/${repo}/contents?ref=${BRANCH}`, '--jq', '.[].name']);
+    return new Set(listed.split('\n').filter((n) => n.startsWith(`pr-${issue}-`)));
+  } catch {
+    return new Set();
+  }
+}
+
+const existing = alreadyOnBranch();
+const wanted = new Set(files.map((f) => `pr-${issue}-${basename(f, extname(f))}${extname(f)}`));
+const total = new Set([...existing, ...wanted]).size;
+
+if (total > MAX) {
+  console.error(
+    `#${issue} would have ${total} images — at most ${MAX} per pull request` +
+    (existing.size ? ` (${existing.size} already up: ${[...existing].join(', ')})` : '') +
+    '. Pick the ones that show the change.',
+  );
+  process.exit(1);
+}
 
 for (const file of files) {
   const label = basename(file, extname(file));
