@@ -34,11 +34,29 @@ Move the label as you go. A board somewhere is reading it, and a run that
 dies without moving it off `ai-working` leaves a ticket nobody knows is
 stranded.
 
+## What a step costs
+
+Worth knowing before you start, because it changes what a good run looks like.
+The model re-reads the whole conversation on every step, so anything you pull
+in early is paid for again on every step after it. A measured run spent 96% of
+its budget re-reading context it had already gathered.
+
+So: **ask for the narrowest thing that answers the question.** Not
+`gh pr list --json body`, the one field you need. Not `cat` a file, the lines
+around a match. Not a command twice to grep it the second time — capture what
+you need the first time. Fewer, better-aimed steps is the whole game.
+
 ## 1. Read the ticket
 
 ```bash
 gh issue view <n> --json number,title,body,labels,state
+gh pr list --state open --json number,headRefName \
+  --jq '.[] | select(.headRefName | startswith("issue-<n>-"))'
 ```
+
+The second command is the already-being-worked check. Ask for
+`headRefName` only — pulling every open pull request's body costs more than
+the rest of this step put together.
 
 The **Done when:** clause is the acceptance criteria — that is what you are
 building, and later, what you prove. Stop now and label `needs-human` if:
@@ -77,10 +95,17 @@ Without it you will eventually test another branch's code and pass.
 
 ## 4. Understand before you change anything
 
-Find the code that owns the behaviour the ticket describes. `CLAUDE.md` has
-the layout and, more usefully, the reasoning behind it — including several
-decisions that look arbitrary and are not. A change that contradicts a stated
-decision is wrong even when every test passes.
+`CLAUDE.md` is the map. It already describes the layout, the conventions, the
+three test layers and which one a change belongs in — **take its word for it
+rather than re-deriving any of that from source.** It also carries the
+reasoning behind several decisions that look arbitrary and are not; a change
+contradicting a stated decision is wrong even when every test passes.
+
+Then grep for the behaviour the ticket names and read only the file or two
+that own it. Reading `playwright.config.js`, the test helpers or the seed to
+work out how this repo is organised is the expensive mistake here: it is all
+in `CLAUDE.md`, and every speculative file you open is re-read on every
+remaining step.
 
 ## 5. Write the check before the change
 
@@ -111,7 +136,16 @@ npm test          # must be green
 npm run verify    # the gate: real browser, desktop and mobile
 ```
 
-If anything visual moved, look at it:
+**Run each of these once.** Read everything you need from the first run rather
+than running it again to grep the output — a second `verify` is a minute of
+wall clock and a suite's worth of output for something you already had.
+
+**In CI, Chromium is already installed.** Never run `playwright install`; the
+workflow does it before you start, and doing it again costs a minute and
+proves nothing.
+
+If anything visual moved, take one screenshot — the desktop view, unless the
+change is specifically about how it behaves narrow:
 
 ```bash
 npm run shot -- /the-route

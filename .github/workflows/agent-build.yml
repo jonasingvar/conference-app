@@ -69,4 +69,4 @@ jobs:
           # TEMPORARY: the action hides Claude's output by default, which also
           # hides why a run failed. Remove once the loop is proven.
           show_full_output: true
-          claude_args: "--max-turns 120"
+          claude_args: "--max-turns 80"
