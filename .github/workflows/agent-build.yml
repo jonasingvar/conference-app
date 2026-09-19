@@ -36,13 +36,13 @@ jobs:
       actions: read          # read CI results, so a red run can be understood
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # The agent branches off origin/main, so it needs more than a
           # single-commit checkout.
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm

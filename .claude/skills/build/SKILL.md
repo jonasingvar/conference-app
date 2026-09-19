@@ -85,7 +85,8 @@ other than the ticket.
 ## 6. Implement
 
 `npm test` after every edit — 160-odd tests in under a second. Match the
-surrounding code.
+surrounding code, and commit in the Conventional Commits style `CLAUDE.md`
+describes.
 
 ## 7. Prove it
 

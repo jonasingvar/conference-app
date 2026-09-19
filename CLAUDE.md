@@ -463,6 +463,26 @@ attendee lives in `localStorage` under `orbit:currentUserId`. Two attendees
 what drives the speaking panel on My Agenda and the home page. See
 `docs/DATA_MODEL.md` for the full schema.
 
+## Commits
+
+**Conventional Commits.** `type(scope): subject` — the subject in the
+imperative, lower case, no full stop, under about 70 characters.
+
+```
+feat(agenda): total the hours booked across the conference
+fix(seats): release a waitlist place when the seat ahead is dropped
+ci: stop pr-media pushes triggering the browser suite
+```
+
+Types: `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build`, `ci`,
+`chore`. The scope is optional and names the area, not the file.
+
+The subject says what changed; **the body says why.** A diff already shows
+what you did, so a body that restates it earns nothing — the reason, the
+alternative you rejected, and the thing that will look wrong to whoever reads
+this in six months are what is worth writing down. Skip the body when the
+subject genuinely covers it.
+
 ## House rules
 
 - Good engineering, no over-engineering. Match the surrounding code.

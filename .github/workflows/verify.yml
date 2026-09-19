@@ -9,6 +9,10 @@ name: verify
 on:
   push:
     branches: ['**']
+    # `pr-media` only ever holds screenshots for pull request bodies. Building
+    # and browser-testing the app because an image landed is a wasted runner,
+    # and the run it cancels is a real one.
+    branches-ignore: ['pr-media']
   pull_request:
   workflow_dispatch:
 
@@ -27,9 +31,9 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -54,9 +58,9 @@ jobs:
         project: [desktop, mobile]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -68,7 +72,7 @@ jobs:
 
       - name: Cache Playwright browsers
         id: browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
@@ -96,7 +100,7 @@ jobs:
       # without reproducing it locally.
       - name: Upload the report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report-${{ matrix.project }}
           path: |
