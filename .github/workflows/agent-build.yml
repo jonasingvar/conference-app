@@ -66,4 +66,7 @@ jobs:
           github_token: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           # The same skill a laptop runs. One file to maintain, one to explain.
           prompt: "/build ${{ github.event.issue.number }}"
-          claude_args: "--model claude-opus-5 --max-turns 120"
+          # TEMPORARY: the action hides Claude's output by default, which also
+          # hides why a run failed. Remove once the loop is proven.
+          show_full_output: true
+          claude_args: "--max-turns 120"
