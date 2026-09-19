@@ -211,7 +211,23 @@ Three rules for the body, all of them about the reader:
 - **`<details>` for anything long.** A reviewer who wants it opens it; one who
   does not is not scrolling past it to reach the diff.
 
-Then swap `ai-working` for `ready-for-human`. You are done.
+Then hand it over — **both halves, in this order**:
+
+```bash
+gh issue comment <n> --body "Ready for review: <pr url>
+
+<one line on anything the reviewer should know that is not in the PR body, or omit>"
+gh issue edit <n> --add-label ready-for-human --remove-label ai-working
+```
+
+The comment is not decoration. `Closes #<n>` in a pull request body does not
+reliably register when the pull request is opened by automation — the issue's
+Development panel stays empty and nothing on the issue points at your work.
+Somebody reading the ticket has to be able to reach the pull request from it,
+so say it in a comment rather than trusting the keyword. Keep the keyword too:
+it still closes the issue on merge.
+
+You are done.
 
 ## 9. If you cannot finish
 
