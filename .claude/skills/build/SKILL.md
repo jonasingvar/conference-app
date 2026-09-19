@@ -6,6 +6,7 @@ description: >-
   hand it back to a human — or stop and say why. Use when asked to build,
   implement or pick up an issue, when told "/build 42", or when a ticket is
   labelled ready-for-ai.
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
 # Build an issue
@@ -125,8 +126,13 @@ get it green, go to step 9.
 Push the branch and open it **as a draft** — a human marks it ready, which is
 what keeps every change going through review.
 
+Write the body to a file and pass it, rather than reaching for `--fill`:
+the evidence below is the point of the pull request, and `--fill` would
+replace it with your commit message.
+
 ```bash
-gh pr create --draft --fill-first --base main
+git push -u origin HEAD
+gh pr create --draft --base main --title "<the issue's title>" --body-file /tmp/pr-body.md
 ```
 
 The body carries the evidence, because a reviewer should not have to re-run
