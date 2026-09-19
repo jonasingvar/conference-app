@@ -1,7 +1,7 @@
 ---
 name: build
 description: >-
-  Take one GitHub issue from this repo to a verified draft pull request:
+  Take one GitHub issue from this repo to a verified pull request:
   claim it, work it in an isolated workspace, prove it in the browser, and
   hand it back to a human — or stop and say why. Use when asked to build,
   implement or pick up an issue, when told "/build 42", or when a ticket is
@@ -11,7 +11,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 
 # Build an issue
 
-One issue in, one draft pull request out, with the evidence attached. If it
+One issue in, one reviewable pull request out, with the evidence attached. If it
 cannot be finished honestly, it comes back labelled `needs-human` and says
 what stopped it — never a smaller version of the ticket presented as the
 whole thing.
@@ -27,7 +27,7 @@ Exactly one at a time:
 | --- | --- |
 | `ready-for-ai` | groomed, nobody has started |
 | `ai-working` | you have it |
-| `ready-for-human` | draft PR open and verified |
+| `ready-for-human` | PR open, verified, waiting on review |
 | `needs-human` | you stopped, and said why |
 
 Move the label as you go. A board somewhere is reading it, and a run that
@@ -155,7 +155,7 @@ npm run shot -- /the-route
 failure looks unrelated" — a red gate means you are not done. If you cannot
 get it green, go to step 9.
 
-## 8. Open the draft pull request
+## 8. Open the pull request
 
 Open it **ready for review**, not as a draft. You only get here with a green
 gate, so it is ready by definition — and a draft is worse than it looks:
