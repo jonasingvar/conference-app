@@ -419,6 +419,27 @@ no horizontal overflow, so responsive regressions fail automatically.
 directory, so a second checkout — or a second agent on a second ticket — can run
 its own app and its own suite at the same time without touching yours.
 
+**Claim a lane before you run anything.** Working in a worktree, take a port
+pair first:
+
+```bash
+eval "$(node scripts/lane.mjs claim 42)"   # 42 is the issue you are on
+```
+
+That exports `ORBIT_LANE`, `PORT`, `WEB_PORT` and `NO_OPEN`, and records the
+claim in the git *common* directory, which every worktree shares — so
+`node scripts/lane.mjs list` shows what every other agent holds. Claiming twice
+from the same worktree returns the same lane; `release` gives it back, and a
+lane whose worktree has been removed is reclaimed automatically.
+
+`ORBIT_DB` is not part of a lane: `data/` is gitignored and per-checkout, so
+every worktree already seeds its own database.
+
+The lane is also what makes `npm run verify` honest. Playwright reuses an app
+already listening on `WEB_PORT` unless `ORBIT_LANE` is set — which, with two
+worktrees on one port, would run your specs against the *other* branch's code
+and pass. Under a lane it starts its own app or fails.
+
 **CI runs the same commands.** `.github/workflows/verify.yml` runs `npm test` in
 one job and the two Playwright projects in two more, all in parallel, on every
 push and pull request. A failed run uploads the HTML report and the traces, and
