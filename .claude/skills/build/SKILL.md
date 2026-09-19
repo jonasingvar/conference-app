@@ -106,6 +106,13 @@ looks unrelated". If you cannot get it green, go to step 9.
 Ready for review, not a draft: you only get here green, and review tooling
 skips drafts.
 
+If you took a screenshot, host it and put it in the body — a reviewer looking
+at a UI change should see the UI, not read a description of it:
+
+```bash
+node scripts/pr-media.mjs .screenshots/<name>.png <n>   # prints the markdown
+```
+
 ```bash
 git push -u origin HEAD
 gh pr create --base main --title "<the issue's title>" --body-file /tmp/pr-body.md
@@ -127,6 +134,8 @@ Closes #<n>
 
 ### Changed
 - `<file>` — <what, in a few words>
+
+<the line pr-media.mjs printed, if there is a screenshot>
 
 ### Proof
 | Check | Result |
