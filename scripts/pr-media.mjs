@@ -30,9 +30,20 @@ import { basename, extname } from 'node:path';
 
 const BRANCH = 'pr-media';
 
+/**
+ * Five is the most a reviewer will actually look at. Past that they scroll
+ * past the lot and the evidence stops being evidence, so this refuses rather
+ * than letting a run quietly bury the diff under screenshots.
+ */
+const MAX = 5;
+
 const [issue, ...files] = process.argv.slice(2);
 if (!issue || !files.length) {
   console.error('usage: pr-media.mjs <issue-number> <file> [file...]');
+  process.exit(1);
+}
+if (files.length > MAX) {
+  console.error(`${files.length} files — at most ${MAX}. Pick the ones that show the change.`);
   process.exit(1);
 }
 for (const f of files) {

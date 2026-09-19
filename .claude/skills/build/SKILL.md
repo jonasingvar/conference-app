@@ -128,6 +128,13 @@ await page.screenshot({ path: '.screenshots/after.png' });
 node scripts/pr-media.mjs <n> .screenshots/before.png .screenshots/after.png
 ```
 
+Five images is the limit and the script enforces it. Two is usually right;
+five is a flow worth walking through. More than that and a reviewer scrolls
+past the lot.
+
+```bash
+```
+
 ```bash
 git push -u origin HEAD
 gh pr create --base main --title "<the issue's title>" --body-file /tmp/pr-body.md
