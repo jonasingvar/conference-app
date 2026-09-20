@@ -101,8 +101,27 @@ Inline on the line it concerns, where there is one:
 gh pr comment <pr> --body "<your findings, or one line saying there are none>"
 ```
 
-Lead each finding with what breaks and when. Do not number things you are not
-sure about — if you would not defend it in review, leave it out.
+Lead each finding with what breaks and when. Do not raise anything you would
+not defend out loud in review.
+
+## 5. Write the verdict
+
+Last thing you do, always:
+
+```bash
+echo "PASS" > /tmp/review-verdict
+# or
+echo "FAIL <one line: the blocker>" > /tmp/review-verdict
+```
+
+A `FAIL` turns the check red. It does **not** stop anyone merging — a person
+decides that, and always has. What it does is make a blocker visible on the
+pull request instead of one comment among many.
+
+So the bar is the same one you already applied: `FAIL` only for something that
+should stop this merging. Three findings that are all worth reading and none
+of which is a blocker is still a `PASS` — say so, and let the comment carry
+them.
 
 Never approve, never request changes, never merge. The label stays
 `ready-for-human`: a person reads your comments and decides.

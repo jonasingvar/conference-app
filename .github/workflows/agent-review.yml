@@ -15,11 +15,15 @@ on:
   workflow_run:
     workflows: ["Agent · build"]
     types: [completed]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
   review:
     # Nothing to review if the build never produced a pull request.
-    if: github.event.workflow_run.conclusion == 'success'
+    if: >-
+      github.event_name == 'pull_request' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -27,26 +31,39 @@ jobs:
       contents: read
       pull-requests: write
       issues: read
+      checks: write         # publish the verdict as a check on the PR
       id-token: write
       actions: read
 
     steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.workflow_run.head_branch }}
-          fetch-depth: 0        # the review reads the diff against main
-
-      - name: Find the pull request
+      - name: Work out which pull request this is
         id: pr
         env:
           GH_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
-          number=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
-          echo "number=$number" >> "$GITHUB_OUTPUT"
-          if [ -z "$number" ]; then
-            echo "No open pull request for $BRANCH — the build stopped at needs-human."
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            number="${{ github.event.pull_request.number }}"
+            sha="${{ github.event.pull_request.head.sha }}"
+            ref="${{ github.event.pull_request.head.ref }}"
+          else
+            number=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+            sha="${{ github.event.workflow_run.head_sha }}"
+            ref="$BRANCH"
           fi
+          {
+            echo "number=$number"
+            echo "sha=$sha"
+            echo "ref=$ref"
+          } >> "$GITHUB_OUTPUT"
+          [ -n "$number" ] || echo "No open pull request — the build stopped at needs-human."
+
+      - uses: actions/checkout@v7
+        if: steps.pr.outputs.number != ''
+        with:
+          ref: ${{ steps.pr.outputs.ref }}
+          fetch-depth: 0        # the review reads the diff against main
 
       - uses: actions/setup-node@v7
         if: steps.pr.outputs.number != ''
@@ -56,8 +73,8 @@ jobs:
 
       - uses: anthropics/claude-code-action@v1
         if: steps.pr.outputs.number != ''
-        # A finding is advice. It must never be the reason a pull request
-        # cannot merge — an agent asked to find problems will find some.
+        # The agent crashing is not the same as the change being wrong; its
+        # verdict is the signal, and the step below is what acts on it.
         continue-on-error: true
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -66,3 +83,32 @@ jobs:
           claude_args: >-
             --model claude-opus-5 --max-turns 40
             --allowedTools "Bash,Read,Glob,Grep"
+
+      # Red means a blocker was found, not that merging is forbidden — nothing
+      # here is a required check. It puts the blocker where a skim-reader sees
+      # it instead of three comments down.
+      - name: Publish the verdict
+        if: ${{ !cancelled() && steps.pr.outputs.number != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          SHA: ${{ steps.pr.outputs.sha }}
+        run: |
+          verdict=$(head -c 200 /tmp/review-verdict 2>/dev/null | tr -d '\n' || true)
+          case "$verdict" in
+            PASS*) conclusion=success; summary="No blockers." ;;
+            FAIL*) conclusion=failure; summary="${verdict#FAIL}" ;;
+            *)     conclusion=neutral; summary="Review did not finish — no verdict written." ;;
+          esac
+
+          gh api "repos/$GH_REPO/check-runs" \
+            -f name='Agent · review' \
+            -f head_sha="$SHA" \
+            -f status=completed \
+            -f conclusion="$conclusion" \
+            -f "output[title]=Fresh-context review" \
+            -f "output[summary]=${summary:-see the pull request comment}" \
+            --silent
+
+          echo "verdict: ${verdict:-<none>} → $conclusion"
+          [ "$conclusion" != "failure" ]
