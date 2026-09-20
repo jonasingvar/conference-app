@@ -124,26 +124,39 @@ Open it **ready for review**, not as a draft — the code review and QA passes
 start when it opens, and a draft would stall them waiting for somebody to
 notice.
 
-Show the change if it is visible. A reviewer looking at a UI change should
-see the UI, not read a description of it:
+**If the change is visible, show it before and after.** A reviewer should see
+what moved, not read a description of it and take your word. You already stash
+your own work to prove the test went red, so do it again for the picture:
 
 ```bash
-node scripts/pr-media.mjs <n> .screenshots/<name>.png   # prints the markdown
+npm run shot -- /the-route              # after — your change is in the tree
+mv .screenshots/<name>.png /tmp/after.png
+
+git stash                               # the page as main has it
+npm run shot -- /the-route
+mv .screenshots/<name>.png /tmp/before.png
+git stash pop
+
+node scripts/pr-media.mjs <n> /tmp/before.png /tmp/after.png
 ```
 
-For a change to an interaction rather than a view, screenshot **both states**
-and show them side by side. Your proof spec is already driving the browser
-through exactly that sequence, so take them there rather than paying for
-another run:
+Put them in a two-column table so they sit side by side, which is the only way
+a difference is actually legible:
+
+```markdown
+| Before | After |
+| --- | --- |
+| ![before](…) | ![after](…) |
+```
+
+For a change to an *interaction* rather than a view, the two states are the
+ones either side of the click, and your proof spec is already driving the
+browser through that sequence:
 
 ```js
 await page.screenshot({ path: '.screenshots/before.png' });
 await page.getByRole('button', { name: 'Add' }).click();
 await page.screenshot({ path: '.screenshots/after.png' });
-```
-
-```bash
-node scripts/pr-media.mjs <n> .screenshots/before.png .screenshots/after.png
 ```
 
 How many is a judgement call, and the test is that **every image shows
@@ -187,12 +200,12 @@ Closes #<n>
 ### Changed
 - `<file>` — <what, in a few words>
 
-<the line pr-media.mjs printed, for a single screenshot — or, for a
-before-and-after, a two-column table so they sit side by side:>
-
 | Before | After |
 | --- | --- |
 | <![before](…)> | <![after](…)> |
+
+<one image on its own only when there is no meaningful "before" — something
+that did not exist at all>
 
 ### Proof
 | Check | Result |
