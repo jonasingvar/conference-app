@@ -58,7 +58,12 @@ jobs:
         continue-on-error: true
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          # GITHUB_TOKEN deliberately, not AGENT_GITHUB_TOKEN. This pass only
+          # comments; it never opens a pull request or pushes, so it gains
+          # nothing from a personal token — and with one its comments are
+          # attributed to the person whose token it is, which on their own
+          # pull request reads as them reviewing their own work.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           prompt: |
             /code-review ${{ github.event.pull_request.number }}
 
