@@ -120,10 +120,9 @@ looks unrelated". If you cannot get it green, go to step 9.
 
 ## 8. Open the pull request
 
-Open it **as a draft**. Marking it ready for review is the only thing that
-starts the code review and QA passes, so that click is a person deciding to
-spend them — and taking it back to draft and forward again is how you ask for
-another pass.
+Open it **ready for review**, not as a draft — the code review and QA passes
+start when it opens, and a draft would stall them waiting for somebody to
+notice.
 
 Show the change if it is visible. A reviewer looking at a UI change should
 see the UI, not read a description of it:
@@ -166,7 +165,7 @@ it is a backstop, not a target.
 
 ```bash
 git push -u origin HEAD
-gh pr create --draft --base main --title "<the issue's title>" --body-file /tmp/pr-body.md
+gh pr create --base main --title "<the issue's title>" --body-file /tmp/pr-body.md
 gh issue comment <n> --body "Ready for review: <pr url>"
 gh issue edit <n> --add-label ready-for-human --remove-label ai-working
 ```

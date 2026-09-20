@@ -16,16 +16,15 @@ name: Agent · QA
 
 on:
   pull_request:
-    # Only the draft → ready flip. Not `opened`, not `synchronize`.
+    # `opened` and `ready_for_review`, never `synchronize`.
     #
-    # Each pass costs real money, so spending it is a decision somebody makes
-    # rather than something a push triggers. The build agent opens a draft;
-    # clicking **Ready for review** is what says "now spend this".
+    # One pull request costs one pass of each. `synchronize` was the expensive
+    # part — it charged for a review on every push, and a fourteen-commit
+    # branch paid fourteen times for one change.
     #
-    # Want another pass? Put the pull request back to draft and mark it
-    # ready again. The control is the flip, so there is nothing else to learn
-    # and no way to spend this by accident.
-    types: [ready_for_review]
+    # Want another look after pushing fixes? Put it back to draft and mark it
+    # ready again.
+    types: [opened, reopened, ready_for_review]
 
 # A new commit makes the pass already running pointless.
 concurrency:
