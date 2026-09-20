@@ -463,6 +463,18 @@ attendee lives in `localStorage` under `orbit:currentUserId`. Two attendees
 what drives the speaking panel on My Agenda and the home page. See
 `docs/DATA_MODEL.md` for the full schema.
 
+## Setting this up on a fork
+
+A fork inherits the workflows and the skills but **not the labels**, and
+`ready-for-ai` is what starts everything — so on a fresh fork, labelling an
+issue does nothing and nothing says why.
+
+Actions → **Set up the harness** → Run workflow. It creates the four labels and
+writes a summary saying what else the fork needs: an `ANTHROPIC_API_KEY`
+secret **scoped to a workspace** (an organisation-level key is rejected, and
+the error does not say which kind to make), and optionally an
+`AGENT_GITHUB_TOKEN`.
+
 ## What happens to a ticket
 
 Four stages, each its own GitHub Actions workflow, each in a fresh process:
