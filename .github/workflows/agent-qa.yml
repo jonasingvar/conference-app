@@ -20,6 +20,13 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
+# An agent's pull request can arrive by both routes — the build finishing and
+# the pull request opening. One agent pass per commit is enough, and at these
+# prices two is worth preventing rather than tolerating.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
 jobs:
   qa:
     if: >-
