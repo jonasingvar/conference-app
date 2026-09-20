@@ -72,6 +72,13 @@ jobs:
           # attributed to the person whose token it is, which on their own
           # pull request reads as them reviewing their own work.
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Without AGENT_GITHUB_TOKEN the pull request is opened by
+          # github-actions[bot], so this run's triggering actor is a bot — and
+          # the action rejects bot actors by default, to stop a bot triggering
+          # Claude in a loop. This pass cannot cause that loop: it only
+          # comments, and never opens a pull request or pushes. Without this
+          # line it simply never runs on anybody who has not set a PAT.
+          allowed_bots: "github-actions[bot]"
           prompt: |
             /qa ${{ github.event.pull_request.number }}
 
