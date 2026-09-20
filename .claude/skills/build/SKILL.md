@@ -170,16 +170,19 @@ await page.getByRole('button', { name: 'Add' }).click();
 await page.screenshot({ path: '.screenshots/after.png' });
 ```
 
-How many is a judgement call, and the test is that **every image shows
-something the one before it did not**:
+How many, and which, is a judgement call. The test is that **every image
+shows something the one before it did not**:
 
-- **None** — nothing an attendee can see changed. A refactor, an endpoint, a
-  rule with no visible surface. A screenshot that does not show the change is
-  worse than none, because it implies you checked something you did not.
-- **One** — a view changed. Show the view.
-- **Two** — an interaction changed. The state before, and the state after.
-- **Up to five** — a flow worth walking through, one image per step that
-  looks different.
+- **A new screen or a new element** — shoot it. One image of the thing the
+  ticket asked for.
+- **An interaction** — one per state it moves through. The empty form, the
+  filled one, the result. Your proof spec is already walking that sequence, so
+  take them there.
+- **A bug fix** — before and after. The fix *is* the difference, and an
+  "after" on its own looks like an ordinary screen with nothing to see.
+- **Nothing an attendee can see** — a refactor, an endpoint, a rule with no
+  visible surface. No images. One that does not show the change is worse than
+  none, because it implies you checked something you did not.
 
 Five is the hard limit and `pr-media.mjs` enforces it per pull request, but
 it is a backstop, not a target.
