@@ -463,6 +463,16 @@ attendee lives in `localStorage` under `orbit:currentUserId`. Two attendees
 what drives the speaking panel on My Agenda and the home page. See
 `docs/DATA_MODEL.md` for the full schema.
 
+## Every change starts with a spec
+
+`specs/<issue>-<slug>.md`, written before the code and pushed as the first
+commit on the branch. A reviewer reads the intent before the diff, and a
+misreading of the ticket surfaces while it is still cheap.
+
+They are kept. `CLAUDE.md` describes how the code works; `specs/` records how
+it got that way — what each change was for, what the ticket left open, and what
+was deliberately left undone.
+
 ## Commits
 
 **Conventional Commits.** `type(scope): subject` — the subject in the

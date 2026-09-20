@@ -35,11 +35,7 @@ outcome you could write a check against, or asks for two unrelated things.
 
 ```bash
 gh issue edit <n> --add-label ai-working --remove-label ready-for-ai
-gh issue comment <n> --body "<one paragraph: what you understand the job to be>"
 ```
-
-If you have misread the ticket, that comment is the cheapest moment for
-someone to say so.
 
 ## 3. Get a workspace
 
@@ -57,6 +53,26 @@ git worktree add -b issue-<n>-<short-slug> ../orbit-wt-<n> origin/main
 cd ../orbit-wt-<n> && npm install
 eval "$(node scripts/lane.mjs claim <n>)"
 ```
+
+## 3b. Write the spec first
+
+Before changing any code, write `specs/<n>-<short-slug>.md` and push it as the
+branch's **first commit**, so a reviewer reads what you intend before the diff.
+Headings: *What this changes* (in terms of what an attendee sees), *Where*
+(file by file), *How it will be proved* (the check, and which layer), and only
+where they apply, *Decisions* (anything the ticket left open, or got wrong) and
+*Out of scope*.
+
+```bash
+git add specs/<n>-<short-slug>.md
+git commit -m "docs(spec): <the ticket's title, lower case>"
+git push -u origin HEAD
+gh issue comment <n> --body "Spec: <link to the file on this branch>"
+```
+
+A plan, not an essay — half a page. If writing it changes your mind about the
+approach, that is the step working. It lands with the change and stays, so keep
+it true: a spec that disagrees with its own pull request is worse than none.
 
 ## 4. Find the change site
 
@@ -164,6 +180,8 @@ resist adding to this shape:
 Closes #<n>
 
 <One sentence: what an attendee sees now that they did not before.>
+
+[Spec](specs/<n>-<short-slug>.md)
 
 ### Changed
 - `<file>` — <what, in a few words>
