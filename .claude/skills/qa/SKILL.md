@@ -35,26 +35,41 @@ repeating it is waste.
 
 Then ask the question they do not answer — *what would make this wrong?*
 
-## 2. Get the app up
+## 2. Write probes where Playwright will find them
+
+**Do not start the app yourself.** `playwright.config.js` has a `webServer`
+block: it seeds the database and boots the API and Vite for you, and under CI
+it refuses to reuse an existing server — so an `npm run dev &` of your own
+collides with it and the run dies on a taken port.
+
+**Do not put probes in `/tmp`.** `testDir` is `./tests`, so anything outside
+it is never collected and `npx playwright test /tmp/probe.spec.js` reports
+"no tests found" while looking like it passed.
+
+Write them into `tests/` with a name that says what they are, run them, then
+delete them:
 
 ```bash
-npm run db:seed
-npm run dev &                  # NO_OPEN is already set in CI
+cat > tests/qa-probe.spec.js <<'SPEC'
+import { test, expect } from '@playwright/test';
+import { visit, ATTENDEES, momentOn } from './helpers.js';
+// …your probes…
+SPEC
+
+npx playwright test tests/qa-probe.spec.js --project=desktop
+npx playwright test tests/qa-probe.spec.js --project=mobile   # half the layout differs
+
+rm tests/qa-probe.spec.js
 ```
 
-`CLAUDE.md` describes the clock, the attendees and the two venues. Use them:
-`?at=` pins the conference clock to any day and time, and each seeded attendee
-has a different agenda — one with clashes, one with almost nothing booked, two
-who are also speaking.
+`tests/helpers.js` is what makes a probe cheap: `visit(page, path, { as, at })`
+signs in as any seeded attendee and pins the conference clock, `momentOn(day,
+time)` builds the timestamp, and `ATTENDEES` names the six — one with clashes,
+one with almost nothing booked, two who are also speaking.
 
-## 3. Write throwaway checks and run them
-
-Put them in `/tmp`, never in `tests/` — these are probes, not suite members,
-and they must not land in the pull request:
-
-```bash
-npx playwright test /tmp/qa.spec.js --config=playwright.config.js --project=desktop
-```
+The checkout is thrown away when the job ends, so the file cannot reach the
+repository. Delete it anyway: a probe left behind would run in the suite as if
+somebody meant it.
 
 Where to aim, in rough order of what actually finds things here:
 
