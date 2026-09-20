@@ -37,7 +37,11 @@ jobs:
     timeout-minutes: 25
 
     permissions:
-      contents: read
+      # write, so `scripts/pr-media.mjs` can put a screenshot on the pr-media
+      # branch — a finding you can see beats one described in prose. The skill
+      # forbids changing any code or opening a pull request; this is for the
+      # image branch, which nothing merges from.
+      contents: write
       pull-requests: write
       issues: write        # a one-line verdict back on the ticket
       checks: write         # publish the verdict as a check on the PR
