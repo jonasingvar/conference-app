@@ -1,4 +1,5 @@
-## Run this once on a fresh fork: Actions → Set up the harness → Run workflow.
+## Runs itself on a new repository made from this template, and is also on
+## Actions → Set up the harness → Run workflow when it needs running again.
 ##
 ## A fork inherits the workflows and the skills but not the labels, and
 ## `ready-for-ai` is what starts everything — so without this, labelling an
@@ -9,6 +10,13 @@
 name: Set up the harness
 
 on:
+  # A repository made from this template starts with one commit that adds
+  # every file — including this one — so the path filter matches then and
+  # almost never again. The labels appear without anybody being told to make
+  # them, and the button stays for when that does not happen.
+  push:
+    branches: [main]
+    paths: ['.github/workflows/setup.yml']
   workflow_dispatch:
 
 jobs:

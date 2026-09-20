@@ -102,8 +102,10 @@ You still merge.
 
 ## Set up your fork
 
-1. **Actions → Set up the harness → Run workflow** — creates the four labels
-   (a fork does not inherit them) and reports what is missing.
+1. **Check the labels exist.** A new repository sets them up on its own — the
+   *Set up the harness* workflow runs on the first commit. If it did not, run
+   it by hand from the Actions tab. Neither a fork nor a template copies
+   labels, and `ready-for-ai` is what starts everything.
 2. Add `ANTHROPIC_API_KEY` as a repository secret. **It must be scoped to a
    workspace** — an org-level key is refused, and the error does not say why.
 3. Optional: `AGENT_GITHUB_TOKEN`, a classic token with `repo` + `workflow`.
