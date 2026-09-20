@@ -90,6 +90,9 @@ function SpeakingPanel({ user }) {
 
 const MAX_LISTED_CONFLICTS = 3;
 
+/** The hours a day heading shows. The total tile sums these, so the two agree. */
+const hoursOn = (day) => Math.round(day.totalMinutes / 60);
+
 function ConflictBanner({ day, conflicts }) {
   if (!conflicts.length) return null;
   const byId = Object.fromEntries(day.sessions.map((s) => [s.id, s]));
@@ -148,7 +151,7 @@ function DayPlan({ day, isToday }) {
         <div className="flex items-center gap-3 text-xs text-muted">
           <span>{plural(day.sessions.length, 'session')}</span>
           <span className="text-faint">·</span>
-          <span>{Math.round(day.totalMinutes / 60)}h of content</span>
+          <span>{hoursOn(day)}h of content</span>
           {venues.length > 1 && (
             <Chip accent="amber" className="!py-0.5">
               <Icon name="car" className="size-3" /> {venues.join(' + ')}
@@ -195,6 +198,13 @@ export function MyAgendaPage() {
   const totalReserved = days.reduce((n, d) => n + d.sessions.filter((s) => reservationFor(s.id) === 'confirmed').length, 0);
   const totalWaitlisted = days.reduce((n, d) => n + d.sessions.filter((s) => reservationFor(s.id) === 'waitlisted').length, 0);
   const totalConflicts = days.reduce((n, d) => n + d.conflicts.length, 0);
+  /*
+   * Summed from what each day heading shows rather than from the raw minutes:
+   * sessions are 45 minutes, so a rounded sum would print 5h over two days
+   * reading 2h each, and a total that contradicts the days below it reads as
+   * a bug rather than as an answer.
+   */
+  const totalHours = days.reduce((n, d) => n + hoursOn(d), 0);
   const crossVenueDays = days.filter((d) => d.venuesVisited.length > 1).length;
 
   return (
@@ -229,8 +239,9 @@ export function MyAgendaPage() {
 
       {data && (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <Stat value={totalReserved} label="Seats booked" accent="emerald" />
+            <Stat value={totalHours} label="Hours booked" accent="cyan" testId="stat-hours-booked" />
             <Stat value={totalWaitlisted} label="On a waitlist" accent={totalWaitlisted ? 'amber' : 'emerald'} />
             <Stat value={totalConflicts} label="Time clashes" accent={totalConflicts ? 'rose' : 'emerald'} />
             <Stat value={crossVenueDays} label="Cross-town days" accent="amber" />
