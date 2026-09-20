@@ -124,24 +124,35 @@ Open it **ready for review**, not as a draft — the code review and QA passes
 start when it opens, and a draft would stall them waiting for somebody to
 notice.
 
-**If the change is visible, show it before and after.** A reviewer should see
-what moved, not read a description of it and take your word. You already stash
-your own work to prove the test went red, so do it again for the picture:
+Show the change if it is visible. A reviewer looking at a UI change should
+see the UI, not read a description of it:
+
+```bash
+node scripts/pr-media.mjs <n> .screenshots/<name>.png   # prints the markdown
+```
+
+**One shot of the new state is usually right** — it is what an attendee will
+see, and it is what the ticket asked for.
+
+Reach for a **before and after** only when the change is to something that
+already existed and the difference is the point: a layout that moved, an
+element that changed shape, a page that reads differently. Then a lone "after"
+tells a reviewer nothing, because they have no idea what it replaced. You
+already stash your own work to prove the test went red, so do it again for the
+picture:
 
 ```bash
 npm run shot -- /the-route              # after — your change is in the tree
 mv .screenshots/<name>.png /tmp/after.png
-
 git stash                               # the page as main has it
 npm run shot -- /the-route
 mv .screenshots/<name>.png /tmp/before.png
 git stash pop
-
 node scripts/pr-media.mjs <n> /tmp/before.png /tmp/after.png
 ```
 
-Put them in a two-column table so they sit side by side, which is the only way
-a difference is actually legible:
+Put those two in a table so they sit side by side, which is the only
+arrangement where a difference is legible:
 
 ```markdown
 | Before | After |
@@ -149,9 +160,9 @@ a difference is actually legible:
 | ![before](…) | ![after](…) |
 ```
 
-For a change to an *interaction* rather than a view, the two states are the
-ones either side of the click, and your proof spec is already driving the
-browser through that sequence:
+For a change to an *interaction*, the two states are the ones either side of
+the click, and your proof spec already drives the browser through exactly that
+sequence:
 
 ```js
 await page.screenshot({ path: '.screenshots/before.png' });
@@ -200,12 +211,8 @@ Closes #<n>
 ### Changed
 - `<file>` — <what, in a few words>
 
-| Before | After |
-| --- | --- |
-| <![before](…)> | <![after](…)> |
-
-<one image on its own only when there is no meaningful "before" — something
-that did not exist at all>
+<the line pr-media.mjs printed — or, for a before-and-after, the two-column
+table so they sit side by side>
 
 ### Proof
 | Check | Result |
