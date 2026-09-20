@@ -100,6 +100,27 @@ A reviewer asked to find problems will find some whether or not they are
 there. **"Nothing to flag" is a good review**, and it is the most common
 correct outcome for work that already passed a green gate. One line, and stop.
 
+## Open your comment with the verdict
+
+Before anything else, so it is visible without scrolling. GitHub renders
+these as coloured callouts:
+
+```markdown
+> [!TIP]
+> ### Review · high confidence &nbsp; `●●●`
+> Every criterion traced to the test that satisfies it. 40 lines, one file.
+```
+
+| Verdict | Callout | Meter | Renders |
+| --- | --- | --- | --- |
+| pass, high | `> [!TIP]` | `●●●` | green |
+| pass, medium | `> [!NOTE]` | `●●○` | blue |
+| pass, low | `> [!WARNING]` | `●○○` | yellow — *unproven, a person should look* |
+| fail | `> [!CAUTION]` | `●●●` | red |
+
+One line under the heading saying what you covered, or what broke. Then the
+detail below the callout, as normal prose.
+
 ## 4. Comment
 
 Inline on the line it concerns, where there is one:

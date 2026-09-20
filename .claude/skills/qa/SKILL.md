@@ -90,6 +90,27 @@ Where to aim, in rough order of what actually finds things here:
 
 Screenshot anything you find, so the report shows it rather than describes it.
 
+## Open your comment with the verdict
+
+Before anything else, so it is visible without scrolling. GitHub renders
+these as coloured callouts:
+
+```markdown
+> [!TIP]
+> ### QA · high confidence &nbsp; `●●●`
+> Drove both viewports, empty and full agendas, days 1 and 4.
+```
+
+| Verdict | Callout | Meter | Renders |
+| --- | --- | --- | --- |
+| pass, high | `> [!TIP]` | `●●●` | green |
+| pass, medium | `> [!NOTE]` | `●●○` | blue |
+| pass, low | `> [!WARNING]` | `●○○` | yellow — *unproven, a person should look* |
+| fail | `> [!CAUTION]` | `●●●` | red |
+
+One line under the heading saying what you covered, or what broke. Then the
+detail below the callout, as normal prose.
+
 ## 4. Report only what you can reproduce
 
 For each finding: **what you did, what you expected, what happened.** If you
