@@ -73,7 +73,7 @@ The checkout is thrown away when the job ends, so the file cannot reach the
 repository. Delete it anyway: a probe left behind would run in the suite as if
 somebody meant it.
 
-Where to aim, in rough order of what actually finds things here:
+Where to aim:
 
 - **The empty and the extreme.** Nothing booked, everything booked, the
   attendee with clashes. Zero, one, and many.
@@ -89,6 +89,15 @@ Where to aim, in rough order of what actually finds things here:
   broken, and nobody looks.
 
 Screenshot anything you find, so the report shows it rather than describes it.
+
+## Keep it short
+
+The comment is scanned, not read: the callout, then three short paragraphs at
+most. Each finding is three lines — what you did, what you expected, what
+happened. No preamble, no restating the change, no "Summary" heading.
+
+If you found nothing, the list of what you tried *is* the report: six bullets
+of a few words each, and stop.
 
 ## Open your comment with the verdict
 
@@ -115,27 +124,16 @@ No meter on a blocker: the dots measure how much you covered, and a bug you
 reproduced is not a claim about coverage. `### QA · blocker` and the line
 saying what breaks.
 
-## 4. Report only what you can reproduce
-
-For each finding: **what you did, what you expected, what happened.** If you
-cannot write those three lines, you have not found anything.
+## 4. Report
 
 ```bash
 node scripts/pr-media.mjs <issue> /tmp/<name>.png   # if it is visible
-gh pr comment <pr> --body "<findings, or one line saying you found nothing>"
+gh pr comment <pr> --body "<the callout, then what you found>"
 ```
 
-Say plainly which of these each finding is:
-
-- **a bug in this change** — it broke something, or a Done-when criterion is
-  not actually met
-- **pre-existing** — you reproduced it on `main` too. Worth saying, explicitly
-  not this pull request's problem
-- **a question** — behaviour you cannot tell is intended
-
-**"I tried these six things and found nothing" is a good report.** Name the
-six. A reviewer learns more from knowing what was probed than from a finding
-you had to reach for.
+Label each finding: **a bug in this change**, **pre-existing** (you reproduced
+it on `main` too — say so, and it does not block), or **a question** you
+cannot tell is intended.
 
 ## 5. Write the verdict
 

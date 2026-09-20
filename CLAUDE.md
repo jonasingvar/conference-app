@@ -484,9 +484,23 @@ rather than feeling: how much of the change the agent could actually exercise
 or judge. A high-confidence pass is green, a low-confidence one publishes as
 *unproven* — a pass nobody could earn should not read like one.
 
-Review and QA are triggered by the build workflow finishing, not by the pull
-request opening or the label changing — both of those happen via
-`GITHUB_TOKEN`, and GitHub does not fire workflows from that.
+Code review and QA trigger on the pull request itself. An earlier design keyed
+off the build workflow finishing, which cannot work: a build started by an
+`issues` event reports its `head_branch` as `main`, so looking up the pull
+request by branch found nothing and neither pass ever ran.
+
+**`pull_request` does fire for a pull request the agent opened**, even though
+that pull request is created with `GITHUB_TOKEN`. This gets re-derived wrongly
+about once a week, because the well-known rule — GitHub does not trigger
+workflows from `GITHUB_TOKEN` actions — sounds like it should apply and does
+not. Verified on PR #22, opened by `github-actions[bot]` with no
+`AGENT_GITHUB_TOKEN` set: `verify` ran on it twice, `event=pull_request`.
+
+What does happen is that the first run sits at **`action_required`** until
+somebody clicks *Approve and run*, because the bot is not a collaborator.
+Setting `AGENT_GITHUB_TOKEN` to a personal access token removes that click —
+the pull request is then authored by a person — and is the only reason to
+bother with one.
 
 ## Every change starts with a spec
 

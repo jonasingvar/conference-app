@@ -77,7 +77,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
           SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          verdict=$(head -c 300 /tmp/review-verdict 2>/dev/null | tr -d '\n' || true)
+          verdict=$(head -c 2000 /tmp/review-verdict 2>/dev/null | tr '\n' ' ' || true)
           state=$(printf '%s' "$verdict" | awk '{print $1}')
           confidence=$(printf '%s' "$verdict" | awk '{print $2}')
           detail=$(printf '%s' "$verdict" | cut -d' ' -f3-)
@@ -108,7 +108,7 @@ jobs:
           esac
 
           gh api "repos/$GH_REPO/check-runs" \
-            -f name='Agent · code review' \
+            -f name='Code review verdict' \
             -f head_sha="$SHA" \
             -f status=completed \
             -f conclusion="$conclusion" \

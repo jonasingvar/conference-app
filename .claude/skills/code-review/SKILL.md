@@ -76,55 +76,6 @@ satisfies. That is worth raising. Someone changing their mind is not.
 5. **A test that proves nothing.** One asserting the implementation's output
    against itself, or one that would pass before the change.
 
-## 3. The bar: would this stop you merging?
-
-Ask it of every finding before you write it down. If the answer is no, **do
-not write it down.** Not as a nit, not as a note, not as "minor". A review
-that mixes one blocker with six observations has buried the blocker, and the
-next person skims all seven.
-
-**At most three findings.** If you believe there are more, you have stopped
-reviewing and started listing — pick the three that matter and drop the rest.
-
-Never:
-
-- style, naming, formatting, or preference — if it matches the surrounding
-  code it is right, and `CLAUDE.md` settles the rest
-- anything opening with "consider", "might want to", "could be cleaner", or
-  "for future reference"
-- anything the tests already cover
-- refactors, abstractions, or how you would have written it
-- praise
-
-A reviewer asked to find problems will find some whether or not they are
-there. **"Nothing to flag" is a good review**, and it is the most common
-correct outcome for work that already passed a green gate. One line, and stop.
-
-## Open your comment with the verdict
-
-Before anything else, so it is visible without scrolling. GitHub renders
-these as coloured callouts:
-
-```markdown
-> [!TIP]
-> ### Review · high confidence &nbsp; `●●●`
-> Every criterion traced to the test that satisfies it. 40 lines, one file.
-```
-
-| Verdict | Callout | Meter | Renders |
-| --- | --- | --- | --- |
-| pass, high | `> [!TIP]` | `●●●` | green |
-| pass, medium | `> [!NOTE]` | `●●○` | blue |
-| pass, low | `> [!WARNING]` | `●○○` | yellow — *unproven, a person should look* |
-| fail | `> [!CAUTION]` | *none* | red |
-
-One line under the heading saying what you covered, or what broke. Then the
-detail below the callout, as normal prose.
-
-No meter on a blocker: the dots measure how much you covered, and a bug you
-reproduced is not a claim about coverage. `### Review · blocker` and the line
-saying what breaks.
-
 ## 4. Comment
 
 Inline on the line it concerns, where there is one:
