@@ -216,11 +216,11 @@ export function ErrorState({ error, onRetry }) {
 }
 
 /* ---------------------------------- Stat --------------------------------- */
-export function Stat({ value, label, accent: accentName = 'violet' }) {
+export function Stat({ value, label, accent: accentName = 'violet', testId }) {
   const a = accent(accentName);
   return (
     <div className="card px-4 py-3.5">
-      <div className={cx('font-display text-2xl leading-none sm:text-3xl', a.text)}>
+      <div className={cx('font-display text-2xl leading-none sm:text-3xl', a.text)} data-testid={testId}>
         {typeof value === 'number' ? <CountUp value={value} /> : value}
       </div>
       <div className="mt-1.5 text-[11px] font-medium uppercase tracking-wider text-faint">{label}</div>

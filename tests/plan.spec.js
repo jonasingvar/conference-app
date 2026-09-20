@@ -24,6 +24,16 @@ test.describe('My Agenda', () => {
     await request.delete(`${API}/users/${lane.user}/reservations/${target.id}`);
   });
 
+  test('the hours tile totals the hours shown on each day', async ({ page }) => {
+    await visit(page, '/my-agenda', { as: ATTENDEES.sofia });
+
+    const perDay = await page.getByText(/^\d+h of content$/).allTextContents();
+    expect(perDay.length, 'needs a plan spanning several days to be worth summing').toBeGreaterThan(1);
+    const sum = perDay.reduce((n, text) => n + Number(text.match(/^(\d+)h/)[1]), 0);
+
+    await expect(page.getByTestId('stat-hours-booked')).toHaveText(String(sum));
+  });
+
   test('each attendee sees their own plan', async ({ page }) => {
     await visit(page, '/my-agenda', { as: ATTENDEES.sofia });
     await expect(page.getByRole('heading', { name: /Sofia’s agenda/ })).toBeVisible();
