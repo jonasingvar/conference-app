@@ -116,10 +116,14 @@ these as coloured callouts:
 | pass, high | `> [!TIP]` | `●●●` | green |
 | pass, medium | `> [!NOTE]` | `●●○` | blue |
 | pass, low | `> [!WARNING]` | `●○○` | yellow — *unproven, a person should look* |
-| fail | `> [!CAUTION]` | `●●●` | red |
+| fail | `> [!CAUTION]` | *none* | red |
 
 One line under the heading saying what you covered, or what broke. Then the
 detail below the callout, as normal prose.
+
+No meter on a blocker: the dots measure how much you covered, and a bug you
+reproduced is not a claim about coverage. `### Review · blocker` and the line
+saying what breaks.
 
 ## 4. Comment
 
