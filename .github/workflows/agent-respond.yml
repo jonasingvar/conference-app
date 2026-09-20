@@ -26,9 +26,14 @@ jobs:
   respond:
     # A review carries its body on `review`, a comment on `comment`. The other
     # is null, and `contains(null, ...)` is false, so this covers both.
+    # The second clause is the loop guard. With AGENT_GITHUB_TOKEN the agent
+    # comments as a person, so the action's own bot-actor protection does not
+    # apply — and a reply of its own that quoted `@claude` would trigger
+    # another reply. Its reports all carry this marker.
     if: |
-      contains(github.event.comment.body, '@claude') ||
-      contains(github.event.review.body, '@claude')
+      (contains(github.event.comment.body, '@claude') ||
+       contains(github.event.review.body, '@claude')) &&
+      !contains(github.event.comment.body, 'Claude finished')
     runs-on: ubuntu-latest
     timeout-minutes: 30
 

@@ -16,8 +16,13 @@ on:
 
 # One agent per ticket. Relabelling while a run is in flight must not start a
 # second agent on the same issue.
+# Keyed by label as well as issue. The agent claims its ticket by swapping
+# `ready-for-ai` for `ai-working`, and with a PAT it does that as a person —
+# so that swap fires `issues: labeled` too. The job's `if` skips it in a
+# second, but a shared group would leave it queued behind the real build for
+# the whole run, looking like a duplicate.
 concurrency:
-  group: agent-build-${{ github.event.issue.number }}
+  group: agent-build-${{ github.event.issue.number }}-${{ github.event.label.name }}
   cancel-in-progress: false
 
 jobs:
