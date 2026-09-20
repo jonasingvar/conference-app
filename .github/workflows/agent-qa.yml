@@ -16,7 +16,16 @@ name: Agent · QA
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    # Deliberately not `synchronize`. These passes cost real money and answer
+    # "is this pull request good" — a question when it opens and when it is
+    # marked ready, not after every typo fix. Thirteen commits would have paid
+    # for thirteen reviews of one change.
+    #
+    # Anthropic's own Code Review product skips a pull request that already
+    # has a comment from Claude, for the same reason. To ask for another look
+    # after pushing fixes, comment `@claude re-review this` — agent-respond
+    # picks that up, so a second pass is a decision rather than a reflex.
+    types: [opened, reopened, ready_for_review]
 
 # A new commit makes the pass already running pointless.
 concurrency:

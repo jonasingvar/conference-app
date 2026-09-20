@@ -1,123 +1,138 @@
 ---
 name: code-review
 description: >-
-  Review a pull request another agent just opened, against the spec it was
-  built from and the decisions CLAUDE.md records. Comments; never blocks. Use
-  when asked to review a pull request in this repo, or when told "/code-review 42".
+  Review a pull request another agent opened, against the ticket it claims to
+  close and the decisions CLAUDE.md records. High signal, no nitpicking.
+  Comments; never blocks. Use when asked to review a pull request in this repo,
+  or when told "/code-review 42".
 allowed-tools: Read, Glob, Grep, Bash
 ---
 
 # Review a pull request
 
-You did not write this. You have not seen the reasoning that produced it —
-only the diff, the spec it claims to implement, and what this repo says about
-itself. That is the point: the agent that built it cannot see its own
-misreading, and you can.
+You did not write this and have not seen the reasoning that produced it. That
+is the point: the agent that built it cannot see its own misreading.
 
-You **comment, you never block**. A human merges.
+**You comment. A human merges.** Nothing you do blocks a merge.
 
-**Your verdict is a file**: one line in `/tmp/review-verdict`, and nothing
-else is read — a verdict written only in prose leaves the check *unproven*.
+**Your verdict is a file** — one line in `/tmp/review-verdict`, nothing else is
+read. A verdict written only in prose leaves the check reading *unproven*.
 
-It carries a **confidence**, meaning how much of this change you could
-actually judge. A clean review of a diff you did not understand is not a
-clean review.
+## 1. Form your own view first
 
-## 1. Gather everything before you look at the diff
-
-**Read the ticket first.** Its **Done when:** clause is the contract, and
-everything else is evidence about whether the contract was met. Opening the
-diff first anchors you on what was built, and you end up asking whether the
-code is good instead of whether it is the right code.
-
-Take all of it — the whole issue body, not a summary, and every comment on
-both the issue and the pull request:
+Read, in this order:
 
 ```bash
-gh pr view <pr> --json number,title,body,headRefName,additions,deletions
+gh issue view <issue> --json number,title,body      # the whole body
 gh pr diff <pr>
+```
 
-# The issue the PR closes — body in full, and its comments
-gh issue view <issue> --json number,title,body,labels
-gh api repos/{owner}/{repo}/issues/<issue>/comments --jq '.[] | "\(.user.login): \(.body)"'
+Then the branch's `specs/` file and the parts of `CLAUDE.md` the diff touches.
+Work out for yourself whether each **Done when:** criterion is met.
 
-# The conversation on the pull request itself
+**Only then** read the conversation:
+
+```bash
 gh api repos/{owner}/{repo}/issues/<pr>/comments --jq '.[] | "\(.user.login): \(.body)"'
 ```
 
-Then the spec the branch added under `specs/`, and `CLAUDE.md`.
+In that order deliberately. A stated opinion in a thread pulls a reader
+towards it, so form your own read before you are exposed to one. Then
+reconcile: **a human who said "drop that button, the nav covers it" has
+amended the ticket**, and the diff should follow them. What still deserves
+raising is a pull request that would close an issue it no longer satisfies.
 
-**The pull request conversation can legitimately change the scope.** A human
-who commented "drop that button, the nav already covers it" has amended the
-ticket, and the diff should follow *them*, not the original text. So read the
-comments before you conclude anything contradicts the issue — what looks like
-a broken criterion is often a decision someone made after the ticket was
-written.
+## 2. Flag only these
 
-What it does mean is that the pull request may now close an issue it no longer
-satisfies. That is worth raising. Someone changing their mind is not.
+- **A Done-when criterion that is not met.** Quote the criterion, and show
+  what should satisfy it and does not.
+- **A CLAUDE.md decision contradicted.** Quote the rule exactly, and the line
+  that breaks it. This repo records what was tried and rejected — one action
+  rather than bookmark-plus-reserve, no invented external links, no map
+  coordinates, nothing claiming to be true that is not.
+- **A logic error.** Name an input and the wrong output it produces. Not "this
+  looks wrong".
+- **A test that proves nothing** — one asserting the implementation's output
+  against itself, or one that would pass before the change.
 
-## 2. Look for these, in this order
+Every finding cites `file:line`, read from the line. Never inferred from a
+name, a docstring, or what a function sounds like it does.
 
-1. **A Done-when criterion that is not actually met.** Take them one at a
-   time and find the thing that satisfies each — a test, a line of the diff.
-   A criterion nobody implemented, or one covered by a test that would have
-   passed anyway, is the finding that matters most. If the pull request would
-   auto-close an issue it does not satisfy, say so plainly.
-2. **The diff contradicts a decision `CLAUDE.md` states.** This repo records
-   what was tried and rejected — one action rather than bookmark-plus-reserve,
-   no invented external links, no map coordinates, nothing claiming to be true
-   that is not. A change can pass every test and still be wrong here, and this
-   is the failure no test catches.
-3. **The diff and its spec disagree.** The spec is the first commit on the
-   branch. If the work drifted, either the spec is stale or the pull request
-   no longer does what it says. Say which.
-4. **Correctness.** A bug you can name with an input and a wrong output.
-5. **A test that proves nothing.** One asserting the implementation's output
-   against itself, or one that would pass before the change.
+## 3. Never flag these
 
-## 4. Comment
+- Style, naming, formatting, structure, or how you would have written it
+- Anything the linter, the type checker or the test suite already catches
+- Anything that is only a problem for some inputs, unless you name one
+- A bug that is already on `main` — it is not this pull request's doing
+- Anything the code, its tests or its spec show was deliberate
+- Anything opening "consider", "might want to", "for future reference"
+- Praise
 
-Inline on the line it concerns, where there is one:
+**If you are not certain a finding is real, do not post it.** A false positive
+costs more than a missed nit, because it teaches people to skim you.
 
-```bash
-gh pr comment <pr> --body "<your findings, or one line saying there are none>"
+Requirement-conformance is the category you will get wrong most often — it is
+easy to read a criterion too literally and call compliant code non-compliant.
+Hold it to the highest bar of the four.
+
+## 4. Verify before you post
+
+For each candidate finding, go back to the cited line and check it says what
+you claimed. Drop anything that does not survive that. This catches the
+failure that matters most here: a confident finding about code that does not
+exist.
+
+**At most three findings.** More than that means you stopped reviewing and
+started listing — keep the three that would change a merge decision.
+
+## 5. Comment
+
+One comment. Open with the callout, then at most three short paragraphs. Each
+finding is two lines: what breaks, and when.
+
+```markdown
+> [!TIP]
+> ### Code review · high confidence &nbsp; `●●●`
+> Every criterion traced to what satisfies it. 40 lines, one file.
 ```
 
-Lead each finding with what breaks and when. Do not raise anything you would
-not defend out loud in review.
+| Verdict | Callout | Meter |
+| --- | --- | --- |
+| pass, high | `> [!TIP]` | `●●●` |
+| pass, medium | `> [!NOTE]` | `●●○` |
+| pass, low | `> [!WARNING]` | `●○○` |
+| blocker | `> [!CAUTION]` | *none* |
 
-## 5. Write the verdict
+No meter on a blocker — the dots measure how much you could judge, and a
+defect is not a claim about coverage.
 
-Last thing you do, always. One line:
+**"Nothing to flag" is a good review**, and the usual correct outcome for work
+that passed a green gate. Say it in one line and stop. It should cost you no
+more to write than a full one.
 
 ```bash
-echo "PASS high every criterion maps to a test I read; diff is 40 lines in one file" > /tmp/review-verdict
-echo "PASS low  the change is in the seeded PRNG; I cannot tell from the diff what it produces" > /tmp/review-verdict
+gh pr comment <pr> --body "<the callout, then anything you found>"
+```
+
+## 6. Write the verdict
+
+```bash
+echo "PASS high every criterion traced to a test I read; 40 lines, one file" > /tmp/review-verdict
+echo "PASS low  change is in the seeded PRNG; I cannot tell from the diff what it produces" > /tmp/review-verdict
 echo "FAIL closes #12 but its third criterion is not implemented" > /tmp/review-verdict
 ```
 
-`PASS <high|medium|low> <what you were able to judge>` or `FAIL <the blocker>`.
+`PASS <high|medium|low> <what you could judge>` or `FAIL <the blocker>`.
 
-**Confidence is how much of the change you could evaluate**, not how sure you
-feel about what you read:
+Confidence is **how much of this change you could evaluate**, not how sure you
+feel about what you read. High means you traced every criterion and the diff
+is within what you can reason about from source. Low means you could not
+meaningfully review it — generated output, a timing-dependent path, something
+you cannot see into — and **publishes as unproven rather than green**, which
+says a person should look rather than implying they need not.
 
-- **high** — you traced every Done-when criterion to the thing that satisfies
-  it, and the diff is within what you can reason about from source.
-- **medium** — you judged the substance but something resisted: generated
-  output, a timing-dependent path, a dependency you could not see into.
-  Say which, in your comment.
-- **low** — you could not meaningfully review this from the diff. **A low pass
-  publishes as unproven rather than green**, which is honest: it says a human
-  should look, rather than implying one need not.
+A `FAIL` turns the check red and stops nobody merging. It puts a blocker where
+someone skimming will see it. Three findings all worth reading and none of
+them a blocker is still a `PASS`.
 
-A `FAIL` turns the check red. It does **not** stop anyone merging — a person
-decides that, as they always have. It puts the blocker where someone skimming
-will see it, instead of one comment among several.
-
-The bar is the one you already applied: `FAIL` only for something that should
-stop this merging. Three findings all worth reading, none of them a blocker,
-is still a `PASS` — say so, and let the comment carry them.
-
-Never approve, never request changes, never merge. The label stays
-`ready-for-human`: a person reads your comments and decides.
+Never approve, never request changes, never merge.

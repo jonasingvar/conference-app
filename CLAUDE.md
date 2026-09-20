@@ -491,6 +491,11 @@ Four stages, each its own GitHub Actions workflow, each in a fresh process:
 4. **A human merges.** Nothing here is a required check, so a red one informs
    the decision rather than making it.
 
+They run when a pull request opens and when it is marked ready for review —
+**not on every push.** Each pass costs real money, and thirteen commits would
+otherwise pay for thirteen reviews of one change. To ask for another look
+after pushing fixes, comment `@claude re-review this`.
+
 Both passes publish a verdict carrying a **confidence**, which means coverage
 rather than feeling: how much of the change the agent could actually exercise
 or judge. A high-confidence pass is green, a low-confidence one publishes as
