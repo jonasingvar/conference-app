@@ -62,8 +62,12 @@ jobs:
           prompt: |
             /qa ${{ github.event.pull_request.number }}
 
-            Finish by writing /tmp/qa-verdict — "PASS" or "FAIL <one line>".
-            Without that file this run reports as unproven rather than as your verdict.
+            Finish by writing one line to /tmp/qa-verdict, in exactly this shape:
+              PASS <high|medium|low> <what you covered>
+            or
+              FAIL <what breaks, and when>
+            The confidence word is required — without it this run publishes as
+            unproven rather than as your verdict, and so does no file at all.
           claude_args: >-
             --model claude-opus-5 --max-turns 60
             --allowedTools "Bash,Read,Write,Glob,Grep"

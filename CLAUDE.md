@@ -470,7 +470,7 @@ Four stages, each its own GitHub Actions workflow, each in a fresh process:
 1. **Build** — `ready-for-ai` on an issue starts a runner. It writes the spec,
    writes a failing check, implements, and gates on `npm run verify`. No green,
    no pull request.
-2. **Review** — a second agent reads the issue's acceptance criteria *first*,
+2. **Code review** — a second agent reads the issue's acceptance criteria *first*,
    then the diff. It has not seen the reasoning that produced the change, which
    is the point. Blockers only, three findings at most.
 3. **QA** — a third agent boots the app and drives it in a browser, looking for

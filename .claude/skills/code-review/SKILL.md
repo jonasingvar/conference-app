@@ -1,9 +1,9 @@
 ---
-name: review
+name: code-review
 description: >-
   Review a pull request another agent just opened, against the spec it was
   built from and the decisions CLAUDE.md records. Comments; never blocks. Use
-  when asked to review a pull request in this repo, or when told "/review 42".
+  when asked to review a pull request in this repo, or when told "/code-review 42".
 allowed-tools: Read, Glob, Grep, Bash
 ---
 
