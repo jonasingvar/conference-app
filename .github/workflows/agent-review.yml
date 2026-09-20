@@ -1,0 +1,68 @@
+## A second agent reads the pull request the first one just opened.
+##
+## It starts from the issue's acceptance criteria, not the diff, and it has
+## never seen the reasoning that produced the change — which is the whole
+## point. The agent that built it cannot see its own misreading.
+##
+## It comments and never blocks. A human merges.
+##
+## Triggered by the build workflow finishing rather than by the pull request
+## opening or the `ready-for-human` label landing: both of those are done with
+## GITHUB_TOKEN, and GitHub does not fire workflows from that.
+name: Agent · review
+
+on:
+  workflow_run:
+    workflows: ["Agent · build"]
+    types: [completed]
+
+jobs:
+  review:
+    # Nothing to review if the build never produced a pull request.
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
+      id-token: write
+      actions: read
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+          fetch-depth: 0        # the review reads the diff against main
+
+      - name: Find the pull request
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          number=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+          if [ -z "$number" ]; then
+            echo "No open pull request for $BRANCH — the build stopped at needs-human."
+          fi
+
+      - uses: actions/setup-node@v7
+        if: steps.pr.outputs.number != ''
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: anthropics/claude-code-action@v1
+        if: steps.pr.outputs.number != ''
+        # A finding is advice. It must never be the reason a pull request
+        # cannot merge — an agent asked to find problems will find some.
+        continue-on-error: true
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          prompt: "/review ${{ steps.pr.outputs.number }}"
+          claude_args: >-
+            --model claude-opus-5 --max-turns 40
+            --allowedTools "Bash,Read,Glob,Grep"

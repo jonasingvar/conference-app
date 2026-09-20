@@ -463,6 +463,26 @@ attendee lives in `localStorage` under `orbit:currentUserId`. Two attendees
 what drives the speaking panel on My Agenda and the home page. See
 `docs/DATA_MODEL.md` for the full schema.
 
+## What happens to a ticket
+
+Four stages, each its own GitHub Actions workflow, each in a fresh process:
+
+1. **Build** — `ready-for-ai` on an issue starts a runner. It writes the spec,
+   writes a failing check, implements, and gates on `npm run verify`. No green,
+   no pull request.
+2. **Review** — a second agent reads the issue's acceptance criteria *first*,
+   then the diff. It has not seen the reasoning that produced the change, which
+   is the point. Blockers only, three findings at most.
+3. **QA** — a third agent boots the app and drives it in a browser, looking for
+   what nobody wrote a test for: the empty agenda, the phone viewport, day four,
+   the second click.
+4. **A human merges.** Review and QA comment and never block; an agent asked to
+   find problems will find some.
+
+Review and QA are triggered by the build workflow finishing, not by the pull
+request opening or the label changing — both of those happen via
+`GITHUB_TOKEN`, and GitHub does not fire workflows from that.
+
 ## Every change starts with a spec
 
 `specs/<issue>-<slug>.md`, written before the code and pushed as the first
