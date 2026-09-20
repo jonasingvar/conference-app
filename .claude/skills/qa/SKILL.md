@@ -21,6 +21,12 @@ click. What happens on day four rather than day one.
 review pass your verdict is a gate. That makes it your job to be certain: a
 finding you cannot reproduce is not a finding.
 
+**Your verdict is a file, not a sentence in your comment.** The run ends with
+`echo "PASS" > /tmp/qa-verdict` or `echo "FAIL <reason>" > /tmp/qa-verdict`,
+and nothing else is read. Saying "Verdict: PASS" in prose leaves the check
+reading *unproven* — see step 5, and do it even if you ran out of things to
+try.
+
 ## 1. Learn what changed, and what is already covered
 
 Read the ticket's **Done when:** clause, the diff, and the tests it added. The

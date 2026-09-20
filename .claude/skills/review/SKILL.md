@@ -16,6 +16,10 @@ misreading, and you can.
 
 You **comment, you never block**. A human merges.
 
+**Your verdict is a file**: the run ends with `echo "PASS" > /tmp/review-verdict`
+or `echo "FAIL <the blocker>" > /tmp/review-verdict`. Nothing else is read, so
+a verdict written only in prose leaves the check reading *unproven*.
+
 ## 1. Gather everything before you look at the diff
 
 **Read the ticket first.** Its **Done when:** clause is the contract, and
