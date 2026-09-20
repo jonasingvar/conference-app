@@ -487,7 +487,10 @@ Four stages, each its own GitHub Actions workflow, each in a fresh process:
    is the point. Blockers only, three findings at most.
 3. **QA** — a third agent boots the app and drives it in a browser, looking for
    what nobody wrote a test for: the empty agenda, the phone viewport, day four,
-   the second click.
+   the second click. Its verdict also goes back on the **issue** as one line:
+   the ticket asked for something, and whether it works is the ticket's
+   business. The code review's findings stay on the pull request, because they
+   are about the diff.
 4. **A human merges.** Nothing here is a required check, so a red one informs
    the decision rather than making it.
 

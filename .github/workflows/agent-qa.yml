@@ -39,7 +39,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-      issues: read
+      issues: write        # a one-line verdict back on the ticket
       checks: write         # publish the verdict as a check on the PR
       id-token: write
       actions: read

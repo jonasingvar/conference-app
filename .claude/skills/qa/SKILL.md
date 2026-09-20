@@ -113,6 +113,19 @@ node scripts/pr-media.mjs <issue> /tmp/<name>.png
 gh pr comment <pr> --body "<the callout, then what you found>"
 ```
 
+Then **one line back on the issue** — the ticket asked for something, and
+whether it works is the ticket's business. Somebody following the board should
+not have to open the pull request to learn it:
+
+```bash
+gh issue comment <issue> --body "> [!TIP]
+> ### QA · high confidence &nbsp; \`●●●\`
+> Both viewports, empty and full agendas, days 1 and 4. → <pr url>"
+```
+
+The callout and one sentence. The findings stay on the pull request, beside
+the diff they are about — repeating them here makes both harder to scan.
+
 **"I tried these six things and found nothing" is a good report.** Name the
 six, a few words each. A reviewer learns more from knowing what was probed
 than from a finding you had to reach for.
