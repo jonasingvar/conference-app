@@ -8,30 +8,23 @@
 ## advice. The agent writes a verdict, a shell step turns it into a check run
 ## on the pull request, and branch protection can require it.
 ##
-## Two triggers, because agent pull requests and human ones arrive differently:
-## an agent opens its pull request with GITHUB_TOKEN, and GitHub will not fire
-## `pull_request` from that — so those come in on the build finishing instead.
+## Triggered by the pull request itself. An earlier version keyed off the build
+## workflow finishing, which does not work: a build started by an `issues`
+## event reports `head_branch` as `main`, so the lookup for its pull request
+## found nothing and these passes never ran.
 name: Agent · QA
 
 on:
-  workflow_run:
-    workflows: ["Agent · build"]
-    types: [completed]
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
-# An agent's pull request can arrive by both routes — the build finishing and
-# the pull request opening. One agent pass per commit is enough, and at these
-# prices two is worth preventing rather than tolerating.
+# A new commit makes the pass already running pointless.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.workflow_run.head_branch }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   qa:
-    if: >-
-      github.event_name == 'pull_request' ||
-      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -44,51 +37,22 @@ jobs:
       actions: read
 
     steps:
-      - name: Work out which pull request this is
-        id: pr
-        env:
-          GH_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-          BRANCH: ${{ github.event.workflow_run.head_branch }}
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            number="${{ github.event.pull_request.number }}"
-            sha="${{ github.event.pull_request.head.sha }}"
-            ref="${{ github.event.pull_request.head.ref }}"
-          else
-            number=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
-            sha="${{ github.event.workflow_run.head_sha }}"
-            ref="$BRANCH"
-          fi
-          {
-            echo "number=$number"
-            echo "sha=$sha"
-            echo "ref=$ref"
-          } >> "$GITHUB_OUTPUT"
-          [ -n "$number" ] || echo "No open pull request — nothing to exercise."
-
       - uses: actions/checkout@v7
-        if: steps.pr.outputs.number != ''
         with:
-          ref: ${{ steps.pr.outputs.ref }}
           fetch-depth: 0
 
       - uses: actions/setup-node@v7
-        if: steps.pr.outputs.number != ''
         with:
           node-version: 22
           cache: npm
 
-      - if: steps.pr.outputs.number != ''
         run: npm ci
 
       # This pass is the browser. Without it there is nothing to drive.
       - name: Install Chromium
-        if: steps.pr.outputs.number != ''
         run: npx playwright install --with-deps chromium
 
       - uses: anthropics/claude-code-action@v1
-        if: steps.pr.outputs.number != ''
         # The agent failing is not the same as the change failing. Its verdict
         # is the signal, and the step below is what acts on it.
         continue-on-error: true
@@ -96,7 +60,7 @@ jobs:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
           prompt: |
-            /qa ${{ steps.pr.outputs.number }}
+            /qa ${{ github.event.pull_request.number }}
 
             Finish by writing /tmp/qa-verdict — "PASS" or "FAIL <one line>".
             Without that file this run reports as unproven rather than as your verdict.
@@ -110,11 +74,14 @@ jobs:
       # pass did not finish, which is not the same as finding nothing — say so
       # rather than quietly passing.
       - name: Publish the verdict
-        if: ${{ !cancelled() && steps.pr.outputs.number != '' }}
+        if: ${{ !cancelled() }}
         env:
-          GH_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          # Check runs can only be created by a GitHub App. GITHUB_TOKEN is
+          # one; a personal access token is not, and the API rejects it — so
+          # this step does not take the AGENT_GITHUB_TOKEN the others use.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          SHA: ${{ steps.pr.outputs.sha }}
+          SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           verdict=$(head -c 200 /tmp/qa-verdict 2>/dev/null | tr -d '\n' || true)
           case "$verdict" in
