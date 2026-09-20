@@ -46,7 +46,7 @@ jobs:
           node-version: 22
           cache: npm
 
-        run: npm ci
+      - run: npm ci
 
       # This pass is the browser. Without it there is nothing to drive.
       - name: Install Chromium
