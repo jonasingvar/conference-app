@@ -491,10 +491,12 @@ Four stages, each its own GitHub Actions workflow, each in a fresh process:
 4. **A human merges.** Nothing here is a required check, so a red one informs
    the decision rather than making it.
 
-They run when a pull request opens and when it is marked ready for review —
-**not on every push.** Each pass costs real money, and thirteen commits would
-otherwise pay for thirteen reviews of one change. To ask for another look
-after pushing fixes, comment `@claude re-review this`.
+They run **only when a pull request is marked ready for review** — not when
+it opens, not on a push. The agent opens a draft; clicking *Ready for review*
+is a person deciding to spend two agent passes, and putting it back to draft
+and forward again is how you ask for another. Each pass costs real money, and
+on a thirteen-commit branch a per-push trigger paid for thirteen reviews of
+one change.
 
 Both passes publish a verdict carrying a **confidence**, which means coverage
 rather than feeling: how much of the change the agent could actually exercise
