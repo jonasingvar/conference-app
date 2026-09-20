@@ -73,11 +73,34 @@ jobs:
           GH_REPO: ${{ github.repository }}
           SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          verdict=$(head -c 200 /tmp/review-verdict 2>/dev/null | tr -d '\n' || true)
-          case "$verdict" in
-            PASS*) conclusion=success; summary="No blockers." ;;
-            FAIL*) conclusion=failure; summary="${verdict#FAIL}" ;;
-            *)     conclusion=neutral; summary="Review did not finish — no verdict written." ;;
+          verdict=$(head -c 300 /tmp/review-verdict 2>/dev/null | tr -d '\n' || true)
+          state=$(printf '%s' "$verdict" | awk '{print $1}')
+          confidence=$(printf '%s' "$verdict" | awk '{print $2}')
+          detail=$(printf '%s' "$verdict" | cut -d' ' -f3-)
+
+          case "$state" in
+            FAIL)
+              conclusion=failure
+              title='Fresh-context review — blocker'
+              summary=$(printf '%s' "$verdict" | cut -d' ' -f2-)
+              ;;
+            PASS)
+              # A pass the agent could barely justify is not a green tick. It
+              # publishes as neutral, which reads as "nobody verified this"
+              # rather than "this is fine".
+              case "$confidence" in
+                high)   conclusion=success; title='Fresh-context review — high confidence' ;;
+                medium) conclusion=success; title='Fresh-context review — medium confidence' ;;
+                low)    conclusion=neutral; title='Fresh-context review — low confidence, treat as unproven' ;;
+                *)      conclusion=neutral; title='Fresh-context review — no confidence stated' ;;
+              esac
+              summary="$detail"
+              ;;
+            *)
+              conclusion=neutral
+              title='Fresh-context review — did not finish'
+              summary='No verdict written. Treat as unproven.'
+              ;;
           esac
 
           gh api "repos/$GH_REPO/check-runs" \
@@ -85,7 +108,7 @@ jobs:
             -f head_sha="$SHA" \
             -f status=completed \
             -f conclusion="$conclusion" \
-            -f "output[title]=Fresh-context review" \
+            -f "output[title]=$title" \
             -f "output[summary]=${summary:-see the pull request comment}" \
             --silent
 

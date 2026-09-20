@@ -476,8 +476,13 @@ Four stages, each its own GitHub Actions workflow, each in a fresh process:
 3. **QA** — a third agent boots the app and drives it in a browser, looking for
    what nobody wrote a test for: the empty agenda, the phone viewport, day four,
    the second click.
-4. **A human merges.** Review and QA comment and never block; an agent asked to
-   find problems will find some.
+4. **A human merges.** Nothing here is a required check, so a red one informs
+   the decision rather than making it.
+
+Both passes publish a verdict carrying a **confidence**, which means coverage
+rather than feeling: how much of the change the agent could actually exercise
+or judge. A high-confidence pass is green, a low-confidence one publishes as
+*unproven* — a pass nobody could earn should not read like one.
 
 Review and QA are triggered by the build workflow finishing, not by the pull
 request opening or the label changing — both of those happen via

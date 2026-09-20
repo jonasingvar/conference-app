@@ -83,19 +83,42 @@ jobs:
           GH_REPO: ${{ github.repository }}
           SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          verdict=$(head -c 200 /tmp/qa-verdict 2>/dev/null | tr -d '\n' || true)
-          case "$verdict" in
-            PASS*)  conclusion=success; summary="Exploratory pass found nothing that blocks." ;;
-            FAIL*)  conclusion=failure; summary="${verdict#FAIL}" ;;
-            *)      conclusion=neutral; summary="QA did not finish — no verdict written. Treat as unproven." ;;
+          verdict=$(head -c 300 /tmp/qa-verdict 2>/dev/null | tr -d '\n' || true)
+          state=$(printf '%s' "$verdict" | awk '{print $1}')
+          confidence=$(printf '%s' "$verdict" | awk '{print $2}')
+          detail=$(printf '%s' "$verdict" | cut -d' ' -f3-)
+
+          case "$state" in
+            FAIL)
+              conclusion=failure
+              title='Exploratory QA — blocker'
+              summary=$(printf '%s' "$verdict" | cut -d' ' -f2-)
+              ;;
+            PASS)
+              # A pass the agent could barely justify is not a green tick. It
+              # publishes as neutral, which reads as "nobody verified this"
+              # rather than "this is fine".
+              case "$confidence" in
+                high)   conclusion=success; title='Exploratory QA — high confidence' ;;
+                medium) conclusion=success; title='Exploratory QA — medium confidence' ;;
+                low)    conclusion=neutral; title='Exploratory QA — low confidence, treat as unproven' ;;
+                *)      conclusion=neutral; title='Exploratory QA — no confidence stated' ;;
+              esac
+              summary="$detail"
+              ;;
+            *)
+              conclusion=neutral
+              title='Exploratory QA — did not finish'
+              summary='No verdict written. Treat as unproven.'
+              ;;
           esac
 
           gh api "repos/$GH_REPO/check-runs" \
-            -f name='Agent · QA' \
+            -f name='Agent · qa' \
             -f head_sha="$SHA" \
             -f status=completed \
             -f conclusion="$conclusion" \
-            -f "output[title]=Exploratory QA" \
+            -f "output[title]=$title" \
             -f "output[summary]=${summary:-see the pull request comment}" \
             --silent
 

@@ -16,9 +16,12 @@ misreading, and you can.
 
 You **comment, you never block**. A human merges.
 
-**Your verdict is a file**: the run ends with `echo "PASS" > /tmp/review-verdict`
-or `echo "FAIL <the blocker>" > /tmp/review-verdict`. Nothing else is read, so
-a verdict written only in prose leaves the check reading *unproven*.
+**Your verdict is a file**: one line in `/tmp/review-verdict`, and nothing
+else is read — a verdict written only in prose leaves the check *unproven*.
+
+It carries a **confidence**, meaning how much of this change you could
+actually judge. A clean review of a diff you did not understand is not a
+clean review.
 
 ## 1. Gather everything before you look at the diff
 
@@ -110,22 +113,35 @@ not defend out loud in review.
 
 ## 5. Write the verdict
 
-Last thing you do, always:
+Last thing you do, always. One line:
 
 ```bash
-echo "PASS" > /tmp/review-verdict
-# or
-echo "FAIL <one line: the blocker>" > /tmp/review-verdict
+echo "PASS high every criterion maps to a test I read; diff is 40 lines in one file" > /tmp/review-verdict
+echo "PASS low  the change is in the seeded PRNG; I cannot tell from the diff what it produces" > /tmp/review-verdict
+echo "FAIL closes #12 but its third criterion is not implemented" > /tmp/review-verdict
 ```
 
-A `FAIL` turns the check red. It does **not** stop anyone merging — a person
-decides that, and always has. What it does is make a blocker visible on the
-pull request instead of one comment among many.
+`PASS <high|medium|low> <what you were able to judge>` or `FAIL <the blocker>`.
 
-So the bar is the same one you already applied: `FAIL` only for something that
-should stop this merging. Three findings that are all worth reading and none
-of which is a blocker is still a `PASS` — say so, and let the comment carry
-them.
+**Confidence is how much of the change you could evaluate**, not how sure you
+feel about what you read:
+
+- **high** — you traced every Done-when criterion to the thing that satisfies
+  it, and the diff is within what you can reason about from source.
+- **medium** — you judged the substance but something resisted: generated
+  output, a timing-dependent path, a dependency you could not see into.
+  Say which, in your comment.
+- **low** — you could not meaningfully review this from the diff. **A low pass
+  publishes as unproven rather than green**, which is honest: it says a human
+  should look, rather than implying one need not.
+
+A `FAIL` turns the check red. It does **not** stop anyone merging — a person
+decides that, as they always have. It puts the blocker where someone skimming
+will see it, instead of one comment among several.
+
+The bar is the one you already applied: `FAIL` only for something that should
+stop this merging. Three findings all worth reading, none of them a blocker,
+is still a `PASS` — say so, and let the comment carry them.
 
 Never approve, never request changes, never merge. The label stays
 `ready-for-human`: a person reads your comments and decides.

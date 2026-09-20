@@ -22,10 +22,12 @@ review pass your verdict is a gate. That makes it your job to be certain: a
 finding you cannot reproduce is not a finding.
 
 **Your verdict is a file, not a sentence in your comment.** The run ends with
-`echo "PASS" > /tmp/qa-verdict` or `echo "FAIL <reason>" > /tmp/qa-verdict`,
-and nothing else is read. Saying "Verdict: PASS" in prose leaves the check
-reading *unproven* — see step 5, and do it even if you ran out of things to
-try.
+one line in `/tmp/qa-verdict` and nothing else is read — see step 5. Saying
+"Verdict: PASS" in prose leaves the check reading *unproven*.
+
+It carries a **confidence**, and confidence here means coverage, not feeling:
+how much of what changed did you actually put a browser through? A pass you
+could not really test is not a pass, so say so and let it read as unproven.
 
 ## 1. Learn what changed, and what is already covered
 
@@ -112,25 +114,39 @@ you had to reach for.
 
 ## 5. Write the verdict
 
-Last thing you do, always:
+Last thing you do, always. One line:
 
 ```bash
-echo "PASS" > /tmp/qa-verdict
-# or
-echo "FAIL <one line: what breaks, and when>" > /tmp/qa-verdict
+echo "PASS high drove both viewports, empty and full agendas, days 1 and 4" > /tmp/qa-verdict
+echo "PASS low  change is in the seed; nothing of it is reachable from the UI" > /tmp/qa-verdict
+echo "FAIL the hours tile reads 0 for an attendee with a waitlist-only day" > /tmp/qa-verdict
 ```
 
-A `FAIL` stops the merge, so the bar for it is high and narrow:
+`PASS <high|medium|low> <what you covered>` or `FAIL <what breaks, and when>`.
 
-- **Only a bug in this change.** If `main` has it too, it is not this pull
-  request's fault and it does not block — report it and pass.
-- **Only something you reproduced.** You ran it, you saw it. Twice, if the
-  first was a surprise.
-- **Never a question, a preference, or something you suspect.** Unsure means
-  `PASS` with the doubt written in your comment, where a person can weigh it.
+**Confidence is how much of the change you exercised**, not how sure you feel:
 
-Write no file and the pull request is marked unproven rather than passed —
-which is correct, because a pass you did not earn is worse than no pass.
+- **high** — you drove everything that changed, on both viewports, including
+  the empty and extreme cases. Someone could merge on your word.
+- **medium** — you exercised the main path but something stayed out of reach:
+  a viewport, a state you could not reach, a branch you could not trigger.
+  Name it in your comment.
+- **low** — you could barely test this. The change is server-side, or config,
+  or has no visible surface. **A low pass publishes as unproven rather than
+  green**, which is the honest reading: nobody verified it here.
+
+Do not round up. "Mostly worked" is `medium`, and a `high` you cannot justify
+in one clause is a `medium`.
+
+A `FAIL` stops the merge, so its bar is high and narrow:
+
+- **Only a bug in this change.** If `main` has it too, report it and pass.
+- **Only something you reproduced.** You ran it, you saw it.
+- **Never a question, a preference, or something you suspect.** Unsure is a
+  `PASS` with the doubt in your comment, where a person can weigh it.
+
+Write no file at all and the check reads unproven — correct, because a pass
+nobody earned is worse than no pass.
 
 Do not open a pull request, change any code, or add tests to the suite. If a
 finding deserves a permanent test, say so and let a person decide.
