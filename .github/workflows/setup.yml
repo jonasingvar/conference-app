@@ -71,7 +71,7 @@ jobs:
               echo "| \`AGENT_GITHUB_TOKEN\` secret | ⚪ optional |"
             fi
 
-            echo "| Claude GitHub App | can't be checked from here — see below |"
+            echo "| Actions may open pull requests | can't be checked from here — see below |"
             echo
 
             if [ "$HAS_KEY" != "true" ]; then
@@ -94,6 +94,16 @@ jobs:
               echo
             fi
 
+            echo "### One setting, off by default"
+            echo
+            echo "**Settings → Actions → General → Workflow permissions →** tick"
+            echo "*Allow GitHub Actions to create and approve pull requests*."
+            echo
+            echo "Without it the agent does the whole ticket, pushes a green branch, and"
+            echo "then cannot open the pull request — it will hand the issue back as"
+            echo "\`needs-human\` and tell you this. Setting \`AGENT_GITHUB_TOKEN\` instead"
+            echo "has the same effect."
+            echo
             echo "### Then"
             echo
             echo "Open an issue with a **Done when:** clause, label it \`ready-for-ai\`,"

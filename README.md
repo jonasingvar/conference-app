@@ -106,10 +106,15 @@ You still merge.
    *Set up the harness* workflow runs on the first commit. If it did not, run
    it by hand from the Actions tab. Neither a fork nor a template copies
    labels, and `ready-for-ai` is what starts everything.
-2. Add `ANTHROPIC_API_KEY` as a repository secret. **It must be scoped to a
+2. **Settings → Actions → General → Workflow permissions → tick *Allow GitHub
+   Actions to create and approve pull requests*.** Off by default on every new
+   repository. Without it the agent does all the work, pushes a green branch,
+   and then cannot open the pull request.
+3. Add `ANTHROPIC_API_KEY` as a repository secret. **It must be scoped to a
    workspace** — an org-level key is refused, and the error does not say why.
-3. Optional: `AGENT_GITHUB_TOKEN`, a classic token with `repo` + `workflow`.
-   Without it, every agent pull request waits at *Approve and run*.
+4. Optional: `AGENT_GITHUB_TOKEN`, a classic token with `repo` + `workflow`.
+   It replaces step 2 and also removes the *Approve and run* click on the
+   first check of each pull request.
 
 Then open an issue with a **Done when:** clause, label it `ready-for-ai`, and
 watch the Actions tab.
