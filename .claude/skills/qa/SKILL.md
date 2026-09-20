@@ -2,174 +2,142 @@
 name: qa
 description: >-
   Drive the running app in a browser and try to break a change that already
-  passed its tests — the cases nobody wrote a test for. Reports what it finds
-  on the pull request; never blocks. Use when asked to QA or exploratory-test
+  passed its tests — the cases nobody wrote a test for. Reports findings on the
+  pull request and can fail the check. Use when asked to QA or exploratory-test
   a pull request in this repo, or when told "/qa 42".
 allowed-tools: Read, Write, Glob, Grep, Bash
 ---
 
 # QA a change
 
-The suite is already green. **Running it again proves nothing** — the point of
-this pass is everything nobody thought to write down.
+The suite is already green. **Running it again proves nothing.** You are here
+for what nobody thought to write down.
 
-You are looking for the case the author did not imagine. An attendee with an
-empty agenda. A number that should be zero. A phone-width layout. The second
-click. What happens on day four rather than day one.
+**You can stop a merge**, so a finding you cannot reproduce is not a finding.
 
-**You can stop a merge.** A reproducible bug is not advice, so unlike the
-review pass your verdict is a gate. That makes it your job to be certain: a
-finding you cannot reproduce is not a finding.
+**Your verdict is a file** — one line in `/tmp/qa-verdict`, nothing else is
+read. Saying "Verdict: PASS" in prose leaves the check reading *unproven*.
 
-**Your verdict is a file, not a sentence in your comment.** The run ends with
-one line in `/tmp/qa-verdict` and nothing else is read — see step 5. Saying
-"Verdict: PASS" in prose leaves the check reading *unproven*.
+**Budget: eight probes, or fifteen minutes.** Then write the verdict with
+whatever confidence that earned. Exploring until you find something is how a
+QA pass becomes a fishing trip.
 
-It carries a **confidence**, and confidence here means coverage, not feeling:
-how much of what changed did you actually put a browser through? A pass you
-could not really test is not a pass, so say so and let it read as unproven.
+## 1. Decide what is worth probing
 
-## 1. Learn what changed, and what is already covered
+Read the ticket's **Done when:**, the diff, and the tests it added. The tests
+say where *not* to spend time — what they assert is already proven.
 
-Read the ticket's **Done when:** clause, the diff, and the tests it added. The
-tests tell you where *not* to spend time: whatever they assert is proven, and
-repeating it is waste.
+Then pick from these, in this order:
 
-Then ask the question they do not answer — *what would make this wrong?*
+- **The empty and the extreme.** Zero, one, many. An attendee with nothing
+  booked, the one with clashes, a full room.
+- **The other viewport.** Mobile is a first-class project here and half the
+  layout differs. Proven on desktop is proven on half of it.
+- **The other day.** Almost everything moves with the clock. Day 1 morning is
+  the only time with ratings and check-ins; day 4 is a different world.
+- **The second interaction.** Add then remove. Sort then filter. Navigate away
+  and back. State surviving when it should not is this app's classic bug.
+- **The callers.** If the diff touched something shared — anything in
+  `server/lib/`, a component used on several pages — exercise what *uses* it,
+  not just the new path. A change breaking its consumers is the most common
+  regression there is, and the one a diff-shaped reading misses.
+- **The console.** A page that renders correctly while throwing is broken, and
+  nobody looks.
 
 ## 2. Write probes where Playwright will find them
 
 **Do not start the app yourself.** `playwright.config.js` has a `webServer`
-block: it seeds the database and boots the API and Vite for you, and under CI
-it refuses to reuse an existing server — so an `npm run dev &` of your own
-collides with it and the run dies on a taken port.
+block that seeds the database and boots the app, and under CI it refuses to
+reuse a running server — so your own `npm run dev &` collides with it and the
+run dies on a taken port.
 
 **Do not put probes in `/tmp`.** `testDir` is `./tests`, so anything outside
-it is never collected and `npx playwright test /tmp/probe.spec.js` reports
-"no tests found" while looking like it passed.
-
-Write them into `tests/` with a name that says what they are, run them, then
-delete them:
+it is never collected: the run reports "no tests found", which looks like a
+pass.
 
 ```bash
 cat > tests/qa-probe.spec.js <<'SPEC'
 import { test, expect } from '@playwright/test';
 import { visit, ATTENDEES, momentOn } from './helpers.js';
-// …your probes…
+// …probes…
 SPEC
 
 npx playwright test tests/qa-probe.spec.js --project=desktop
-npx playwright test tests/qa-probe.spec.js --project=mobile   # half the layout differs
+npx playwright test tests/qa-probe.spec.js --project=mobile
 
 rm tests/qa-probe.spec.js
 ```
 
 `tests/helpers.js` is what makes a probe cheap: `visit(page, path, { as, at })`
-signs in as any seeded attendee and pins the conference clock, `momentOn(day,
-time)` builds the timestamp, and `ATTENDEES` names the six — one with clashes,
-one with almost nothing booked, two who are also speaking.
+signs in as any seeded attendee and pins the conference clock,
+`momentOn(day, time)` builds the timestamp, `ATTENDEES` names the six.
 
-The checkout is thrown away when the job ends, so the file cannot reach the
-repository. Delete it anyway: a probe left behind would run in the suite as if
-somebody meant it.
+Assert on roles and test ids — `getByRole`, `getByTestId` — not CSS classes or
+positions, which move for reasons that are not bugs.
 
-Where to aim:
+## 3. Before you call anything a bug
 
-- **The empty and the extreme.** Nothing booked, everything booked, the
-  attendee with clashes. Zero, one, and many.
-- **The other viewport.** Mobile is a first-class project in this repo and
-  half its layout differs. A change proven on desktop is proven on half of it.
-- **The other day.** Almost everything here moves with the clock. Day 1
-  morning is the only time with ratings and check-ins; day 4 is a different
-  world.
-- **The second interaction.** Add then remove. Sort then filter. Navigate away
-  and back. State that survives when it should not is the classic bug this app
-  can have.
-- **The console.** A page that renders correctly while throwing is still
-  broken, and nobody looks.
+Two checks, both required.
 
-Screenshot anything you find, so the report shows it rather than describes it.
+**Re-run it.** A probe that fails once and passes once has not reproduced.
+That is flakiness, and filing it as a defect is worse than missing it.
 
-## Keep it short
+**Try it on `main`.** Stash the probe, check out `origin/main`, run it there.
+If it fails there too the bug is real but **pre-existing** — report it and
+pass. Blaming this pull request sends somebody to fix code that did not
+change.
 
-The comment is scanned, not read: the callout, then three short paragraphs at
-most. Each finding is three lines — what you did, what you expected, what
-happened. No preamble, no restating the change, no "Summary" heading.
+## 4. Report
 
-If you found nothing, the list of what you tried *is* the report: six bullets
-of a few words each, and stop.
-
-## Open your comment with the verdict
-
-Before anything else, so it is visible without scrolling. GitHub renders
-these as coloured callouts:
+One comment. The callout, then at most three short paragraphs. Each finding is
+three lines: **what you did, what you expected, what happened.**
 
 ```markdown
 > [!TIP]
 > ### QA · high confidence &nbsp; `●●●`
-> Drove both viewports, empty and full agendas, days 1 and 4.
+> Both viewports, empty and full agendas, days 1 and 4.
 ```
 
-| Verdict | Callout | Meter | Renders |
-| --- | --- | --- | --- |
-| pass, high | `> [!TIP]` | `●●●` | green |
-| pass, medium | `> [!NOTE]` | `●●○` | blue |
-| pass, low | `> [!WARNING]` | `●○○` | yellow — *unproven, a person should look* |
-| fail | `> [!CAUTION]` | *none* | red |
+| Verdict | Callout | Meter |
+| --- | --- | --- |
+| pass, high | `> [!TIP]` | `●●●` |
+| pass, medium | `> [!NOTE]` | `●●○` |
+| pass, low | `> [!WARNING]` | `●○○` |
+| blocker | `> [!CAUTION]` | *none* |
 
-One line under the heading saying what you covered, or what broke. Then the
-detail below the callout, as normal prose.
-
-No meter on a blocker: the dots measure how much you covered, and a bug you
-reproduced is not a claim about coverage. `### QA · blocker` and the line
-saying what breaks.
-
-## 4. Report
+Label every finding **a bug in this change**, **pre-existing**, or **a
+question** you cannot tell is intended. Show it rather than describe it:
 
 ```bash
-node scripts/pr-media.mjs <issue> /tmp/<name>.png   # if it is visible
+node scripts/pr-media.mjs <issue> /tmp/<name>.png
 gh pr comment <pr> --body "<the callout, then what you found>"
 ```
 
-Label each finding: **a bug in this change**, **pre-existing** (you reproduced
-it on `main` too — say so, and it does not block), or **a question** you
-cannot tell is intended.
+**"I tried these six things and found nothing" is a good report.** Name the
+six, a few words each. A reviewer learns more from knowing what was probed
+than from a finding you had to reach for.
 
 ## 5. Write the verdict
 
-Last thing you do, always. One line:
-
 ```bash
-echo "PASS high drove both viewports, empty and full agendas, days 1 and 4" > /tmp/qa-verdict
-echo "PASS low  change is in the seed; nothing of it is reachable from the UI" > /tmp/qa-verdict
-echo "FAIL the hours tile reads 0 for an attendee with a waitlist-only day" > /tmp/qa-verdict
+echo "PASS high both viewports, empty and full agendas, days 1 and 4" > /tmp/qa-verdict
+echo "PASS low  change is in the seed; none of it is reachable from the UI" > /tmp/qa-verdict
+echo "FAIL the hours tile reads 0 when an attendee's only booking is a waitlist place" > /tmp/qa-verdict
 ```
 
 `PASS <high|medium|low> <what you covered>` or `FAIL <what breaks, and when>`.
 
-**Confidence is how much of the change you exercised**, not how sure you feel:
+Confidence is **coverage, not feeling** — how much of what changed you put a
+browser through. High means everything that changed, on both viewports,
+including the empty and extreme cases. Low means you could barely test it:
+server-side, config, no visible surface. **A low pass publishes as unproven
+rather than green**, which is the honest reading.
 
-- **high** — you drove everything that changed, on both viewports, including
-  the empty and extreme cases. Someone could merge on your word.
-- **medium** — you exercised the main path but something stayed out of reach:
-  a viewport, a state you could not reach, a branch you could not trigger.
-  Name it in your comment.
-- **low** — you could barely test this. The change is server-side, or config,
-  or has no visible surface. **A low pass publishes as unproven rather than
-  green**, which is the honest reading: nobody verified it here.
+Do not round up. "Mostly worked" is `medium`.
 
-Do not round up. "Mostly worked" is `medium`, and a `high` you cannot justify
-in one clause is a `medium`.
-
-A `FAIL` stops the merge, so its bar is high and narrow:
-
-- **Only a bug in this change.** If `main` has it too, report it and pass.
-- **Only something you reproduced.** You ran it, you saw it.
-- **Never a question, a preference, or something you suspect.** Unsure is a
-  `PASS` with the doubt in your comment, where a person can weigh it.
-
-Write no file at all and the check reads unproven — correct, because a pass
-nobody earned is worse than no pass.
+A `FAIL` stops the merge, so: **only a bug in this change, only one you
+reproduced, never a question or a suspicion.** Unsure is a `PASS` with the
+doubt written into your comment, where a person can weigh it.
 
 Do not open a pull request, change any code, or add tests to the suite. If a
 finding deserves a permanent test, say so and let a person decide.
