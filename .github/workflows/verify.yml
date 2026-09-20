@@ -7,13 +7,11 @@
 name: verify
 
 on:
+  # `push` covers landings on main; `pull_request` covers everything on its
+  # way there. Running both on every branch ran the whole suite twice for one
+  # commit, which is where the duplicate checks on a pull request came from.
   push:
-    # `pr-media` only ever holds screenshots for pull request bodies. Building
-    # and browser-testing the app because an image landed is a wasted runner,
-    # and the run it cancels is a real one. It has to be excluded by negation
-    # here: GitHub rejects a workflow that sets both `branches` and
-    # `branches-ignore` for one event.
-    branches: ['**', '!pr-media']
+    branches: [main]
   pull_request:
   workflow_dispatch:
 

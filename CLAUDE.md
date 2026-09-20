@@ -463,6 +463,64 @@ attendee lives in `localStorage` under `orbit:currentUserId`. Two attendees
 what drives the speaking panel on My Agenda and the home page. See
 `docs/DATA_MODEL.md` for the full schema.
 
+## Setting this up on a fork
+
+A fork inherits the workflows and the skills but **not the labels**, and
+`ready-for-ai` is what starts everything — so on a fresh fork, labelling an
+issue does nothing and nothing says why.
+
+Actions → **Set up the harness** → Run workflow. It creates the four labels and
+writes a summary saying what else the fork needs: an `ANTHROPIC_API_KEY`
+secret **scoped to a workspace** (an organisation-level key is rejected, and
+the error does not say which kind to make), and optionally an
+`AGENT_GITHUB_TOKEN`.
+
+## What happens to a ticket
+
+Four stages, each its own GitHub Actions workflow, each in a fresh process:
+
+1. **Build** — `ready-for-ai` on an issue starts a runner. It writes the spec,
+   writes a failing check, implements, and gates on `npm run verify`. No green,
+   no pull request.
+2. **Code review** — a second agent reads the issue's acceptance criteria *first*,
+   then the diff. It has not seen the reasoning that produced the change, which
+   is the point. Blockers only, three findings at most.
+3. **QA** — a third agent boots the app and drives it in a browser, looking for
+   what nobody wrote a test for: the empty agenda, the phone viewport, day four,
+   the second click.
+4. **A human merges.** Nothing here is a required check, so a red one informs
+   the decision rather than making it.
+
+They run **only when a pull request is marked ready for review** — not when
+it opens, not on a push. The agent opens a draft; clicking *Ready for review*
+is a person deciding to spend two agent passes, and putting it back to draft
+and forward again is how you ask for another. Each pass costs real money, and
+on a thirteen-commit branch a per-push trigger paid for thirteen reviews of
+one change.
+
+Both passes publish a verdict carrying a **confidence**, which means coverage
+rather than feeling: how much of the change the agent could actually exercise
+or judge. A high-confidence pass is green, a low-confidence one publishes as
+*unproven* — a pass nobody could earn should not read like one.
+
+Code review and QA trigger on the pull request itself. An earlier design keyed
+off the build workflow finishing, which cannot work: a build started by an
+`issues` event reports its `head_branch` as `main`, so looking up the pull
+request by branch found nothing and neither pass ever ran.
+
+**`pull_request` does fire for a pull request the agent opened**, even though
+that pull request is created with `GITHUB_TOKEN`. This gets re-derived wrongly
+about once a week, because the well-known rule — GitHub does not trigger
+workflows from `GITHUB_TOKEN` actions — sounds like it should apply and does
+not. Verified on PR #22, opened by `github-actions[bot]` with no
+`AGENT_GITHUB_TOKEN` set: `verify` ran on it twice, `event=pull_request`.
+
+What does happen is that the first run sits at **`action_required`** until
+somebody clicks *Approve and run*, because the bot is not a collaborator.
+Setting `AGENT_GITHUB_TOKEN` to a personal access token removes that click —
+the pull request is then authored by a person — and is the only reason to
+bother with one.
+
 ## Every change starts with a spec
 
 `specs/<issue>-<slug>.md`, written before the code and pushed as the first
