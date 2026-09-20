@@ -22,7 +22,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  code-review:
+  fresh-context:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -60,6 +60,10 @@ jobs:
               FAIL <the blocker>
             The confidence word is required — without it this run publishes as
             unproven rather than as your verdict, and so does no file at all.
+          # Opus, deliberately. Every finding that mattered here was a
+          # judgement call — a trigger that could not fire, a prompt
+          # contradicting its own parser — and this is the wrong place to
+          # save money.
           claude_args: >-
             --model claude-opus-5 --max-turns 40
             --allowedTools "Bash,Read,Glob,Grep"

@@ -24,7 +24,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  qa:
+  exploratory:
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -68,8 +68,10 @@ jobs:
               FAIL <what breaks, and when>
             The confidence word is required — without it this run publishes as
             unproven rather than as your verdict, and so does no file at all.
+          # Sonnet: this pass is coverage, not insight. It drives routes and
+          # reports what happened, and it runs on every pull request.
           claude_args: >-
-            --model claude-opus-5 --max-turns 60
+            --model claude-sonnet-5 --max-turns 60
             --allowedTools "Bash,Read,Write,Glob,Grep"
         env:
           NO_OPEN: "1"
