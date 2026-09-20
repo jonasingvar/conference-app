@@ -113,8 +113,15 @@ You still merge.
 3. Add `ANTHROPIC_API_KEY` as a repository secret. **It must be scoped to a
    workspace** — an org-level key is refused, and the error does not say why.
 4. Optional: `AGENT_GITHUB_TOKEN`, a classic token with `repo` + `workflow`.
-   It replaces step 2 and also removes the *Approve and run* click on the
-   first check of each pull request.
+
+   Without it, each agent pull request opens with **"workflows awaiting
+   approval"** and you click once to let its checks run. That is GitHub's
+   behaviour for anything `github-actions[bot]` opens, everywhere — not a
+   setting you can change. With the token the pull request is authored by
+   you, so nothing waits.
+
+   The click is a reasonable thing to keep: it is a human checkpoint before
+   any agent work executes.
 
 Then open an issue with a **Done when:** clause, label it `ready-for-ai`, and
 watch the Actions tab.

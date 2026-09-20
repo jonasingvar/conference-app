@@ -518,11 +518,15 @@ workflows from `GITHUB_TOKEN` actions — sounds like it should apply and does
 not. Verified on PR #22, opened by `github-actions[bot]` with no
 `AGENT_GITHUB_TOKEN` set: `verify` ran on it twice, `event=pull_request`.
 
-What does happen is that the first run sits at **`action_required`** until
-somebody clicks *Approve and run*, because the bot is not a collaborator.
-Setting `AGENT_GITHUB_TOKEN` to a personal access token removes that click —
-the pull request is then authored by a person — and is the only reason to
-bother with one.
+What does happen is that every run on it sits at **`action_required`** until
+somebody clicks *Approve workflows to run*. Verified on a brand-new repository
+in a personal account with no organisation policy of any kind: three workflows
+waiting. This is GitHub's behaviour for anything `github-actions[bot]` opens
+and there is no setting that turns it off.
+
+`AGENT_GITHUB_TOKEN` is the only way around it — the pull request is then
+authored by a person, so nothing is gated. Keeping the click instead is a
+defensible choice: it is a human checkpoint before any agent work runs.
 
 ## Every change starts with a spec
 
