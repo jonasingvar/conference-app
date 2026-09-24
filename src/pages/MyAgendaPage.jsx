@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 import { useConference, useFetch } from '../lib/store.jsx';
 import * as api from '../lib/api.js';
 import { accent } from '../lib/accents.js';
@@ -9,6 +9,7 @@ import { NextUpCard } from '../components/NextUpCard.jsx';
 import { Avatar, Button, Chip, EmptyState, ErrorState, SectionHeader, Skeleton, Stat, cx } from '../components/ui.jsx';
 import { Icon } from '../components/Icon.jsx';
 import { useDocumentTitle } from '../lib/useDocumentTitle.js';
+import { travelLegs } from '../lib/travel.js';
 
 /**
  * Shown only for attendees whose account is linked to a speaker profile.
@@ -134,8 +135,61 @@ function ConflictBanner({ day, conflicts }) {
   );
 }
 
+const fare = (o) => (o.costUsd ? `$${o.costUsd.toFixed(2)}` : 'free');
+
+/**
+ * The hop between two sessions at different venues. Time clashes were always
+ * flagged; this is the one the two-venue layout makes, where the times do not
+ * overlap and you still cannot get there.
+ */
+function TravelNote({ leg }) {
+  const { to, check } = leg;
+  const kind = check.impossible ? 'impossible' : check.freeTooSlow ? 'tight' : 'ok';
+  const fits = check.options.find((o) => o.fits);
+  const ride = check.free?.fits ? check.free : fits;
+
+  return (
+    <div
+      className={cx('ml-4 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border-l-2 px-3 py-2 text-[12px] sm:ml-8',
+        kind === 'impossible' && 'border-rose-400/60 bg-rose-500/[0.07] text-rose-200',
+        kind === 'tight' && 'border-amber-400/60 bg-amber-500/[0.07] text-amber-200',
+        kind === 'ok' && 'border-hairline text-muted')}
+      data-testid="agenda-travel-note"
+      data-kind={kind}
+    >
+      <Icon name="car" className="size-3.5 shrink-0" />
+      {kind === 'impossible' && (
+        <>
+          <strong className="font-semibold">You cannot make the next session in time</strong>
+          <span className="text-muted">
+            {check.fastest.mode} is quickest at {check.fastest.total} min door to door; you have {check.gapMinutes} min.
+          </span>
+        </>
+      )}
+      {kind === 'tight' && (
+        <>
+          <strong className="font-semibold">The free {check.free.mode.toLowerCase()} is too slow</strong>
+          <span className="text-muted">
+            {check.free.total} min for a {check.gapMinutes} min gap. {fits.mode} makes it in {fits.total} min · {fare(fits)}.
+          </span>
+        </>
+      )}
+      {kind === 'ok' && (
+        <span>
+          {ride.mode} to {to.venue.shortName} · {ride.total} min door to door, {fare(ride)}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function DayPlan({ day, isToday }) {
+  const { travel, reservationFor } = useConference();
   const venues = day.venuesVisited;
+  const legFrom = useMemo(() => new Map(
+    travelLegs({ travel, sessions: day.sessions, isConfirmed: (s) => reservationFor(s.id) === 'confirmed' })
+      .map((leg) => [leg.from.id, leg]),
+  ), [travel, day.sessions, reservationFor]);
   return (
     <section data-testid={`plan-day-${day.date}`} className="scroll-mt-24" id={`day-${day.date}`}>
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
@@ -163,7 +217,12 @@ function DayPlan({ day, isToday }) {
       <ConflictBanner day={day} conflicts={day.conflicts} />
 
       <div className="mt-4 space-y-2">
-        {day.sessions.map((s) => <SessionCard key={s.id} session={s} variant="row" />)}
+        {day.sessions.map((s) => (
+          <Fragment key={s.id}>
+            <SessionCard session={s} variant="row" />
+            {legFrom.has(s.id) && <TravelNote leg={legFrom.get(s.id)} />}
+          </Fragment>
+        ))}
       </div>
     </section>
   );

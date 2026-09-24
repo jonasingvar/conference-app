@@ -43,3 +43,25 @@ export function assessTravel({ travel, from, to, gapMinutes }) {
     freeTooSlow: Boolean(free && !free.fits && options.some((o) => o.fits)),
   };
 }
+
+const minutesOf = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+
+/**
+ * Every cross-town hop in one day of an agenda.
+ *
+ * Pairs each confirmed session with the next one, in start order, and keeps
+ * the pairs that change venue. A waitlist place is skipped rather than paired:
+ * it is not somewhere you will be, so the sessions either side of it are the
+ * real journey.
+ */
+export function travelLegs({ travel, sessions, isConfirmed }) {
+  const held = sessions
+    .filter(isConfirmed)
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+
+  return held.slice(1).flatMap((to, i) => {
+    const from = held[i];
+    const check = assessTravel({ travel, from, to, gapMinutes: minutesOf(to.startsAt) - minutesOf(from.endsAt) });
+    return check ? [{ from, to, check }] : [];
+  });
+}

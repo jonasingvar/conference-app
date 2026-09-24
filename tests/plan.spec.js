@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { API, visit, momentOn, laneFor, bookableFor, ATTENDEES } from './helpers.js';
+import { API, visit, momentOn, laneFor, bookableFor, conferenceDays, ATTENDEES } from './helpers.js';
 
 
 test.describe('My Agenda', () => {
@@ -58,6 +58,29 @@ test.describe('My Agenda', () => {
     await page.getByRole('button', { name: /Switch attendee/ }).click();
     await page.getByRole('option', { name: /Kenji Nakamura/ }).click();
     await expect(page.getByRole('heading', { name: /Kenji’s agenda/ })).toBeVisible();
+  });
+});
+
+test.describe('Travel between venues', () => {
+  /*
+   * Reads Jonas's seeded Day 4 trap: Aurora at 09:00, then the Foundry at 10:15.
+   * The two slots are back to back, so nothing another lane books can land
+   * between them. The shuttle (27 + a 9 min walk) misses a 30 minute gap; a
+   * rideshare (18 + 9) makes it.
+   */
+  test('a cross-town hop the shuttle cannot make is flagged, and a one-venue day is not', async ({ page }) => {
+    const days = await conferenceDays();
+    await visit(page, '/my-agenda', { as: ATTENDEES.jonas, at: await momentOn(0, '07:00') });
+
+    const day4 = page.getByTestId(`plan-day-${days[3]}`);
+    const tight = day4.locator('[data-testid="agenda-travel-note"][data-kind="tight"]');
+    await expect(tight).toHaveCount(1);
+    await expect(tight).toBeVisible();
+    await expect(tight).toContainText(/shuttle/i);
+    await expect(tight).toContainText('Rideshare');
+
+    // Day 1 is all Aurora
+    await expect(page.getByTestId(`plan-day-${days[0]}`).getByTestId('agenda-travel-note')).toHaveCount(0);
   });
 });
 
