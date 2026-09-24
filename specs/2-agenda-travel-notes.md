@@ -36,8 +36,13 @@ change of venue is the problem.
   gives none; unsorted input is paired in start order. It also asserts that
   the impossible, tight and ok checks come through.
 - **Browser** (`tests/plan.spec.js`) checks Jonas on My Agenda on desktop and
-  mobile. Day 4 shows a *tight* note naming Rideshare, and Day 3 shows an *ok*
-  note naming the Shuttle. The test only reads, so it needs no lane.
+  mobile. Day 4 shows exactly one *tight* note naming Rideshare, and Day 1,
+  which is all at Aurora, shows none. The test only reads, so it needs no
+  lane. Day 3's *ok* note, "Shuttle to Aurora · 40 min", is not asserted in
+  the browser. The `seats.count` lane briefly books Jonas a 09:00 session on
+  Day 3, which would put a different hop in that position while that test
+  runs. The *ok* branch is proved at the unit layer instead. Day 4's 09:00
+  and 10:15 slots are back to back, so no lane can land between them.
 
 ## Decisions
 

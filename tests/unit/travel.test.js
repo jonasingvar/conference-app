@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { routesBetween, assessTravel } from '../../src/lib/travel.js';
+import { routesBetween, assessTravel, travelLegs } from '../../src/lib/travel.js';
 
 const AURORA = 1;
 const FOUNDRY = 2;
@@ -107,5 +107,77 @@ describe('Whether you can make the next session', () => {
   test('venues with only a walking leg between them offer no advice', () => {
     const walkOnly = travel.filter((t) => t.mode === 'Walk');
     assert.equal(assessTravel({ travel: walkOnly, from: at(AURORA), to: at(FOUNDRY), gapMinutes: 300 }), null);
+  });
+});
+
+describe('Travel between the sessions on one day of an agenda', () => {
+  let nextId = 1;
+  const session = (venueId, startsAt, endsAt, walkMinutes = 0) =>
+    ({ id: nextId++, startsAt, endsAt, venue: { id: venueId }, room: { walkMinutes } });
+  const allConfirmed = () => true;
+  const legs = (sessions, isConfirmed = allConfirmed) => travelLegs({ travel, sessions, isConfirmed });
+
+  test('a change of venue between consecutive sessions is a leg', () => {
+    const a = session(AURORA, '09:00', '09:45');
+    const b = session(FOUNDRY, '10:15', '11:00', 6);
+    const out = legs([a, b]);
+    assert.equal(out.length, 1);
+    assert.equal(out[0].from, a);
+    assert.equal(out[0].to, b);
+    assert.equal(out[0].check.gapMinutes, 30);
+  });
+
+  test('staying in one building needs no leg', () => {
+    assert.deepEqual(legs([session(AURORA, '09:00', '09:45'), session(AURORA, '10:15', '11:00')]), []);
+  });
+
+  test('one session, or none, gives nothing to pair', () => {
+    assert.deepEqual(legs([session(AURORA, '09:00', '09:45')]), []);
+    assert.deepEqual(legs([]), []);
+  });
+
+  test('only the next session is paired — not every later one', () => {
+    const out = legs([
+      session(AURORA, '09:00', '09:45'),
+      session(FOUNDRY, '10:15', '11:00'),
+      session(FOUNDRY, '11:30', '12:15'),
+    ]);
+    assert.equal(out.length, 1);
+  });
+
+  test('a waitlist place is not somewhere you will be, so it is skipped over', () => {
+    const a = session(AURORA, '09:00', '09:45');
+    const waiting = session(AURORA, '10:15', '11:00');
+    const c = session(FOUNDRY, '11:30', '12:15');
+    const out = legs([a, waiting, c], (s) => s !== waiting);
+    assert.equal(out.length, 1);
+    assert.equal(out[0].from, a);
+    assert.equal(out[0].to, c);
+    assert.equal(out[0].check.gapMinutes, 105);
+  });
+
+  test('a waitlisted session at the other venue makes no leg of its own', () => {
+    const waiting = session(FOUNDRY, '10:15', '11:00');
+    const out = legs([session(AURORA, '09:00', '09:45'), waiting, session(AURORA, '11:30', '12:15')],
+      (s) => s !== waiting);
+    assert.deepEqual(out, []);
+  });
+
+  test('sessions are paired in start order, whatever order they arrive in', () => {
+    const early = session(AURORA, '09:00', '09:45');
+    const late = session(FOUNDRY, '13:30', '14:15');
+    const out = legs([late, early]);
+    assert.equal(out[0].from, early);
+    assert.equal(out[0].to, late);
+  });
+
+  test('each leg carries the verdict: impossible, shuttle too slow, or fine', () => {
+    const verdict = (gapEnd) => legs([session(AURORA, '09:00', '09:45'), session(FOUNDRY, gapEnd, '12:00', 6)])[0].check;
+    assert.equal(verdict('09:55').impossible, true);          // 10 min gap
+    assert.equal(verdict('10:10').freeTooSlow, true);         // 25 min gap
+    const fine = verdict('10:30');                            // 45 min gap
+    assert.equal(fine.impossible, false);
+    assert.equal(fine.freeTooSlow, false);
+    assert.equal(fine.free.fits, true);
   });
 });
